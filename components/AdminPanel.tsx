@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ServiceItem, ServiceFormData, Order, OrderStatus, Category } from '../types';
-import { addService, updateService, deleteService, toggleServiceStatus, getOrders, updateOrder, addCategory, updateCategory, deleteCategory } from '../services/storageService';
+import { ServiceItem, ServiceFormData, Order, OrderStatus, Category, User } from '../types';
+import { addService, updateService, deleteService, toggleServiceStatus, getOrders, updateOrder, addCategory, updateCategory, deleteCategory, getUsers } from '../services/storageService';
 import { ServiceForm } from './ServiceForm';
 import { CategoryForm } from './CategoryForm';
 import { Modal } from './Modal';
-import { Plus, Edit2, Trash2, Power, Search, ShoppingCart, List, ExternalLink, FileText, Save, Clock, User, DollarSign, Tag, CheckCircle2, AlertCircle, XCircle, Truck, PlayCircle, BarChart3, Users, TrendingUp, PieChart, ArrowUpRight, FolderTree } from 'lucide-react';
+import { Plus, Edit2, Trash2, Power, Search, ShoppingCart, List, ExternalLink, FileText, Save, Clock, User as UserIcon, DollarSign, Tag, CheckCircle2, AlertCircle, XCircle, Truck, PlayCircle, BarChart3, Users, TrendingUp, PieChart, ArrowUpRight, FolderTree } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
 export type AdminTab = 'dashboard' | 'services' | 'categories' | 'orders' | 'users';
@@ -51,6 +51,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   const [userSearchTerm, setUserSearchTerm] = useState('');
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [dbUsers, setDbUsers] = useState<User[]>([]); // Store real users
   
   // Order Detail View State
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -68,6 +69,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
         }
     };
     loadOrders();
+  }, [activeTab]);
+
+  // Load Users when tab is active
+  useEffect(() => {
+      if (activeTab === 'users') {
+          const loadUsers = async () => {
+              try {
+                  const data = await getUsers();
+                  setDbUsers(data);
+              } catch (e) {
+                  console.error("Failed to load users", e);
+              }
+          };
+          loadUsers();
+      }
   }, [activeTab]);
 
   // --- Statistics Calculations ---
@@ -99,31 +115,62 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   }, [orders, services]);
 
   // --- Users Derivation ---
-  const uniqueUsers = useMemo(() => {
-    const usersMap = new Map<string, { email: string, phone: string, count: number, spent: number, lastOrder: number }>();
+  // Combine Registered Users from DB with aggregated order stats
+  const allUsersList = useMemo(() => {
+    // Map registered users
+    const usersMap = new Map<string, any>();
     
+    // Initialize with registered users
+    dbUsers.forEach(u => {
+        usersMap.set(u.email.toLowerCase(), {
+            id: u.id,
+            email: u.email,
+            name: u.name,
+            phone: u.phone || 'N/A',
+            role: u.role,
+            provider: u.provider,
+            count: 0,
+            spent: 0,
+            lastOrder: u.createdAt, // Fallback to registration date
+            isRegistered: true
+        });
+    });
+
+    // Merge order data
     orders.forEach(order => {
       if (!order.customerEmail) return;
       const email = order.customerEmail.toLowerCase();
-      const existing = usersMap.get(email);
+      let user = usersMap.get(email);
       
-      if (existing) {
-        existing.count += 1;
-        existing.spent += (order.status !== 'cancelled' ? order.price : 0);
-        existing.lastOrder = Math.max(existing.lastOrder, order.createdAt);
-      } else {
-        usersMap.set(email, {
+      if (!user) {
+        // This is a guest user (ordered but not registered in our system yet, or different email)
+        user = {
+          id: 'guest',
           email: order.customerEmail,
+          name: 'Guest User',
           phone: order.customerPhone || 'N/A',
-          count: 1,
-          spent: (order.status !== 'cancelled' ? order.price : 0),
-          lastOrder: order.createdAt
-        });
+          role: 'guest',
+          provider: 'n/a',
+          count: 0,
+          spent: 0,
+          lastOrder: 0,
+          isRegistered: false
+        };
+        usersMap.set(email, user);
+      } else {
+          // If registered user, assume phone from latest order might be more current if missing
+          if (user.phone === 'N/A' && order.customerPhone) {
+              user.phone = order.customerPhone;
+          }
       }
+      
+      user.count += 1;
+      user.spent += (order.status !== 'cancelled' ? order.price : 0);
+      user.lastOrder = Math.max(user.lastOrder, order.createdAt);
     });
 
     return Array.from(usersMap.values()).sort((a, b) => b.lastOrder - a.lastOrder);
-  }, [orders]);
+  }, [orders, dbUsers]);
 
   // --- Filtering ---
   
@@ -143,12 +190,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   }, [orders, orderSearchTerm]);
 
   const filteredUsers = useMemo(() => {
-     return uniqueUsers.filter(u => {
+     return allUsersList.filter(u => {
         const q = userSearchTerm.toLowerCase();
         return u.email.toLowerCase().includes(q) || 
-               u.phone.toLowerCase().includes(q);
+               u.phone.toLowerCase().includes(q) ||
+               (u.name && u.name.toLowerCase().includes(q));
      });
-  }, [uniqueUsers, userSearchTerm]);
+  }, [allUsersList, userSearchTerm]);
 
   // --- Handlers ---
 
@@ -592,7 +640,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input 
                 type="text" 
-                placeholder="Search users (email, phone)..." 
+                placeholder="Search users (email, phone, name)..." 
                 value={userSearchTerm}
                 onChange={(e) => setUserSearchTerm(e.target.value)}
                 className="h-10 w-full rounded-lg border border-slate-700 bg-slate-800 pl-10 pr-4 text-sm text-white focus:border-indigo-500 focus:outline-none"
@@ -604,11 +652,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                  <table className="w-full text-left text-sm text-slate-400">
                    <thead className="bg-slate-900/50 text-xs uppercase text-slate-500">
                      <tr>
-                       <th className="px-6 py-4 font-semibold">Customer Email</th>
-                       <th className="px-6 py-4 font-semibold">Phone</th>
+                       <th className="px-6 py-4 font-semibold">User Info</th>
+                       <th className="px-6 py-4 font-semibold">Role</th>
                        <th className="px-6 py-4 font-semibold text-center">Total Orders</th>
                        <th className="px-6 py-4 font-semibold">Total Spent</th>
-                       <th className="px-6 py-4 font-semibold">Last Active</th>
+                       <th className="px-6 py-4 font-semibold">Registered</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-700">
@@ -616,13 +664,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                        <tr key={idx} className="hover:bg-slate-800/50 transition-colors">
                          <td className="px-6 py-4 font-medium text-white">
                             <div className="flex items-center gap-2">
-                               <div className="h-8 w-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                                  <User className="h-4 w-4" />
+                               <div className="h-8 w-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs uppercase">
+                                  {user.name ? user.name.charAt(0) : <UserIcon className="h-4 w-4" />}
                                </div>
-                               {user.email}
+                               <div>
+                                   <div className="text-sm">{user.email}</div>
+                                   <div className="text-xs text-slate-500">{user.name || 'No Name'} {user.phone && user.phone !== 'N/A' ? `• ${user.phone}` : ''}</div>
+                               </div>
                             </div>
                          </td>
-                         <td className="px-6 py-4 text-slate-300">{user.phone}</td>
+                         <td className="px-6 py-4">
+                             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                                 user.role === 'admin' ? 'bg-purple-500/10 text-purple-400' : 
+                                 user.role === 'guest' ? 'bg-slate-700 text-slate-400' : 'bg-blue-500/10 text-blue-400'
+                             }`}>
+                                 {user.role}
+                             </span>
+                         </td>
                          <td className="px-6 py-4 text-center">
                             <span className="inline-flex items-center rounded-full bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-white">
                               {user.count}
@@ -630,7 +688,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                          </td>
                          <td className="px-6 py-4 font-medium text-emerald-400">${user.spent.toFixed(2)}</td>
                          <td className="px-6 py-4 text-slate-400 text-xs">
-                           {new Date(user.lastOrder).toLocaleDateString()}
+                           {user.isRegistered ? new Date(user.lastOrder).toLocaleDateString() : 'Guest'}
                          </td>
                        </tr>
                      ))}
@@ -714,7 +772,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                 <div className="space-y-4">
                    <div className="rounded-lg bg-slate-800/50 p-3 border border-slate-800 h-full">
                       <div className="flex items-center gap-2 mb-2">
-                        <User className="h-5 w-5 text-amber-400" />
+                        <UserIcon className="h-5 w-5 text-amber-400" />
                         <span className="text-xs text-slate-500 uppercase font-semibold">Customer Info</span>
                       </div>
                       <div className="text-sm space-y-2">

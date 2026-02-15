@@ -94,40 +94,57 @@ const App: React.FC = () => {
     // Listen to Supabase Auth Changes (Google Auth Redirect)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-            // Check if this user exists in our custom 'profiles' table
-            const { data: existingProfile } = await supabase
+            
+            // Prepare user object from Supabase session
+            const appUser: User = {
+                id: session.user.id,
+                email: session.user.email!,
+                name: session.user.user_metadata.full_name || session.user.email!.split('@')[0],
+                role: 'user', // Default role, checking DB below might override if admin
+                createdAt: Date.now(),
+                phone: '',
+                provider: 'google',
+                password: '' 
+            };
+
+            // Use Upsert to ensure profile exists without race conditions
+            // We select role to ensure we keep admin status if it exists
+            const { data: existingData, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', session.user.id)
                 .single();
 
-            let appUser: User;
-
-            if (existingProfile) {
-                // User exists, log them in
-                appUser = existingProfile as User;
+            if (existingData) {
+                // User exists, use DB data (preserves role, phone, etc.)
+                // Only update metadata if needed, but for now rely on DB
+                const dbUser = existingData as User;
+                setCurrentUser(dbUser);
+                setCurrentUserSession(dbUser);
+                setHistoryEmail(dbUser.email);
             } else {
-                // First time user via Google, create profile
-                appUser = {
-                    id: session.user.id,
-                    email: session.user.email!,
-                    name: session.user.user_metadata.full_name || session.user.email!.split('@')[0],
-                    role: 'user',
-                    createdAt: Date.now(),
-                    phone: '',
-                    provider: 'google',
-                    password: '' // No password for OAuth users
-                };
+                // New user, insert into DB
+                // We use upsert to be safe
+                const { error: insertError } = await supabase
+                    .from('profiles')
+                    .upsert([appUser], { onConflict: 'id' });
                 
-                // Insert into Supabase profiles
-                await supabase.from('profiles').insert([appUser]);
+                if (!insertError) {
+                    setCurrentUser(appUser);
+                    setCurrentUserSession(appUser);
+                    setHistoryEmail(appUser.email);
+                } else {
+                    console.error("Error creating profile:", insertError);
+                    addToast("Error syncing user profile", 'error');
+                }
             }
 
-            setCurrentUser(appUser);
-            setCurrentUserSession(appUser);
-            setHistoryEmail(appUser.email);
             setIsAuthOpen(false);
-            addToast('Successfully signed in with Google', 'success');
+            // Only toast if it's a fresh login event to avoid spam on refresh
+            if (!getCurrentUser()) {
+                addToast('Successfully signed in', 'success');
+            }
+
         } else if (event === 'SIGNED_OUT') {
             setCurrentUser(null);
             setCurrentUserSession(null);
@@ -484,7 +501,6 @@ const App: React.FC = () => {
   const closeIconPosition = lang === 'ar' ? 'left-3' : 'right-3';
   const searchInputPadding = lang === 'ar' ? 'pr-10 pl-10' : 'pl-10 pr-10';
 
-  // ... (JSX remains the same, updated useEffect is key here)
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-nexus-900 text-slate-900 dark:text-slate-200 selection:bg-indigo-500 selection:text-white transition-colors duration-300">
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
@@ -744,9 +760,8 @@ const App: React.FC = () => {
                     onLogin={() => setIsAuthOpen(true)}
                 />
             ) : (
-              // ... Main Search, Filters, and Service Grid logic ...
-              // Re-pasting the exact same JSX block to ensure file validity
               <div className="space-y-8">
+                 {/* Search & Filter Header */}
                  <div className="sticky top-0 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 bg-white/95 dark:bg-nexus-900/95 backdrop-blur-sm py-4 border-b border-slate-200 dark:border-slate-800/50">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                         <div className="relative flex-1">
