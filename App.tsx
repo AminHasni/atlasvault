@@ -362,8 +362,12 @@ const App: React.FC = () => {
         ? selectedService.promoPrice 
         : selectedService.price;
 
+    // Generate ID first to use in both DB and WhatsApp
+    const newOrderId = crypto.randomUUID();
+    const date = new Date().toLocaleDateString();
+
     await addOrder({
-      id: crypto.randomUUID(),
+      id: newOrderId,
       userId: currentUser?.id,
       serviceId: selectedService.id,
       serviceName: selectedService.name,
@@ -377,19 +381,25 @@ const App: React.FC = () => {
       createdAt: Date.now()
     });
 
-    const message = `*New Order Request*\n\n` +
-      `*Service:* ${selectedService.name}\n` +
-      `*Category:* ${selectedService.category}\n` +
-      `*Price:* ${selectedService.currency}${finalPrice} ${selectedService.promoPrice ? '(Promo)' : ''}\n\n` +
-      `*Customer Information:*\n` +
-      `------------------\n` +
-      `*Email:* ${orderForm.email}\n` +
-      `*Phone:* ${orderForm.phone}\n` +
-      `*Required Details:* ${orderForm.details}\n\n` +
-      `_Sent via ATLASVAULT App_`;
+    // Modern, Clean, "Ticket" Style Message
+    const message = `*ATLASVAULT // ORDER TICKET* 💎\n` +
+      `────────────────────\n` +
+      `*ID:* \`#${newOrderId.substring(0, 8).toUpperCase()}\`\n` +
+      `*DATE:* ${date}\n\n` +
+      `*✦ SERVICE SELECTION*\n` +
+      `├─ *Item:* ${selectedService.name}\n` +
+      `├─ *Category:* ${selectedService.category}\n` +
+      `└─ *Total:* ${selectedService.currency} ${finalPrice.toFixed(2)}${selectedService.promoPrice ? ' (PROMO)' : ''}\n\n` +
+      `*✦ CLIENT DATA*\n` +
+      `├─ *Email:* ${orderForm.email}\n` +
+      `├─ *Phone:* ${orderForm.phone}\n` +
+      `└─ *Specs:* ${orderForm.details}\n\n` +
+      `────────────────────\n` +
+      `*STATUS:* 🟡 Awaiting Payment/Activation\n` +
+      `_Secure Transmission via AtlasVault_`;
 
     const encodedMessage = encodeURIComponent(message);
-    const whatsappNumber = '15550199090'; 
+    const whatsappNumber = '21629292395'; 
     const url = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
 
     addToast('Order initiated successfully! WhatsApp opened.', 'success');
@@ -417,9 +427,16 @@ const App: React.FC = () => {
 
 
   const handleContactSupport = (order: Order) => {
-     const message = `Hello, I need assistance regarding my order #${order.id.substring(0, 8)} for ${order.serviceName}.`;
+     const message = `*ATLASVAULT // SUPPORT REQUEST* 🛡️\n` +
+        `────────────────────\n` +
+        `*REF:* \`#${order.id.substring(0, 8).toUpperCase()}\`\n` +
+        `*ITEM:* ${order.serviceName}\n\n` +
+        `*✦ ISSUE DESCRIPTION*\n` +
+        `Hello, I require assistance with this order.\n` +
+        `[Please describe your issue here...]`;
+
      const encodedMessage = encodeURIComponent(message);
-     const whatsappNumber = '15550199090';
+     const whatsappNumber = '21629292395';
      const url = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
      window.open(url, '_blank');
   };
