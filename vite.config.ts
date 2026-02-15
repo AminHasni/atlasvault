@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       preview: {
         port: 3000,
         host: '0.0.0.0',
-        allowedHosts: ['atlasvault.onrender.com']
+        allowedHosts: true // Autorise tous les domaines
       },
       plugins: [react()],
       define: {
