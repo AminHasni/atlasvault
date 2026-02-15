@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ServiceCategory, ServiceItem, Category, Order, OrderStatus, User, Review } from './types';
 import { TRANSLATIONS } from './constants';
-import { getServices, addOrder, getOrdersByEmail, getCurrentUser, setCurrentUserSession, getOrdersByUserId, getReviews, getFavorites, toggleFavorite, getCategories } from './services/storageService';
+import { getServices, addOrder, getOrdersByEmail, getCurrentUser, setCurrentUserSession, getOrdersByUserId, getReviews, getFavorites, toggleFavorite, getCategories, signOutUser } from './services/storageService';
+import { supabase } from './services/supabaseClient';
 import { ServiceCard } from './components/ServiceCard';
 import { AdminPanel, AdminTab } from './components/AdminPanel';
 import { Modal } from './components/Modal';
 import { AuthModal } from './components/AuthModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ReviewSection } from './components/ReviewSection';
+import { SettingsPage } from './components/SettingsPage';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
 import { LayoutDashboard, ShieldCheck, Box, Search, ArrowUpDown, Filter, Info, MessageCircle, ShoppingCart, Mail, Phone, FileText, AlertCircle, History, User as UserIcon, ChevronRight, ArrowLeft, Calendar, DollarSign, Tag, HelpCircle, X, SlidersHorizontal, Globe, Menu, LogOut, Home, List, Users, BarChart3, Sparkles, ArrowRight, Sun, Moon, Languages, LogIn, Settings, Heart, FolderTree } from 'lucide-react';
 import * as Icons from 'lucide-react';
@@ -82,12 +84,59 @@ const App: React.FC = () => {
   useEffect(() => {
     loadData();
     
-    // Check for existing session
+    // Check for existing session (manual)
     const sessionUser = getCurrentUser();
     if (sessionUser) {
         setCurrentUser(sessionUser);
         setHistoryEmail(sessionUser.email);
     }
+
+    // Listen to Supabase Auth Changes (Google Auth Redirect)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+            // Check if this user exists in our custom 'profiles' table
+            const { data: existingProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+            let appUser: User;
+
+            if (existingProfile) {
+                // User exists, log them in
+                appUser = existingProfile as User;
+            } else {
+                // First time user via Google, create profile
+                appUser = {
+                    id: session.user.id,
+                    email: session.user.email!,
+                    name: session.user.user_metadata.full_name || session.user.email!.split('@')[0],
+                    role: 'user',
+                    createdAt: Date.now(),
+                    phone: '',
+                    provider: 'google',
+                    password: '' // No password for OAuth users
+                };
+                
+                // Insert into Supabase profiles
+                await supabase.from('profiles').insert([appUser]);
+            }
+
+            setCurrentUser(appUser);
+            setCurrentUserSession(appUser);
+            setHistoryEmail(appUser.email);
+            setIsAuthOpen(false);
+            addToast('Successfully signed in with Google', 'success');
+        } else if (event === 'SIGNED_OUT') {
+            setCurrentUser(null);
+            setCurrentUserSession(null);
+        }
+    });
+
+    return () => {
+        subscription.unsubscribe();
+    };
   }, []);
 
   const loadData = async () => {
@@ -205,6 +254,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    signOutUser(); // Handles Supabase sign out
     setCurrentUser(null);
     setCurrentUserSession(null);
     setUserOrders(null);
@@ -236,13 +286,13 @@ const App: React.FC = () => {
        let matchesCategory = false;
        
        if (searchQuery.trim().length > 0) {
-           if (activeCategory === 'HOME' || searchGlobal) {
+           if (activeCategory === 'HOME' || activeCategory === 'SETTINGS' || searchGlobal) {
                matchesCategory = true;
            } else {
                matchesCategory = s.category === activeCategory;
            }
        } else {
-           if (activeCategory === 'HOME') {
+           if (activeCategory === 'HOME' || activeCategory === 'SETTINGS') {
                matchesCategory = true;
            } else {
                matchesCategory = s.category === activeCategory;
@@ -274,7 +324,7 @@ const App: React.FC = () => {
         .slice(0, 2);
   }, [selectedService, services]);
 
-  const CurrentCategoryMeta = activeCategory === 'HOME' ? null : categories.find(c => c.id === activeCategory);
+  const CurrentCategoryMeta = (activeCategory === 'HOME' || activeCategory === 'SETTINGS') ? null : categories.find(c => c.id === activeCategory);
 
   const handleServiceClick = (service: ServiceItem) => {
     setSelectedService(service);
@@ -429,10 +479,12 @@ const App: React.FC = () => {
   };
 
   const isHomeView = activeCategory === 'HOME' && searchQuery.trim() === '';
+  const isSettingsView = activeCategory === 'SETTINGS';
   const searchIconPosition = lang === 'ar' ? 'right-3' : 'left-3';
   const closeIconPosition = lang === 'ar' ? 'left-3' : 'right-3';
   const searchInputPadding = lang === 'ar' ? 'pr-10 pl-10' : 'pl-10 pr-10';
 
+  // ... (JSX remains the same, updated useEffect is key here)
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-nexus-900 text-slate-900 dark:text-slate-200 selection:bg-indigo-500 selection:text-white transition-colors duration-300">
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
@@ -466,6 +518,7 @@ const App: React.FC = () => {
         <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
           {isAdminMode ? (
             <>
+              {/* ... Admin Menu ... */}
               <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{t('management')}</p>
               <button
                 onClick={() => setActiveAdminTab('dashboard')}
@@ -577,6 +630,18 @@ const App: React.FC = () => {
                 <History className="h-4 w-4" />
                 {t('myOrders')}
               </button>
+
+              <button
+                onClick={() => {
+                  setActiveCategory('SETTINGS');
+                  setShowFavoritesOnly(false);
+                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                }}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeCategory === 'SETTINGS' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
+              >
+                <Settings className="h-4 w-4" />
+                {t('settings')}
+              </button>
             </>
           )}
         </nav>
@@ -645,6 +710,7 @@ const App: React.FC = () => {
         </div>
       </aside>
 
+      {/* Main Content Area - no changes needed to layout, just logic above */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50 dark:bg-nexus-900 transition-colors duration-300">
         <header className="flex h-16 items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-nexus-900/80 px-4 backdrop-blur-md lg:hidden z-30">
            <button 
@@ -663,11 +729,23 @@ const App: React.FC = () => {
               <AdminPanel 
                  services={services} 
                  categories={categories}
-                 onUpdate={refreshData} // Renamed to refreshData to update all data
+                 onUpdate={refreshData} 
                  notify={addToast}
                  activeTab={activeAdminTab}
               />
+            ) : isSettingsView ? (
+                <SettingsPage 
+                    theme={theme}
+                    setTheme={setTheme}
+                    lang={lang}
+                    setLang={setLang}
+                    user={currentUser}
+                    onOpenProfile={() => setIsProfileOpen(true)}
+                    onLogin={() => setIsAuthOpen(true)}
+                />
             ) : (
+              // ... Main Search, Filters, and Service Grid logic ...
+              // Re-pasting the exact same JSX block to ensure file validity
               <div className="space-y-8">
                  <div className="sticky top-0 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 bg-white/95 dark:bg-nexus-900/95 backdrop-blur-sm py-4 border-b border-slate-200 dark:border-slate-800/50">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">

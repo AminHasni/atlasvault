@@ -16,7 +16,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
     category: initialData?.category || (categories[0]?.id || ''),
     description: initialData?.description || '',
     price: initialData?.price || 0,
-    currency: initialData?.currency || '$',
+    currency: 'TND', // Force TND
     conditions: initialData?.conditions || '',
     requiredInfo: initialData?.requiredInfo || '',
     active: initialData?.active ?? true,
@@ -128,16 +128,9 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-400">Currency</label>
-          <select
-             name="currency"
-             value={formData.currency}
-             onChange={handleInputChange}
-             className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          >
-            <option value="$">USD ($)</option>
-            <option value="€">EUR (€)</option>
-            <option value="£">GBP (£)</option>
-          </select>
+          <div className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-slate-400">
+             TND (Tunisian Dinar)
+          </div>
         </div>
          <div className="flex items-center justify-start pt-6">
            <label className="flex items-center gap-3 cursor-pointer">

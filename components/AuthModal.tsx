@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User } from '../types';
-import { loginUser, registerUser, mockGoogleLogin } from '../services/storageService';
+import { loginUser, registerUser, signInWithGoogle } from '../services/storageService';
 import { Mail, Lock, User as UserIcon, Phone, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 
@@ -47,13 +47,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, onCancel, lang 
      setIsGoogleLoading(true);
      setError('');
      try {
-         // Simulate network delay for social login
-         await new Promise(resolve => setTimeout(resolve, 1500));
-         const user = await mockGoogleLogin();
-         onSuccess(user);
-     } catch (err) {
-         setError('Google login failed');
-     } finally {
+         await signInWithGoogle();
+         // NOTE: Success will be handled by the onAuthStateChange listener in App.tsx
+         // because OAuth redirects the page.
+     } catch (err: any) {
+         console.error(err);
+         setError('Google login failed: ' + (err.message || 'Unknown error'));
          setIsGoogleLoading(false);
      }
   };

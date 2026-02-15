@@ -95,10 +95,10 @@ VALUES
 -- Insert Services
 INSERT INTO public.services ("id", "name", "category", "description", "price", "currency", "conditions", "requiredInfo", "active", "createdAt", "popularity")
 VALUES 
-('1', 'Encrypted Cloud Storage 1TB', 'The Vault', 'Military-grade encryption for your most sensitive data. Accessible anywhere, anytime, with zero-knowledge privacy architecture.', 19.99, '$', 'Subscription renews monthly. No refund after 3 days.', 'Email address, PGP Public Key (Optional)', true, 1709251200000, 85),
-('2', 'Global eSIM Data Plan', 'Telecom Hub', 'Stay connected in over 140 countries with high-speed 5G data. No physical SIM required.', 45.00, '$', 'Valid for 30 days from activation. Device must be eSIM compatible.', 'Device EID, Email address', true, 1709241200000, 92),
-('3', 'Rank Boost - Apex Predator', 'Gaming Corner', 'Professional boosting service to reach the highest ranks. Streamed live for your assurance.', 150.00, '$', 'Account sharing required. 2FA must be temporarily disabled or coordinated.', 'Platform, Username, Current Rank', true, 1709231200000, 45),
-('5', 'Private VPN Access', 'The Vault', 'Anonymous browsing with dedicated IP options. Bypass geo-restrictions effortlessly.', 9.99, '$', 'Strict no-logs policy.', 'Desired username', true, 1709211200000, 98);
+('1', 'Encrypted Cloud Storage 1TB', 'The Vault', 'Military-grade encryption for your most sensitive data. Accessible anywhere, anytime, with zero-knowledge privacy architecture.', 60.00, 'TND', 'Subscription renews monthly. No refund after 3 days.', 'Email address, PGP Public Key (Optional)', true, 1709251200000, 85),
+('2', 'Global eSIM Data Plan', 'Telecom Hub', 'Stay connected in over 140 countries with high-speed 5G data. No physical SIM required.', 135.00, 'TND', 'Valid for 30 days from activation. Device must be eSIM compatible.', 'Device EID, Email address', true, 1709241200000, 92),
+('3', 'Rank Boost - Apex Predator', 'Gaming Corner', 'Professional boosting service to reach the highest ranks. Streamed live for your assurance.', 450.00, 'TND', 'Account sharing required. 2FA must be temporarily disabled or coordinated.', 'Platform, Username, Current Rank', true, 1709231200000, 45),
+('5', 'Private VPN Access', 'The Vault', 'Anonymous browsing with dedicated IP options. Bypass geo-restrictions effortlessly.', 30.00, 'TND', 'Strict no-logs policy.', 'Desired username', true, 1709211200000, 98);
 
 -- Insert Admin User
 INSERT INTO public.profiles ("id", "email", "name", "phone", "role", "provider", "createdAt", "password")

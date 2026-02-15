@@ -1,7 +1,7 @@
 import { ServiceItem, Order, User, Review, Category } from '../types';
 import { INITIAL_SERVICES, CATEGORIES as DEFAULT_CATEGORIES } from '../constants';
 import { db } from './db';
-import { isDbConnected } from './supabaseClient';
+import { isDbConnected, supabase } from './supabaseClient';
 
 const STORAGE_KEY = 'service_nexus_catalog';
 const ORDERS_KEY = 'service_nexus_orders';
@@ -89,6 +89,26 @@ export const getUsers = async (): Promise<User[]> => {
 };
 
 export const registerUser = async (userData: Omit<User, 'id' | 'createdAt' | 'role'>): Promise<User> => {
+  if (isDbConnected()) {
+      // For email registration, we still use the profile table manually for this demo app 
+      // unless we implement full Supabase Auth email signup flow.
+      // Keeping existing hybrid flow for Email, but Google is now real.
+      const users = await getUsers();
+      if (users.some(u => u.email === userData.email)) {
+        throw new Error('Email already registered');
+      }
+      
+      const newUser: User = {
+        ...userData,
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+        role: 'user',
+        provider: 'email'
+      };
+      
+      return db.addUser(newUser);
+  }
+
   const users = await getUsers();
   if (users.some(u => u.email === userData.email)) {
     throw new Error('Email already registered');
@@ -102,16 +122,13 @@ export const registerUser = async (userData: Omit<User, 'id' | 'createdAt' | 'ro
     provider: 'email'
   };
 
-  if (isDbConnected()) {
-    return db.addUser(newUser);
-  } else {
-    users.push(newUser);
-    setLocal(USERS_KEY, users);
-    return newUser;
-  }
+  users.push(newUser);
+  setLocal(USERS_KEY, users);
+  return newUser;
 };
 
 export const loginUser = async (email: string, password: string): Promise<User> => {
+  // Simple check against our custom profiles table
   const users = await getUsers();
   const user = users.find(u => u.email === email && u.password === password);
   if (!user) {
@@ -120,33 +137,26 @@ export const loginUser = async (email: string, password: string): Promise<User> 
   return user;
 };
 
-export const mockGoogleLogin = async (): Promise<User> => {
-  const users = await getUsers();
-  const googleEmail = "user@gmail.com";
-  
-  let user = users.find(u => u.email === googleEmail && u.provider === 'google');
-  
-  if (!user) {
-    user = {
-      id: crypto.randomUUID(),
-      email: googleEmail,
-      name: "Google User",
-      password: "",
-      role: 'user',
-      createdAt: Date.now(),
-      phone: "",
-      provider: 'google'
-    };
-    
-    if (isDbConnected()) {
-        await db.addUser(user);
-    } else {
-        users.push(user);
-        setLocal(USERS_KEY, users);
-    }
+export const signInWithGoogle = async (): Promise<void> => {
+  if (!isDbConnected()) {
+      throw new Error('Supabase not connected. Cannot use Google Auth.');
   }
-  
-  return user;
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+        redirectTo: window.location.origin
+    }
+  });
+  if (error) throw error;
+  // Note: This function doesn't return the user directly because OAuth redirects.
+  // The app must listen to onAuthStateChange.
+};
+
+export const signOutUser = async () => {
+    if (isDbConnected()) {
+        await supabase.auth.signOut();
+    }
+    setCurrentUserSession(null);
 };
 
 export const updateUser = async (updatedUser: User): Promise<User> => {
