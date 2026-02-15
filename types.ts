@@ -34,6 +34,9 @@ export interface ServiceItem {
   active: boolean;
   createdAt: number;
   popularity: number;
+  promoPrice?: number; // New field for discounted price
+  badgeLabel?: string; // New field for marketing badge (e.g. "50% OFF")
+  videoUri?: string; // New field for Veo video URI
 }
 
 export type ServiceFormData = Omit<ServiceItem, 'id' | 'createdAt'>;

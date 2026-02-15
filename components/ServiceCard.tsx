@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { ServiceItem } from '../types';
-import { ArrowRight, Info, CheckCircle, XCircle, Star, Heart } from 'lucide-react';
+import { ArrowRight, Info, CheckCircle, XCircle, Star, Heart, Tag } from 'lucide-react';
 import { getReviews } from '../services/storageService';
 
 interface ServiceCardProps {
@@ -31,6 +31,8 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onClick, isAd
     fetchRating();
   }, [service.id]);
 
+  const hasDiscount = service.promoPrice && service.promoPrice < service.price;
+
   return (
     <div 
       onClick={() => onClick(service)}
@@ -58,7 +60,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onClick, isAd
          </div>
       </div>
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border transition-colors ${
             service.active 
               ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 group-hover:border-emerald-500/40' 
@@ -67,6 +69,12 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onClick, isAd
             <span className={`h-1.5 w-1.5 rounded-full ${service.active ? 'bg-emerald-500 dark:bg-emerald-400 animate-pulse' : 'bg-rose-500 dark:bg-rose-400'}`} />
             {service.active ? 'Active' : 'Inactive'}
          </span>
+
+         {service.badgeLabel && (
+             <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                <Tag className="h-3 w-3" /> {service.badgeLabel}
+             </span>
+         )}
       </div>
 
       <h3 className="mb-2 text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
@@ -89,9 +97,16 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onClick, isAd
       <div className="flex items-end justify-between border-t border-slate-100 dark:border-slate-700 pt-4 group-hover:border-slate-200 dark:group-hover:border-slate-600 transition-colors">
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider group-hover:text-indigo-600/70 dark:group-hover:text-indigo-300/70 transition-colors">Price</p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">
-            {service.currency}{service.price.toFixed(2)}
-          </p>
+          <div className="flex items-baseline gap-2">
+              <p className={`text-2xl font-bold ${hasDiscount ? 'text-rose-500 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>
+                {service.currency}{hasDiscount ? service.promoPrice!.toFixed(2) : service.price.toFixed(2)}
+              </p>
+              {hasDiscount && (
+                  <p className="text-sm text-slate-400 line-through decoration-slate-400/50">
+                      {service.currency}{service.price.toFixed(2)}
+                  </p>
+              )}
+          </div>
         </div>
         <div className="rounded-lg bg-slate-100 dark:bg-slate-700 p-2 text-slate-500 dark:text-slate-300 transition-all duration-300 group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-indigo-500/30">
           <Info className="h-5 w-5" />

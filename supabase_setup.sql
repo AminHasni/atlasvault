@@ -27,7 +27,9 @@ create table public.services (
   "requiredInfo" text,
   "active" boolean default true,
   "createdAt" bigint,
-  "popularity" integer default 0
+  "popularity" integer default 0,
+  "promoPrice" numeric, -- New Column
+  "badgeLabel" text     -- New Column
 );
 
 -- 4. Create Profiles Table (Users)
@@ -93,12 +95,12 @@ VALUES
 ('Gaming Corner', 'Gaming Corner', 'Coin Gaming', 'ركن الألعاب', 'Gamepad2', 'text-purple-500', 'Credits, skins, boosts, and premium game keys.', 'Crédits, skins, boosts et clés de jeu premium.', 'أرصدة، مظاهر، تعزيزات، ومفاتيح ألعاب مميزة.', 3);
 
 -- Insert Services
-INSERT INTO public.services ("id", "name", "category", "description", "price", "currency", "conditions", "requiredInfo", "active", "createdAt", "popularity")
+INSERT INTO public.services ("id", "name", "category", "description", "price", "currency", "conditions", "requiredInfo", "active", "createdAt", "popularity", "promoPrice", "badgeLabel")
 VALUES 
-('1', 'Encrypted Cloud Storage 1TB', 'The Vault', 'Military-grade encryption for your most sensitive data. Accessible anywhere, anytime, with zero-knowledge privacy architecture.', 60.00, 'TND', 'Subscription renews monthly. No refund after 3 days.', 'Email address, PGP Public Key (Optional)', true, 1709251200000, 85),
-('2', 'Global eSIM Data Plan', 'Telecom Hub', 'Stay connected in over 140 countries with high-speed 5G data. No physical SIM required.', 135.00, 'TND', 'Valid for 30 days from activation. Device must be eSIM compatible.', 'Device EID, Email address', true, 1709241200000, 92),
-('3', 'Rank Boost - Apex Predator', 'Gaming Corner', 'Professional boosting service to reach the highest ranks. Streamed live for your assurance.', 450.00, 'TND', 'Account sharing required. 2FA must be temporarily disabled or coordinated.', 'Platform, Username, Current Rank', true, 1709231200000, 45),
-('5', 'Private VPN Access', 'The Vault', 'Anonymous browsing with dedicated IP options. Bypass geo-restrictions effortlessly.', 30.00, 'TND', 'Strict no-logs policy.', 'Desired username', true, 1709211200000, 98);
+('1', 'Encrypted Cloud Storage 1TB', 'The Vault', 'Military-grade encryption for your most sensitive data. Accessible anywhere, anytime, with zero-knowledge privacy architecture.', 60.00, 'TND', 'Subscription renews monthly. No refund after 3 days.', 'Email address, PGP Public Key (Optional)', true, 1709251200000, 85, 45.00, '25% OFF'),
+('2', 'Global eSIM Data Plan', 'Telecom Hub', 'Stay connected in over 140 countries with high-speed 5G data. No physical SIM required.', 135.00, 'TND', 'Valid for 30 days from activation. Device must be eSIM compatible.', 'Device EID, Email address', true, 1709241200000, 92, null, 'Best Seller'),
+('3', 'Rank Boost - Apex Predator', 'Gaming Corner', 'Professional boosting service to reach the highest ranks. Streamed live for your assurance.', 450.00, 'TND', 'Account sharing required. 2FA must be temporarily disabled or coordinated.', 'Platform, Username, Current Rank', true, 1709231200000, 45, null, null),
+('5', 'Private VPN Access', 'The Vault', 'Anonymous browsing with dedicated IP options. Bypass geo-restrictions effortlessly.', 30.00, 'TND', 'Strict no-logs policy.', 'Desired username', true, 1709211200000, 98, null, 'Hot');
 
 -- Insert Admin User
 INSERT INTO public.profiles ("id", "email", "name", "phone", "role", "provider", "createdAt", "password")

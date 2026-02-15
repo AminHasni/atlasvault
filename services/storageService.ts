@@ -1,7 +1,7 @@
 import { ServiceItem, Order, User, Review, Category } from '../types';
 import { INITIAL_SERVICES, CATEGORIES as DEFAULT_CATEGORIES } from '../constants';
 import { db } from './db';
-import { isDbConnected, supabase } from './supabaseClient';
+import { isDbConnected } from './supabaseClient';
 
 const STORAGE_KEY = 'service_nexus_catalog';
 const ORDERS_KEY = 'service_nexus_orders';
@@ -92,7 +92,6 @@ export const registerUser = async (userData: Omit<User, 'id' | 'createdAt' | 'ro
   if (isDbConnected()) {
       // For email registration, we still use the profile table manually for this demo app 
       // unless we implement full Supabase Auth email signup flow.
-      // Keeping existing hybrid flow for Email, but Google is now real.
       const users = await getUsers();
       if (users.some(u => u.email === userData.email)) {
         throw new Error('Email already registered');
@@ -137,25 +136,8 @@ export const loginUser = async (email: string, password: string): Promise<User> 
   return user;
 };
 
-export const signInWithGoogle = async (): Promise<void> => {
-  if (!isDbConnected()) {
-      throw new Error('Supabase not connected. Cannot use Google Auth.');
-  }
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-        redirectTo: window.location.origin
-    }
-  });
-  if (error) throw error;
-  // Note: This function doesn't return the user directly because OAuth redirects.
-  // The app must listen to onAuthStateChange.
-};
-
 export const signOutUser = async () => {
-    if (isDbConnected()) {
-        await supabase.auth.signOut();
-    }
+    // Just clear local session since we are using custom auth
     setCurrentUserSession(null);
 };
 
@@ -183,6 +165,35 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
     return updatedUser;
   }
   throw new Error('User not found');
+};
+
+export const deleteUser = async (id: string): Promise<void> => {
+  if (isDbConnected()) {
+    await db.deleteUser(id);
+    return;
+  }
+
+  const users = await getUsers();
+  const updated = users.filter(u => u.id !== id);
+  setLocal(USERS_KEY, updated);
+};
+
+export const addUserByAdmin = async (user: User): Promise<User> => {
+    if(isDbConnected()) {
+        const users = await getUsers();
+        if (users.some(u => u.email === user.email)) {
+            throw new Error('Email already registered');
+        }
+        return db.addUser(user);
+    }
+
+    const users = await getUsers();
+    if (users.some(u => u.email === user.email)) {
+        throw new Error('Email already registered');
+    }
+    users.push(user);
+    setLocal(USERS_KEY, users);
+    return user;
 };
 
 // Sync because this is session management (browser specific)

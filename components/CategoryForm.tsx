@@ -54,13 +54,13 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
     <form onSubmit={handleSubmit} className="space-y-6">
       {!isEditing && (
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-400">ID (Unique Identifier)</label>
+            <label className="text-sm font-medium text-slate-600 dark:text-slate-400">ID (Unique Identifier)</label>
             <input
               type="text"
               name="id"
               value={formData.id}
               onChange={handleInputChange}
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               placeholder="e.g. the-vault (Optional, auto-generated from label if empty)"
             />
             <p className="text-xs text-slate-500">Used for database relationships. Cannot be changed later.</p>
@@ -69,75 +69,75 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-400">Label (EN)</label>
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Label (EN)</label>
           <input
             type="text"
             name="label"
             value={formData.label}
             onChange={handleInputChange}
             required
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-400">Label (FR)</label>
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Label (FR)</label>
           <input
             type="text"
             name="label_fr"
             value={formData.label_fr}
             onChange={handleInputChange}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-400">Label (AR)</label>
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Label (AR)</label>
           <input
             type="text"
             name="label_ar"
             value={formData.label_ar}
             onChange={handleInputChange}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-right"
+            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-right"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-400">Description (EN)</label>
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Description (EN)</label>
           <textarea
             name="desc"
             value={formData.desc}
             onChange={handleInputChange}
             rows={2}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-400">Description (FR)</label>
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Description (FR)</label>
           <textarea
             name="desc_fr"
             value={formData.desc_fr}
             onChange={handleInputChange}
             rows={2}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-400">Description (AR)</label>
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Description (AR)</label>
           <textarea
             name="desc_ar"
             value={formData.desc_ar}
             onChange={handleInputChange}
             rows={2}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-right"
+            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-right"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-400">Icon</label>
-            <div className="grid grid-cols-5 gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700 h-32 overflow-y-auto custom-scrollbar">
+            <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Icon</label>
+            <div className="grid grid-cols-5 gap-2 bg-slate-100 dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 h-32 overflow-y-auto custom-scrollbar">
                 {AVAILABLE_ICONS.map(iconName => {
                     const Icon = (Icons as any)[iconName];
                     return (
@@ -145,7 +145,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
                             key={iconName}
                             type="button"
                             onClick={() => setFormData({...formData, icon: iconName})}
-                            className={`p-2 rounded flex items-center justify-center transition-all ${formData.icon === iconName ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                            className={`p-2 rounded flex items-center justify-center transition-all ${formData.icon === iconName ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'}`}
                             title={iconName}
                         >
                             {Icon && <Icon className="h-5 w-5" />}
@@ -156,14 +156,14 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
          </div>
 
          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-400">Theme Color</label>
+            <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Theme Color</label>
             <div className="grid grid-cols-3 gap-2">
                 {AVAILABLE_COLORS.map(colorClass => (
                     <button
                         key={colorClass}
                         type="button"
                         onClick={() => setFormData({...formData, color: colorClass})}
-                        className={`h-8 rounded-md border-2 transition-all flex items-center justify-center ${colorClass.replace('text-', 'bg-').replace('500', '500/20')} ${formData.color === colorClass ? 'border-white' : 'border-transparent hover:border-slate-500'}`}
+                        className={`h-8 rounded-md border-2 transition-all flex items-center justify-center ${colorClass.replace('text-', 'bg-').replace('500', '500/20')} ${formData.color === colorClass ? 'border-slate-900 dark:border-white' : 'border-transparent hover:border-slate-300 dark:hover:border-slate-500'}`}
                     >
                         <div className={`h-2 w-2 rounded-full ${colorClass.replace('text-', 'bg-')}`}></div>
                     </button>
@@ -172,22 +172,22 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
          </div>
 
          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-400">Display Order</label>
+            <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Display Order</label>
             <input
                 type="number"
                 name="order"
                 value={formData.order}
                 onChange={handleInputChange}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
          </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+      <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg px-5 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          className="rounded-lg px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
         >
           Cancel
         </button>

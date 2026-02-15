@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ServiceCategory, ServiceItem, Category, Order, OrderStatus, User, Review } from './types';
 import { TRANSLATIONS } from './constants';
-import { getServices, addOrder, getOrdersByEmail, getCurrentUser, setCurrentUserSession, getOrdersByUserId, getReviews, getFavorites, toggleFavorite, getCategories, signOutUser } from './services/storageService';
-import { supabase } from './services/supabaseClient';
+import { getServices, addOrder, getOrdersByEmail, getCurrentUser, setCurrentUserSession, getOrdersByUserId, getReviews, getFavorites, toggleFavorite, getCategories, signOutUser, updateService } from './services/storageService';
 import { ServiceCard } from './components/ServiceCard';
+import { HeroCarousel } from './components/HeroCarousel';
 import { AdminPanel, AdminTab } from './components/AdminPanel';
 import { Modal } from './components/Modal';
 import { AuthModal } from './components/AuthModal';
 import { ProfileModal } from './components/ProfileModal';
 import { ReviewSection } from './components/ReviewSection';
 import { SettingsPage } from './components/SettingsPage';
+import { ChatAssistant } from './components/ChatAssistant'; // Import ChatAssistant
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
-import { LayoutDashboard, ShieldCheck, Box, Search, ArrowUpDown, Filter, Info, MessageCircle, ShoppingCart, Mail, Phone, FileText, AlertCircle, History, User as UserIcon, ChevronRight, ArrowLeft, Calendar, DollarSign, Tag, HelpCircle, X, SlidersHorizontal, Globe, Menu, LogOut, Home, List, Users, BarChart3, Sparkles, ArrowRight, Sun, Moon, Languages, LogIn, Settings, Heart, FolderTree } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Box, Search, ArrowUpDown, Filter, Info, MessageCircle, ShoppingCart, Mail, Phone, FileText, AlertCircle, History, User as UserIcon, ChevronRight, ChevronDown, ArrowLeft, Calendar, Banknote, Tag, HelpCircle, X, SlidersHorizontal, Globe, Menu, LogOut, Home, List, Users, BarChart3, Sparkles, ArrowRight, Sun, Moon, Languages, LogIn, Settings, Heart, FolderTree, Flame, Check } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
 type Language = 'en' | 'fr' | 'ar';
@@ -21,6 +22,7 @@ const App: React.FC = () => {
   // Theme & Language State
   const [theme, setTheme] = useState<Theme>('dark');
   const [lang, setLang] = useState<Language>('fr'); 
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -80,6 +82,14 @@ const App: React.FC = () => {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  const languages = [
+    { code: 'en', label: 'English', flag: '🇺🇸' },
+    { code: 'fr', label: 'Français', flag: '🇫🇷' },
+    { code: 'ar', label: 'العربية', flag: '🇸🇦' }
+  ];
+
+  const currentLangObj = languages.find(l => l.code === lang) || languages[0];
+
   // ASYNC DATA LOADING
   useEffect(() => {
     loadData();
@@ -90,70 +100,6 @@ const App: React.FC = () => {
         setCurrentUser(sessionUser);
         setHistoryEmail(sessionUser.email);
     }
-
-    // Listen to Supabase Auth Changes (Google Auth Redirect)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-            
-            // Prepare user object from Supabase session
-            const appUser: User = {
-                id: session.user.id,
-                email: session.user.email!,
-                name: session.user.user_metadata.full_name || session.user.email!.split('@')[0],
-                role: 'user', // Default role, checking DB below might override if admin
-                createdAt: Date.now(),
-                phone: '',
-                provider: 'google',
-                password: '' 
-            };
-
-            // Use Upsert to ensure profile exists without race conditions
-            // We select role to ensure we keep admin status if it exists
-            const { data: existingData, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-
-            if (existingData) {
-                // User exists, use DB data (preserves role, phone, etc.)
-                // Only update metadata if needed, but for now rely on DB
-                const dbUser = existingData as User;
-                setCurrentUser(dbUser);
-                setCurrentUserSession(dbUser);
-                setHistoryEmail(dbUser.email);
-            } else {
-                // New user, insert into DB
-                // We use upsert to be safe
-                const { error: insertError } = await supabase
-                    .from('profiles')
-                    .upsert([appUser], { onConflict: 'id' });
-                
-                if (!insertError) {
-                    setCurrentUser(appUser);
-                    setCurrentUserSession(appUser);
-                    setHistoryEmail(appUser.email);
-                } else {
-                    console.error("Error creating profile:", insertError);
-                    addToast("Error syncing user profile", 'error');
-                }
-            }
-
-            setIsAuthOpen(false);
-            // Only toast if it's a fresh login event to avoid spam on refresh
-            if (!getCurrentUser()) {
-                addToast('Successfully signed in', 'success');
-            }
-
-        } else if (event === 'SIGNED_OUT') {
-            setCurrentUser(null);
-            setCurrentUserSession(null);
-        }
-    });
-
-    return () => {
-        subscription.unsubscribe();
-    };
   }, []);
 
   const loadData = async () => {
@@ -240,14 +186,6 @@ const App: React.FC = () => {
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   
-  const toggleLang = () => {
-    setLang(prev => {
-      if (prev === 'en') return 'fr';
-      if (prev === 'fr') return 'ar';
-      return 'en';
-    });
-  };
-
   const refreshData = async () => {
     await loadData();
   };
@@ -271,7 +209,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    signOutUser(); // Handles Supabase sign out
+    signOutUser();
     setCurrentUser(null);
     setCurrentUserSession(null);
     setUserOrders(null);
@@ -343,6 +281,14 @@ const App: React.FC = () => {
 
   const CurrentCategoryMeta = (activeCategory === 'HOME' || activeCategory === 'SETTINGS') ? null : categories.find(c => c.id === activeCategory);
 
+  // New logic for Promo/Offers
+  const promoServices = useMemo(() => {
+      return services.filter(s => 
+          s.active && 
+          ((s.promoPrice && s.promoPrice < s.price) || s.badgeLabel)
+      ).slice(0, 3); // Take top 3 for the horizontal scroller
+  }, [services]);
+
   const handleServiceClick = (service: ServiceItem) => {
     setSelectedService(service);
     setOrderForm(prev => ({ 
@@ -410,6 +356,11 @@ const App: React.FC = () => {
     }
 
     const customerInfoString = `Email: ${orderForm.email}\nPhone: ${orderForm.phone}\nDetails: ${orderForm.details}`;
+    
+    // Use promo price if available
+    const finalPrice = (selectedService.promoPrice && selectedService.promoPrice < selectedService.price) 
+        ? selectedService.promoPrice 
+        : selectedService.price;
 
     await addOrder({
       id: crypto.randomUUID(),
@@ -417,7 +368,7 @@ const App: React.FC = () => {
       serviceId: selectedService.id,
       serviceName: selectedService.name,
       category: selectedService.category,
-      price: selectedService.price,
+      price: finalPrice,
       currency: selectedService.currency,
       customerInfo: customerInfoString,
       customerEmail: orderForm.email,
@@ -429,7 +380,7 @@ const App: React.FC = () => {
     const message = `*New Order Request*\n\n` +
       `*Service:* ${selectedService.name}\n` +
       `*Category:* ${selectedService.category}\n` +
-      `*Price:* ${selectedService.currency}${selectedService.price}\n\n` +
+      `*Price:* ${selectedService.currency}${finalPrice} ${selectedService.promoPrice ? '(Promo)' : ''}\n\n` +
       `*Customer Information:*\n` +
       `------------------\n` +
       `*Email:* ${orderForm.email}\n` +
@@ -505,6 +456,7 @@ const App: React.FC = () => {
     <div className="flex h-screen bg-slate-50 dark:bg-nexus-900 text-slate-900 dark:text-slate-200 selection:bg-indigo-500 selection:text-white transition-colors duration-300">
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
 
+      {/* Sidebar and rest of layout... */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
@@ -513,6 +465,7 @@ const App: React.FC = () => {
       )}
       
       <aside className={`fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-r rtl:border-r-0 rtl:border-l bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : (lang === 'ar' ? 'translate-x-full' : '-translate-x-full')}`}>
+        {/* ... Sidebar Content ... */}
         <div className="flex h-16 items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800">
            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/20">
               <Box className="h-5 w-5 text-white" />
@@ -532,6 +485,7 @@ const App: React.FC = () => {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
+          {/* ... (Menu items unchanged) ... */}
           {isAdminMode ? (
             <>
               {/* ... Admin Menu ... */}
@@ -542,6 +496,7 @@ const App: React.FC = () => {
               >
                 <BarChart3 className="h-4 w-4" /> {t('dashboard')}
               </button>
+              {/* ... other admin buttons ... */}
               <button
                 onClick={() => setActiveAdminTab('categories')}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeAdminTab === 'categories' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
@@ -726,8 +681,9 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Content Area - no changes needed to layout, just logic above */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50 dark:bg-nexus-900 transition-colors duration-300">
+        {/* ... (Header and Main Content unchanged) ... */}
         <header className="flex h-16 items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-nexus-900/80 px-4 backdrop-blur-md lg:hidden z-30">
            <button 
              onClick={() => setIsSidebarOpen(true)}
@@ -761,7 +717,8 @@ const App: React.FC = () => {
                 />
             ) : (
               <div className="space-y-8">
-                 {/* Search & Filter Header */}
+                 {/* ... (Existing Main Content) ... */}
+                 {/* Search & Filter Header (Unchanged) */}
                  <div className="sticky top-0 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 bg-white/95 dark:bg-nexus-900/95 backdrop-blur-sm py-4 border-b border-slate-200 dark:border-slate-800/50">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                         <div className="relative flex-1">
@@ -804,13 +761,44 @@ const App: React.FC = () => {
                             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                           </button>
 
-                          <button
-                            onClick={toggleLang}
-                            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-500 transition-all font-bold text-xs"
-                            title="Switch Language"
-                          >
-                            {lang.toUpperCase()}
-                          </button>
+                          {/* Language Dropdown */}
+                          <div className="relative">
+                            <button
+                              onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+                              className="flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 px-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-500 transition-all"
+                            >
+                              <span>{currentLangObj.flag}</span>
+                              <span className="hidden sm:inline">{currentLangObj.label}</span>
+                              <span className="sm:hidden">{currentLangObj.code.toUpperCase()}</span>
+                              <ChevronDown className="h-3 w-3 opacity-50" />
+                            </button>
+
+                            {isLangMenuOpen && (
+                              <>
+                                <div className="fixed inset-0 z-30" onClick={() => setIsLangMenuOpen(false)} />
+                                <div className="absolute right-0 top-full mt-2 z-40 w-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 shadow-xl">
+                                  {languages.map((l) => (
+                                    <button
+                                      key={l.code}
+                                      onClick={() => {
+                                        setLang(l.code as any);
+                                        setIsLangMenuOpen(false);
+                                      }}
+                                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                                        lang === l.code
+                                          ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                                      }`}
+                                    >
+                                      <span>{l.flag}</span>
+                                      {l.label}
+                                      {lang === l.code && <Check className="ml-auto h-3 w-3" />}
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
                     </div>
 
@@ -835,7 +823,7 @@ const App: React.FC = () => {
                             </div>
                             <div className="flex-1 space-y-2">
                                 <label className="text-xs font-semibold text-slate-500 uppercase flex items-center gap-1.5">
-                                  <DollarSign className="h-3 w-3" /> {t('priceRange')}
+                                  <Banknote className="h-3 w-3" /> {t('priceRange')}
                                 </label>
                                 <div className="flex gap-2">
                                   <input
@@ -880,32 +868,41 @@ const App: React.FC = () => {
                  {isHomeView ? (
                    <div className="space-y-12 animate-in fade-in duration-500">
                       {!showFavoritesOnly && (
-                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 px-6 py-12 shadow-2xl sm:px-12 sm:py-16">
-                           <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl"></div>
-                           <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl"></div>
-                           
-                           <div className="relative z-10 max-w-2xl">
-                              <div className="flex items-center gap-2 text-indigo-400 font-semibold mb-4">
-                                 <Sparkles className="h-5 w-5" />
-                                 <span>{t('heroSubtitle')}</span>
-                              </div>
-                              <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl mb-6">
-                                 {t('heroTitle')}
-                              </h2>
-                              <p className="text-lg text-slate-300 mb-8 leading-relaxed">
-                                 {t('heroDesc')}
-                              </p>
-                              <button 
-                                onClick={() => {
-                                   const el = document.getElementById('catalog-start');
-                                   el?.scrollIntoView({ behavior: 'smooth' });
-                                }}
-                                className="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-bold text-slate-900 hover:bg-slate-100 transition-colors"
-                              >
-                                 {t('browseCatalog')} <ChevronRight className={`h-4 w-4 ${lang === 'ar' ? 'rotate-180' : ''}`} />
-                              </button>
-                           </div>
-                        </div>
+                        <>
+                            {/* NEW HERO CAROUSEL REPLACING STATIC HERO */}
+                            <HeroCarousel 
+                                promotedServices={promoServices}
+                                onSelectService={handleServiceClick}
+                                t={t}
+                                lang={lang}
+                                isAdmin={isAdminMode}
+                            />
+
+                            {/* SPECIAL OFFERS / PROMOS SECTION (Grid List below carousel) */}
+                            {promoServices.length > 0 && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 text-rose-500 dark:text-rose-400 px-1">
+                                        <Flame className="h-5 w-5 fill-rose-500" />
+                                        <h3 className="text-lg font-bold uppercase tracking-wider">Hot Deals & Offers</h3>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                        {promoServices.map(service => (
+                                            <ServiceCard 
+                                                key={service.id} 
+                                                service={service} 
+                                                onClick={handleServiceClick} 
+                                                isAdmin={false}
+                                                isFavorite={favorites.includes(service.id)}
+                                                onToggleFavorite={handleToggleFavorite}
+                                            />
+                                        ))}
+                                    </div>
+                                    <div className="mt-8 mb-4 px-3">
+                                        <div className="h-px bg-slate-200 dark:bg-slate-800" />
+                                    </div>
+                                </div>
+                            )}
+                        </>
                       )}
 
                       <div id="catalog-start"></div>
@@ -1052,6 +1049,11 @@ const App: React.FC = () => {
         </main>
       </div>
 
+      {/* CHAT ASSISTANT COMPONENT */}
+      {!isAdminMode && (
+        <ChatAssistant services={services} categories={categories} />
+      )}
+
       <Modal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
@@ -1064,6 +1066,7 @@ const App: React.FC = () => {
         />
       </Modal>
 
+      {/* ... (Existing Modals unchanged) ... */}
       <Modal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
@@ -1079,22 +1082,43 @@ const App: React.FC = () => {
         )}
       </Modal>
 
+      {/* Service Details Modal */}
       {selectedService && (
         <Modal 
           isOpen={!!selectedService} 
           onClose={() => setSelectedService(null)} 
           title="Service Details"
         >
+          {/* ... Service Details Content (unchanged) ... */}
           <div className="space-y-6">
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedService.name}</h3>
-                <span className="mt-2 inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-400">
-                  {selectedService.category}
-                </span>
+                <div className="mt-2 flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                    {selectedService.category}
+                    </span>
+                    {selectedService.badgeLabel && (
+                        <span className="inline-flex items-center rounded-full bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 text-xs font-bold text-rose-500">
+                            <Tag className="h-3 w-3 mr-1" /> {selectedService.badgeLabel}
+                        </span>
+                    )}
+                </div>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-bold text-slate-900 dark:text-white">{selectedService.currency}{selectedService.price.toFixed(2)}</p>
+                <div className="flex flex-col items-end">
+                    {selectedService.promoPrice && selectedService.promoPrice < selectedService.price && (
+                        <span className="text-sm text-slate-400 line-through decoration-slate-400/50">
+                            {selectedService.currency}{selectedService.price.toFixed(2)}
+                        </span>
+                    )}
+                    <p className={`text-3xl font-bold ${selectedService.promoPrice ? 'text-rose-500 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>
+                        {selectedService.currency}
+                        {(selectedService.promoPrice && selectedService.promoPrice < selectedService.price 
+                            ? selectedService.promoPrice 
+                            : selectedService.price).toFixed(2)}
+                    </p>
+                </div>
                 <p className="text-xs text-slate-500">{t('pricePerUnit')}</p>
               </div>
             </div>
@@ -1224,7 +1248,10 @@ const App: React.FC = () => {
                       <h5 className="font-medium text-sm text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 truncate">{similar.name}</h5>
                       <div className="flex justify-between items-center mt-2">
                         <span className="text-xs text-slate-500 truncate max-w-[70%]">{similar.description}</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">{similar.currency}{similar.price}</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                            {similar.currency}
+                            {(similar.promoPrice && similar.promoPrice < similar.price ? similar.promoPrice : similar.price).toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -1245,14 +1272,17 @@ const App: React.FC = () => {
         </Modal>
       )}
 
+      {/* History Modal - unchanged */}
       <Modal
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         title={viewingHistoryOrder ? t('orders') : t('myOrders')}
       >
+        {/* ... History Modal Content ... */}
         <div className="space-y-6">
           {!userOrders ? (
             <div className="space-y-4">
+               {/* ... (History Login Form) ... */}
                <div className="rounded-xl bg-slate-100 dark:bg-slate-800/50 p-4 border border-slate-200 dark:border-slate-800 text-center">
                  <div className="mx-auto w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
                     <UserIcon className="h-6 w-6 text-slate-400" />
@@ -1327,7 +1357,7 @@ const App: React.FC = () => {
                         </div>
                         <div className="bg-white dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
                            <p className="text-xs text-slate-500 uppercase flex items-center gap-1 mb-1">
-                             <DollarSign className="h-3 w-3" /> {t('price')}
+                             <Banknote className="h-3 w-3" /> {t('price')}
                            </p>
                            <p className="text-sm text-slate-900 dark:text-white font-medium">
                              {viewingHistoryOrder.currency}{viewingHistoryOrder.price.toFixed(2)}

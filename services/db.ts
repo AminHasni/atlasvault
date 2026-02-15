@@ -62,6 +62,7 @@ export const db = {
     return (data || []).map((item: any) => ({
         ...item,
         price: Number(item.price),
+        promoPrice: item.promoPrice ? Number(item.promoPrice) : undefined,
         createdAt: Number(item.createdAt),
         popularity: Number(item.popularity)
     })) as ServiceItem[];
@@ -80,6 +81,7 @@ export const db = {
     return {
         ...item,
         price: Number(item.price),
+        promoPrice: item.promoPrice ? Number(item.promoPrice) : undefined,
         createdAt: Number(item.createdAt),
         popularity: Number(item.popularity)
     };
@@ -99,6 +101,7 @@ export const db = {
     return {
         ...item,
         price: Number(item.price),
+        promoPrice: item.promoPrice ? Number(item.promoPrice) : undefined,
         createdAt: Number(item.createdAt),
         popularity: Number(item.popularity)
     };
@@ -202,6 +205,11 @@ export const db = {
         ...item,
         createdAt: Number(item.createdAt)
     };
+  },
+
+  async deleteUser(id: string): Promise<void> {
+    const { error } = await supabase.from('profiles').delete().eq('id', id);
+    if (error) throw error;
   },
 
   // --- Reviews ---
