@@ -181,7 +181,7 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
   throw new Error('User not found');
 };
 
-export const deleteUser = async (id: string): Promise<void> {
+export const deleteUser = async (id: string): Promise<void> => {
   if (isDbConnected()) {
     await db.deleteUser(id);
     return;
