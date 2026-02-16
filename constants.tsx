@@ -1,5 +1,180 @@
+
 import { ServiceCategory, ServiceItem, CategoryMeta } from './types';
 import { Shield, Smartphone, Gamepad2, Briefcase } from 'lucide-react';
+
+export const LEGAL_CONTENT = {
+  terms: {
+    title: "Terms & Conditions",
+    content: `Effective Date: ${new Date().toLocaleDateString()}
+
+These Terms & Conditions (“Agreement”) govern the access and use of the website and services provided by Atlas Vault (“Company”, “we”, “us”, or “our”). By accessing our services, you agree to be bound by this Agreement.
+
+1. Service Description
+Atlas Vault provides digital service facilitation including but not limited to:
+• Subscription activation assistance
+• Digital code procurement
+• Gaming currency processing
+• Telecom recharge facilitation
+• Invoice payment assistance
+• Advertising campaign setup and management
+
+Atlas Vault operates as an independent intermediary service provider and is not affiliated with or endorsed by any third-party platform referenced on this website.
+
+2. Independent Relationship
+Atlas Vault is not:
+• An official distributor of third-party platforms unless explicitly stated
+• A partner, agent, or affiliate of brands listed on the website
+
+All trademarks, logos, and service names are the property of their respective owners.
+
+3. User Responsibilities
+Users agree to:
+• Provide accurate and complete information
+• Own or have authorization to use any account submitted for activation
+• Comply with third-party platform rules and policies
+• Use purchased services lawfully
+
+Atlas Vault shall not be responsible for any account restriction or suspension caused by user violations of platform policies.
+
+4. Payments & Pricing
+• All prices are displayed in TND.
+• Payment must be completed before service processing begins.
+• Pricing may change without prior notice.
+• Atlas Vault reserves the right to refuse service in cases of suspected fraud, abuse, or policy violations.
+
+5. Delivery of Digital Services
+Digital services are considered delivered once:
+• Subscription activation is confirmed
+• Digital codes are transmitted
+• Game currency is successfully applied
+• Invoice payments are confirmed
+
+Due to the intangible nature of digital services, delivery is final upon confirmation.
+
+6. Refund Policy Reference
+Refunds are governed strictly by our Refund Policy. By purchasing, users acknowledge and accept the refund conditions stated therein.
+
+7. Limitation of Liability
+Atlas Vault shall not be liable for:
+• Platform policy changes
+• Regional restrictions imposed by third-party providers
+• Service interruptions outside our control
+• Indirect, incidental, or consequential damages
+
+Maximum liability is limited to the amount paid for the specific service.
+
+8. Fraud & Chargeback Policy
+Initiating unauthorized chargebacks after confirmed service delivery may result in:
+• Immediate service suspension
+• Permanent account restriction
+• Reporting to payment providers
+• Legal recovery procedures
+
+We reserve the right to submit activation proof in case of dispute.
+
+9. Modifications
+Atlas Vault may update these Terms at any time. Continued use of services constitutes acceptance of modifications.
+
+10. Governing Law
+This Agreement shall be governed by the laws applicable within the Republic of Tunisia.`
+  },
+  disclaimer: {
+    title: "Legal Disclaimer",
+    content: `Atlas Vault is an independent digital service facilitator.
+
+We are not affiliated, associated, authorized, endorsed by, or in any way officially connected with:
+• Streaming platforms
+• Social media platforms
+• Gaming companies
+• AI software providers
+• Telecommunications operators
+
+All trademarks and brand names belong to their respective owners.
+
+Atlas Vault does not guarantee platform decisions such as:
+• Verification approvals
+• Account growth
+• Revenue generation
+• Platform eligibility status
+
+All services are limited to facilitation, activation assistance, or management within the official functionality provided by each platform.`
+  },
+  privacy: {
+    title: "Privacy Policy",
+    content: `Effective Date: ${new Date().toLocaleDateString()}
+
+1. Overview
+Atlas Vault is committed to protecting personal information in accordance with applicable data protection principles.
+
+2. Information Collected
+We may collect:
+• Name
+• Email address
+• Phone number
+• Transaction data
+• Service-related identifiers (usernames)
+
+We do not store sensitive payment data such as full card numbers.
+
+3. Purpose of Data Collection
+Information is collected for:
+• Service fulfillment
+• Payment verification
+• Fraud prevention
+• Customer communication
+• Legal compliance
+
+4. Credential Handling
+Where temporary account access is required:
+• Credentials are used solely for service activation
+• We recommend temporary passwords
+• Passwords are not stored beyond service completion
+
+5. Data Security Measures
+We implement reasonable technical safeguards including:
+• Encrypted website connection (SSL)
+• Restricted internal access
+• Transaction logging
+
+However, no digital transmission is 100% secure.
+
+6. Data Retention
+Transaction records may be retained for accounting and dispute resolution purposes. Personal data may be deleted upon valid request, subject to legal retention obligations.
+
+7. Third-Party Processing
+Payments and certain service components may be processed via third-party providers who maintain their own privacy policies. Atlas Vault is not responsible for external privacy practices.
+
+8. User Rights
+Users may request:
+• Access to stored information
+• Correction of inaccurate data
+• Deletion where legally permissible
+
+Requests must be submitted via official contact channels.`
+  },
+  refund: {
+    title: "Refund Policy",
+    content: `Effective Date: ${new Date().toLocaleDateString()}
+
+1. General Policy
+Due to the intangible nature of digital services and products provided by Atlas Vault, all sales are considered final once the service has been delivered or the process has been initiated.
+
+2. Eligibility for Refunds
+Refunds may be considered under the following circumstances:
+• The service could not be delivered due to technical issues on our end.
+• The provided digital code or account is proven to be invalid upon delivery.
+• The order was cancelled before processing began.
+
+3. Non-Refundable Cases
+• User changed their mind after delivery.
+• User provided incorrect account details or identifiers.
+• Account restriction due to user violation of third-party platform policies.
+• Partial delivery where the remaining service can still be fulfilled.
+
+4. Dispute Resolution
+Before initiating a chargeback, users must contact support to resolve any issues. Unauthorized chargebacks will result in a permanent ban.`
+  }
+};
 
 export const TRANSLATIONS = {
   en: {
@@ -114,7 +289,17 @@ export const TRANSLATIONS = {
     appVersion: "App Version",
     themeDesc: "Customize the look and feel",
     langDesc: "Choose your preferred language",
-    notifDesc: "Manage your communication preferences"
+    notifDesc: "Manage your communication preferences",
+    legal: "Legal",
+    terms: "Terms & Conditions",
+    privacy: "Privacy Policy",
+    disclaimer: "Legal Disclaimer",
+    rightsReserved: "All rights reserved.",
+    acceptTerms: "I agree to the Terms & Conditions and Privacy Policy",
+    refundPolicy: "Refund Policy",
+    cancelOrder: "Cancel Order",
+    cancelOrderConfirm: "Are you sure you want to cancel this order?",
+    orderCancelled: "Order cancelled successfully"
   },
   fr: {
     searchPlaceholder: "Rechercher...",
@@ -228,7 +413,17 @@ export const TRANSLATIONS = {
     appVersion: "Version de l'application",
     themeDesc: "Personnalisez l'apparence",
     langDesc: "Choisissez votre langue préférée",
-    notifDesc: "Gérez vos préférences de communication"
+    notifDesc: "Gérez vos préférences de communication",
+    legal: "Juridique",
+    terms: "Termes & Conditions",
+    privacy: "Politique de Confidentialité",
+    disclaimer: "Avis de Non-responsabilité",
+    rightsReserved: "Tous droits réservés.",
+    acceptTerms: "J'accepte les conditions générales et la politique de confidentialité",
+    refundPolicy: "Politique de Remboursement",
+    cancelOrder: "Annuler la Commande",
+    cancelOrderConfirm: "Êtes-vous sûr de vouloir annuler cette commande ?",
+    orderCancelled: "Commande annulée avec succès"
   },
   ar: {
     searchPlaceholder: "البحث عن الخدمات...",
@@ -342,7 +537,17 @@ export const TRANSLATIONS = {
     appVersion: "نسخة التطبيق",
     themeDesc: "تخصيص المظهر والشعور",
     langDesc: "اختر لغتك المفضلة",
-    notifDesc: "إدارة تفضيلات الاتصال الخاصة بك"
+    notifDesc: "إدارة تفضيلات الاتصال الخاصة بك",
+    legal: "قانوني",
+    terms: "الشروط والأحكام",
+    privacy: "سياسة الخصوصية",
+    disclaimer: "إخلاء المسؤولية القانونية",
+    rightsReserved: "جميع الحقوق محفوظة.",
+    acceptTerms: "أوافق على الشروط والأحكام وسياسة الخصوصية",
+    refundPolicy: "سياسة الاسترداد",
+    cancelOrder: "إلغاء الطلب",
+    cancelOrderConfirm: "هل أنت متأكد أنك تريد إلغاء هذا الطلب؟",
+    orderCancelled: "تم إلغاء الطلب بنجاح"
   }
 };
 

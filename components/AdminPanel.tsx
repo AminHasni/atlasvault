@@ -1,21 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ServiceItem, ServiceFormData, Order, OrderStatus, Category, User } from '../types';
-import { addService, updateService, deleteService, toggleServiceStatus, getOrders, updateOrder, addCategory, updateCategory, deleteCategory, getUsers, deleteUser, addUserByAdmin, updateUser, getCurrentUser } from '../services/storageService';
+import { ServiceItem, ServiceFormData, Order, OrderStatus, Category, User, GlobalSettings } from '../types';
+import { addService, updateService, deleteService, toggleServiceStatus, getOrders, updateOrder, addCategory, updateCategory, deleteCategory, getUsers, deleteUser, addUserByAdmin, updateUser, getCurrentUser, updateGlobalSettings } from '../services/storageService';
 import { ServiceForm } from './ServiceForm';
 import { CategoryForm } from './CategoryForm';
 import { UserForm } from './UserForm';
 import { Modal } from './Modal';
-import { Plus, Edit2, Trash2, Power, Search, ShoppingCart, List, ExternalLink, FileText, Save, Clock, User as UserIcon, Banknote, Tag, CheckCircle2, AlertCircle, XCircle, Truck, PlayCircle, BarChart3, Users, TrendingUp, PieChart, ArrowUpRight, FolderTree } from 'lucide-react';
+import { Plus, Edit2, Trash2, Power, Search, ShoppingCart, List, ExternalLink, FileText, Save, Clock, User as UserIcon, Banknote, Tag, CheckCircle2, AlertCircle, XCircle, Truck, PlayCircle, BarChart3, Users, TrendingUp, PieChart, ArrowUpRight, FolderTree, Smartphone, Settings } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
 export type AdminTab = 'dashboard' | 'services' | 'categories' | 'orders' | 'users';
 
 interface AdminPanelProps {
   services: ServiceItem[];
-  categories: Category[]; // Added prop
+  categories: Category[];
   onUpdate: () => void;
   notify: (message: string, type: 'success' | 'error' | 'info') => void;
   activeTab: AdminTab;
+  globalSettings: GlobalSettings;
 }
 
 const getStatusColor = (status: OrderStatus) => {
@@ -40,7 +41,7 @@ const getStatusLabel = (status: OrderStatus) => {
   }
 };
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, onUpdate, notify, activeTab }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, onUpdate, notify, activeTab, globalSettings }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
@@ -61,6 +62,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
   const [internalNotes, setInternalNotes] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus>('pending_whatsapp');
+
+  // Settings State
+  const [whatsappNum, setWhatsappNum] = useState(globalSettings.whatsappNumber);
+
+  useEffect(() => {
+      setWhatsappNum(globalSettings.whatsappNumber);
+  }, [globalSettings]);
 
   useEffect(() => {
     // Load orders async
@@ -206,6 +214,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   }, [allUsersList, userSearchTerm]);
 
   // --- Handlers ---
+
+  const handleUpdateSettings = async () => {
+      try {
+          await updateGlobalSettings({ whatsappNumber: whatsappNum });
+          notify('Settings updated successfully. Order number changed.', 'success');
+          onUpdate(); // Trigger app refresh
+      } catch (e) {
+          notify('Failed to update settings.', 'error');
+      }
+  };
 
   const handleAddClick = () => {
     setEditingService(null);
@@ -379,6 +397,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
       {/* --- DASHBOARD TAB --- */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6 animate-in fade-in duration-300">
+           {/* Global Configuration */}
+           <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-6 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
+                    <Settings className="h-5 w-5 text-indigo-500" /> Global Configuration
+                </h3>
+                <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center">
+                    <div className="flex-1 w-full">
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+                            Order WhatsApp Number (include country code, no +)
+                        </label>
+                        <div className="relative">
+                            <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <input 
+                                type="text" 
+                                value={whatsappNum}
+                                onChange={(e) => setWhatsappNum(e.target.value)}
+                                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 pl-10 pr-4 py-2 text-sm text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                placeholder="e.g. 21629292395"
+                            />
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleUpdateSettings}
+                        className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 transition-colors h-10"
+                    >
+                        <Save className="h-4 w-4" /> Save Config
+                    </button>
+                </div>
+           </div>
+
            {/* Stats Cards */}
            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-6 shadow-sm">

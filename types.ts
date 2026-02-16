@@ -86,3 +86,7 @@ export interface Review {
   comment: string;
   createdAt: number;
 }
+
+export interface GlobalSettings {
+  whatsappNumber: string;
+}

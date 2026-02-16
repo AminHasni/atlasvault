@@ -1,4 +1,4 @@
-import { ServiceItem, Order, User, Review, Category } from '../types';
+import { ServiceItem, Order, User, Review, Category, GlobalSettings } from '../types';
 import { INITIAL_SERVICES, CATEGORIES as DEFAULT_CATEGORIES } from '../constants';
 import { db } from './db';
 import { isDbConnected } from './supabaseClient';
@@ -10,6 +10,7 @@ const CURRENT_USER_KEY = 'service_nexus_current_user';
 const REVIEWS_KEY = 'service_nexus_reviews';
 const FAVORITES_KEY = 'service_nexus_favorites';
 const CATEGORIES_KEY = 'service_nexus_categories';
+const SETTINGS_KEY = 'service_nexus_settings';
 
 // Helper for local storage access
 const getLocal = <T>(key: string, defaultVal: T): T => {
@@ -19,6 +20,19 @@ const getLocal = <T>(key: string, defaultVal: T): T => {
 
 const setLocal = (key: string, val: any) => {
   localStorage.setItem(key, JSON.stringify(val));
+};
+
+// --- Settings ---
+export const getGlobalSettings = async (): Promise<GlobalSettings> => {
+  // Try to get from local storage first as this is a config often specific to the instance
+  const stored = localStorage.getItem(SETTINGS_KEY);
+  if (stored) return JSON.parse(stored);
+  return { whatsappNumber: '21629292395' };
+};
+
+export const updateGlobalSettings = async (settings: GlobalSettings): Promise<GlobalSettings> => {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  return settings;
 };
 
 // --- Categories ---
@@ -167,7 +181,7 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
   throw new Error('User not found');
 };
 
-export const deleteUser = async (id: string): Promise<void> => {
+export const deleteUser = async (id: string): Promise<void> {
   if (isDbConnected()) {
     await db.deleteUser(id);
     return;
@@ -310,6 +324,23 @@ export const updateOrder = async (updatedOrder: Order): Promise<Order[]> => {
   const updated = current.map(o => o.id === updatedOrder.id ? updatedOrder : o);
   setLocal(ORDERS_KEY, updated);
   return updated;
+};
+
+export const cancelOrder = async (orderId: string): Promise<void> => {
+    if (isDbConnected()) {
+        const order = (await db.getOrders()).find(o => o.id === orderId);
+        if (order && order.status === 'pending_whatsapp') {
+            await db.updateOrder({ ...order, status: 'cancelled' });
+        }
+        return;
+    }
+
+    const current = await getOrders();
+    const orderIndex = current.findIndex(o => o.id === orderId);
+    if (orderIndex !== -1 && current[orderIndex].status === 'pending_whatsapp') {
+        current[orderIndex].status = 'cancelled';
+        setLocal(ORDERS_KEY, current);
+    }
 };
 
 // --- Reviews Management ---
