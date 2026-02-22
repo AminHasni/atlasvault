@@ -299,7 +299,9 @@ export const TRANSLATIONS = {
     refundPolicy: "Refund Policy",
     cancelOrder: "Cancel Order",
     cancelOrderConfirm: "Are you sure you want to cancel this order?",
-    orderCancelled: "Order cancelled successfully"
+    orderCancelled: "Order cancelled successfully",
+    subcategory: "Subcategory",
+    all: "All"
   },
   fr: {
     searchPlaceholder: "Rechercher...",
@@ -423,7 +425,9 @@ export const TRANSLATIONS = {
     refundPolicy: "Politique de Remboursement",
     cancelOrder: "Annuler la Commande",
     cancelOrderConfirm: "Êtes-vous sûr de vouloir annuler cette commande ?",
-    orderCancelled: "Commande annulée avec succès"
+    orderCancelled: "Commande annulée avec succès",
+    subcategory: "Sous-catégorie",
+    all: "Tout"
   },
   ar: {
     searchPlaceholder: "البحث عن الخدمات...",
@@ -547,58 +551,130 @@ export const TRANSLATIONS = {
     refundPolicy: "سياسة الاسترداد",
     cancelOrder: "إلغاء الطلب",
     cancelOrderConfirm: "هل أنت متأكد أنك تريد إلغاء هذا الطلب؟",
-    orderCancelled: "تم إلغاء الطلب بنجاح"
+    orderCancelled: "تم إلغاء الطلب بنجاح",
+    subcategory: "فئة فرعية",
+    all: "الكل"
   }
 };
 
 export const CATEGORIES: CategoryMeta[] = [
   {
-    id: ServiceCategory.THE_VAULT,
-    label: 'The Vault',
-    label_fr: 'Le Coffre-Fort',
-    label_ar: 'الخزنة',
-    icon: 'Shield',
-    color: 'text-emerald-500',
-    desc: 'Secure storage, premium access, and exclusive memberships.',
-    desc_fr: 'Stockage sécurisé, accès premium et adhésions exclusives.',
-    desc_ar: 'تخزين آمن، وصول مميز، وعضويات حصرية.',
-    order: 1,
-  },
-  {
-    id: ServiceCategory.TELECOM_HUB,
-    label: 'Telecom Hub',
-    label_fr: 'Pôle Télécom',
-    label_ar: 'مركز الاتصالات',
-    icon: 'Smartphone',
+    id: 'CONNECTIVITY',
+    label: 'Connectivity & Payments',
+    label_fr: 'Connectivité & Paiements',
+    label_ar: 'الاصال والدفع',
+    icon: 'Globe',
     color: 'text-blue-500',
-    desc: 'Top-tier connectivity, data plans, and virtual numbers.',
-    desc_fr: 'Connectivité de haut niveau, forfaits données et numéros virtuels.',
-    desc_ar: 'اتصال من الدرجة الأولى، خطط بيانات، وأرقام افتراضية.',
-    order: 2,
+    desc: 'eSIMs, Virtual Numbers, Payment Cards',
+    desc_fr: 'eSIMs, Numéros Virtuels, Cartes de Paiement',
+    desc_ar: 'شرائح إلكترونية، أرقام افتراضية، بطاقات دفع',
+    order: 1,
+    subcategories: [
+      { id: 'ESIM', label: 'eSIMs', label_fr: 'eSIMs', label_ar: 'شرائح إلكترونية' },
+      { id: 'VIRTUAL_NUMBERS', label: 'Virtual Numbers', label_fr: 'Numéros Virtuels', label_ar: 'أرقام افتراضية' },
+      { id: 'PAYMENT_CARDS', label: 'Payment Cards', label_fr: 'Cartes de Paiement', label_ar: 'بطاقات دفع' },
+    ]
   },
   {
-    id: ServiceCategory.GAMING_CORNER,
-    label: 'Gaming Corner',
-    label_fr: 'Coin Gaming',
-    label_ar: 'ركن الألعاب',
-    icon: 'Gamepad2',
+    id: 'STREAMING',
+    label: 'Streaming & Entertainment',
+    label_fr: 'Streaming & Divertissement',
+    label_ar: 'البث والترفيه',
+    icon: 'Tv',
     color: 'text-purple-500',
-    desc: 'Credits, skins, boosts, and premium game keys.',
-    desc_fr: 'Crédits, skins, boosts et clés de jeu premium.',
-    desc_ar: 'أرصدة، مظاهر، تعزيزات، ومفاتيح ألعاب مميزة.',
-    order: 3,
+    desc: 'Netflix, Spotify, IPTV',
+    desc_fr: 'Netflix, Spotify, IPTV',
+    desc_ar: 'نتفليكس، سبوتيفاي، IPTV',
+    order: 2,
+    subcategories: [
+      { id: 'NETFLIX', label: 'Netflix', label_fr: 'Netflix', label_ar: 'نتفليكس' },
+      { id: 'SPOTIFY', label: 'Spotify', label_fr: 'Spotify', label_ar: 'سبوتيفاي' },
+      { id: 'IPTV', label: 'IPTV', label_fr: 'IPTV', label_ar: 'IPTV' },
+    ]
   },
   {
-    id: ServiceCategory.BUSINESS_SUITE,
-    label: 'Business Suite',
-    label_fr: 'Suite Business',
-    label_ar: 'جناح الأعمال',
-    icon: 'Briefcase',
-    color: 'text-slate-500',
-    desc: 'SaaS licenses, marketing tools, and enterprise solutions.',
-    desc_fr: 'Licences SaaS, outils marketing et solutions d\'entreprise.',
-    desc_ar: 'تراخيص SaaS، أدوات تسويق، وحلول للمؤسسات.',
+    id: 'GAMING',
+    label: 'Gaming Space',
+    label_fr: 'Espace Gaming',
+    label_ar: 'مساحة الألعاب',
+    icon: 'Gamepad2',
+    color: 'text-emerald-500',
+    desc: 'Game Keys, Credits, Boosts',
+    desc_fr: 'Clés de jeux, Crédits, Boosts',
+    desc_ar: 'مفاتيح الألعاب، الأرصدة، التعزيزات',
+    order: 3,
+    subcategories: [
+      { id: 'GAME_KEYS', label: 'Game Keys', label_fr: 'Clés de jeux', label_ar: 'مفاتيح الألعاب' },
+      { id: 'CREDITS', label: 'Credits', label_fr: 'Crédits', label_ar: 'الأرصدة' },
+      { id: 'BOOSTS', label: 'Boosts', label_fr: 'Boosts', label_ar: 'التعزيزات' },
+    ]
+  },
+  {
+    id: 'AI_PRODUCTIVITY',
+    label: 'AI & Productivity',
+    label_fr: 'IA & Productivité',
+    label_ar: 'الذكاء الاصطناعي والإنتاجية',
+    icon: 'Zap',
+    color: 'text-amber-500',
+    desc: 'ChatGPT, Midjourney, Office 365',
+    desc_fr: 'ChatGPT, Midjourney, Office 365',
+    desc_ar: 'شات جي بي تي، ميدجورني، أوفيس 365',
     order: 4,
+    subcategories: [
+      { id: 'CHATGPT', label: 'ChatGPT', label_fr: 'ChatGPT', label_ar: 'شات جي بي تي' },
+      { id: 'MIDJOURNEY', label: 'Midjourney', label_fr: 'Midjourney', label_ar: 'ميدجورني' },
+      { id: 'OFFICE_365', label: 'Office 365', label_fr: 'Office 365', label_ar: 'أوفيس 365' },
+    ]
+  },
+  {
+    id: 'EDUCATION',
+    label: 'Training & Certifications',
+    label_fr: 'Formation & Certifications',
+    label_ar: 'التدريب والشهادات',
+    icon: 'Briefcase',
+    color: 'text-indigo-500',
+    desc: 'Udemy, Coursera, LinkedIn Learning',
+    desc_fr: 'Udemy, Coursera, LinkedIn Learning',
+    desc_ar: 'يوديمي، كورسيرا، لينكد إن ليرنينج',
+    order: 5,
+    subcategories: [
+      { id: 'UDEMY', label: 'Udemy', label_fr: 'Udemy', label_ar: 'يوديمي' },
+      { id: 'COURSERA', label: 'Coursera', label_fr: 'Coursera', label_ar: 'كورسيرا' },
+      { id: 'LINKEDIN_LEARNING', label: 'LinkedIn Learning', label_fr: 'LinkedIn Learning', label_ar: 'لينكد إن ليرنينج' },
+    ]
+  },
+  {
+    id: 'BRANDING',
+    label: 'Creators & Brand Authority',
+    label_fr: 'Créateurs & Autorité de Marque',
+    label_ar: 'المبدعون وسلطة العلامة التجارية',
+    icon: 'Shield',
+    color: 'text-rose-500',
+    desc: 'Verification, Social Growth',
+    desc_fr: 'Vérification, Croissance Sociale',
+    desc_ar: 'التحقق، النمو الاجتماعي',
+    order: 6,
+    subcategories: [
+      { id: 'VERIFICATION', label: 'Verification', label_fr: 'Vérification', label_ar: 'التحقق' },
+      { id: 'SOCIAL_GROWTH', label: 'Social Growth', label_fr: 'Croissance Sociale', label_ar: 'النمو الاجتماعي' },
+    ]
+  },
+  {
+    id: 'GIFTCARDS',
+    label: 'Gift Cards & Wallets',
+    label_fr: 'Cartes Cadeaux & Portefeuilles Numériques',
+    label_ar: 'بطاقات الهدايا والمحافظ',
+    icon: 'Gift',
+    color: 'text-cyan-500',
+    desc: 'Apple, Google Play, Binance',
+    desc_fr: 'Apple, Google Play, Binance',
+    desc_ar: 'أبل، جوجل بلاي، بينانس',
+    order: 7,
+    subcategories: [
+      { id: 'APPLE', label: 'Apple', label_fr: 'Apple', label_ar: 'أبل' },
+      { id: 'GOOGLE_PLAY', label: 'Google Play', label_fr: 'Google Play', label_ar: 'جوجل بلاي' },
+      { id: 'BINANCE', label: 'Binance', label_fr: 'Binance', label_ar: 'بينانس' },
+    ]
   },
 ];
 
@@ -606,7 +682,8 @@ export const INITIAL_SERVICES: ServiceItem[] = [
   {
     id: '1',
     name: 'Encrypted Cloud Storage 1TB',
-    category: ServiceCategory.THE_VAULT,
+    category: 'AI_PRODUCTIVITY',
+    subcategory: 'OFFICE_365',
     description: 'Military-grade encryption for your most sensitive data. Accessible anywhere, anytime, with zero-knowledge privacy architecture.',
     price: 60.00,
     currency: 'TND',
@@ -619,7 +696,8 @@ export const INITIAL_SERVICES: ServiceItem[] = [
   {
     id: '2',
     name: 'Global eSIM Data Plan',
-    category: ServiceCategory.TELECOM_HUB,
+    category: 'CONNECTIVITY',
+    subcategory: 'ESIM',
     description: 'Stay connected in over 140 countries with high-speed 5G data. No physical SIM required.',
     price: 135.00,
     currency: 'TND',
@@ -632,7 +710,8 @@ export const INITIAL_SERVICES: ServiceItem[] = [
   {
     id: '3',
     name: 'Rank Boost - Apex Predator',
-    category: ServiceCategory.GAMING_CORNER,
+    category: 'GAMING',
+    subcategory: 'BOOSTS',
     description: 'Professional boosting service to reach the highest ranks. Streamed live for your assurance.',
     price: 450.00,
     currency: 'TND',
@@ -645,7 +724,8 @@ export const INITIAL_SERVICES: ServiceItem[] = [
   {
     id: '4',
     name: 'SEO Audit Pro',
-    category: ServiceCategory.BUSINESS_SUITE,
+    category: 'BRANDING',
+    subcategory: 'SOCIAL_GROWTH',
     description: 'Comprehensive analysis of your website visibility, keyword rankings, and technical health.',
     price: 900.00,
     currency: 'TND',
@@ -658,7 +738,8 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     {
     id: '5',
     name: 'Private VPN Access',
-    category: ServiceCategory.THE_VAULT,
+    category: 'CONNECTIVITY',
+    subcategory: 'VIRTUAL_NUMBERS',
     description: 'Anonymous browsing with dedicated IP options. Bypass geo-restrictions effortlessly.',
     price: 30.00,
     currency: 'TND',

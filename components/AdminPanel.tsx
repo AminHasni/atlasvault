@@ -623,6 +623,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                         <th className="px-6 py-4 font-semibold text-center">Icon</th>
                         <th className="px-6 py-4 font-semibold">ID</th>
                         <th className="px-6 py-4 font-semibold">Label (EN)</th>
+                        <th className="px-6 py-4 font-semibold">Subcategories</th>
                         <th className="px-6 py-4 font-semibold">Order</th>
                         <th className="px-6 py-4 font-semibold text-right">Actions</th>
                     </tr>
@@ -639,6 +640,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                                 </td>
                                 <td className="px-6 py-4 font-mono text-xs text-slate-500">{cat.id}</td>
                                 <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{cat.label}</td>
+                                <td className="px-6 py-4 text-slate-500">{cat.subcategories ? cat.subcategories.length : 0}</td>
                                 <td className="px-6 py-4">{cat.order}</td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex justify-end gap-2">

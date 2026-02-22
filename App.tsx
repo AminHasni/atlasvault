@@ -12,7 +12,7 @@ import { ReviewSection } from './components/ReviewSection';
 import { SettingsPage } from './components/SettingsPage';
 import { ChatAssistant } from './components/ChatAssistant';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
-import { LayoutDashboard, ShieldCheck, Box, Search, ArrowUpDown, Filter, Info, MessageCircle, ShoppingCart, Mail, Phone, FileText, AlertCircle, History, User as UserIcon, ChevronRight, ChevronDown, ArrowLeft, Calendar, Banknote, Tag, HelpCircle, X, SlidersHorizontal, Globe, Menu, LogOut, Home, List, Users, BarChart3, Sparkles, ArrowRight, Sun, Moon, Languages, LogIn, Settings, Heart, FolderTree, Flame, Check } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Shield, Box, Search, ArrowUpDown, Filter, Info, MessageCircle, ShoppingCart, Mail, Phone, FileText, AlertCircle, History, User as UserIcon, ChevronRight, ChevronDown, ArrowLeft, Calendar, Banknote, Tag, HelpCircle, X, SlidersHorizontal, Globe, Menu, LogOut, Home, List, Users, BarChart3, Sparkles, ArrowRight, Sun, Moon, Languages, LogIn, Settings, Heart, FolderTree, Flame, Check } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
 type Language = 'en' | 'fr' | 'ar';
@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState<Theme>('dark');
   const [lang, setLang] = useState<Language>('fr'); 
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(true);
 
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -34,6 +35,8 @@ const App: React.FC = () => {
   const isUserAdmin = currentUser?.role === 'admin';
 
   const [activeCategory, setActiveCategory] = useState<string>('HOME');
+  const [activeSubCategory, setActiveSubCategory] = useState<string | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]); // Dynamic Categories
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
@@ -265,9 +268,11 @@ const App: React.FC = () => {
            }
        }
 
+       const matchesSubCategory = !activeSubCategory || s.subcategory === activeSubCategory;
+
        const matchesFavorites = !showFavoritesOnly || favorites.includes(s.id);
 
-       return matchesCategory && matchesSearch && isActive && matchesPrice && matchesFavorites;
+       return matchesCategory && matchesSubCategory && matchesSearch && isActive && matchesPrice && matchesFavorites;
     });
 
     return filtered.sort((a, b) => {
@@ -389,6 +394,7 @@ const App: React.FC = () => {
       serviceId: selectedService.id,
       serviceName: selectedService.name,
       category: selectedService.category,
+      subcategory: selectedService.subcategory,
       price: finalPrice,
       currency: selectedService.currency,
       customerInfo: customerInfoString,
@@ -514,9 +520,9 @@ const App: React.FC = () => {
         />
       )}
       
-      <aside className={`fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-r rtl:border-r-0 rtl:border-l bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : (lang === 'ar' ? 'translate-x-full' : '-translate-x-full')}`}>
+      <aside className={`fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-r rtl:border-r-0 rtl:border-l bg-white dark:bg-[#0B1120] border-slate-200 dark:border-slate-800 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : (lang === 'ar' ? 'translate-x-full' : '-translate-x-full')}`}>
         {/* Sidebar Header */}
-        <div className="flex h-16 items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex h-16 items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800/50">
            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/20">
               <Box className="h-5 w-5 text-white" />
            </div>
@@ -587,43 +593,34 @@ const App: React.FC = () => {
           ) : (
             <>
               {/* User Menu */}
-              <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{t('main')}</p>
+              <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-2">{t('main')}</p>
               <button
                 onClick={() => {
                   setActiveCategory('HOME');
+                  setActiveSubCategory(null);
                   setSearchQuery('');
                   setShowFavoritesOnly(false);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
                 }}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeCategory === 'HOME' && !showFavoritesOnly ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${activeCategory === 'HOME' && !showFavoritesOnly ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                <Home className="h-4 w-4" />
+                <Home className={`h-4 w-4 ${activeCategory === 'HOME' && !showFavoritesOnly ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
                 {t('home')}
               </button>
 
-              <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-4">{t('categories')}</p>
-              {categories.map((cat) => {
-                const IconComponent = (Icons as any)[cat.icon] || Icons.HelpCircle;
-                const isActive = activeCategory === cat.id && !showFavoritesOnly;
-                const label = lang === 'fr' ? (cat.label_fr || cat.label) : (lang === 'ar' ? (cat.label_ar || cat.label) : cat.label);
-                
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => {
-                      setActiveCategory(cat.id);
-                      setSearchQuery('');
-                      setShowFavoritesOnly(false);
-                      if (!searchQuery) setSearchGlobal(false);
-                      if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                    }}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
-                  >
-                    <IconComponent className={`h-4 w-4 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`} />
-                    {label}
-                  </button>
-                );
-              })}
+              <button
+                onClick={() => {
+                  setActiveCategory('ALL_CATEGORIES');
+                  setActiveSubCategory(null);
+                  setSearchQuery('');
+                  setShowFavoritesOnly(false);
+                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                }}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${activeCategory === 'ALL_CATEGORIES' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}`}
+              >
+                <Icons.LayoutGrid className={`h-4 w-4 ${activeCategory === 'ALL_CATEGORIES' ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+                {t('categories')}
+              </button>
 
               <div className="mt-8 mb-4 px-3">
                  <div className="h-px bg-slate-200 dark:bg-slate-800" />
@@ -633,11 +630,12 @@ const App: React.FC = () => {
                 onClick={() => {
                   setShowFavoritesOnly(true);
                   setActiveCategory('HOME');
+                  setActiveSubCategory(null);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
                 }}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors mb-1 ${showFavoritesOnly ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 mb-1 ${showFavoritesOnly ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                <Heart className="h-4 w-4" />
+                <Heart className={`h-4 w-4 ${showFavoritesOnly ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
                 {t('myFavorites')}
               </button>
               
@@ -646,21 +644,22 @@ const App: React.FC = () => {
                   setIsHistoryOpen(true);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
                 }}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-all duration-200"
               >
-                <History className="h-4 w-4" />
+                <History className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                 {t('myOrders')}
               </button>
 
               <button
                 onClick={() => {
                   setActiveCategory('SETTINGS');
+                  setActiveSubCategory(null);
                   setShowFavoritesOnly(false);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
                 }}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeCategory === 'SETTINGS' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${activeCategory === 'SETTINGS' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                <Settings className="h-4 w-4" />
+                <Settings className={`h-4 w-4 ${activeCategory === 'SETTINGS' ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
                 {t('settings')}
               </button>
             </>
@@ -679,6 +678,16 @@ const App: React.FC = () => {
                           <p className="text-xs text-slate-500 truncate">{currentUser.email}</p>
                       </div>
                   </div>
+                  
+                  {currentUser.role === 'admin' && (
+                      <button
+                          onClick={() => setIsAdminMode(true)}
+                          className="w-full flex items-center justify-center gap-2 rounded-lg bg-slate-900 dark:bg-white px-3 py-2 text-xs font-medium text-white dark:text-slate-900 shadow-sm hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors mb-1"
+                      >
+                          <Shield className="h-3.5 w-3.5" />
+                          Admin Panel
+                      </button>
+                  )}
                   
                   <div className="grid grid-cols-2 gap-2">
                      <button
@@ -860,6 +869,24 @@ const App: React.FC = () => {
                                               />
                                           </div>
                                       </div>
+
+                                      {/* Subcategory Filter */}
+                                      {CurrentCategoryMeta && CurrentCategoryMeta.subcategories && CurrentCategoryMeta.subcategories.length > 0 && (
+                                          <div className="space-y-1">
+                                              <label className="text-xs font-semibold text-slate-500 uppercase">{t('subcategory')}</label>
+                                              <select 
+                                                value={activeSubCategory || ''}
+                                                onChange={(e) => setActiveSubCategory(e.target.value || null)}
+                                                className="block w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm"
+                                              >
+                                                  <option value="">{t('all')}</option>
+                                                  {CurrentCategoryMeta.subcategories.map(sub => {
+                                                      const subLabel = lang === 'fr' ? (sub.label_fr || sub.label) : (lang === 'ar' ? (sub.label_ar || sub.label) : sub.label);
+                                                      return <option key={sub.id} value={sub.id}>{subLabel}</option>;
+                                                  })}
+                                              </select>
+                                          </div>
+                                      )}
                                   </div>
                               </div>
                           )}
@@ -867,57 +894,169 @@ const App: React.FC = () => {
 
                       {/* Services Grid */}
                       <div id="catalog-start">
-                          {CurrentCategoryMeta && !searchQuery && !showFavoritesOnly && (
-                              <div className="mb-6 animate-in fade-in">
-                                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                      {(() => {
-                                          const Icon = (Icons as any)[CurrentCategoryMeta.icon] || Icons.Box;
-                                          return <Icon className={`h-6 w-6 ${CurrentCategoryMeta.color}`} />;
-                                      })()}
-                                      {lang === 'fr' ? (CurrentCategoryMeta.label_fr || CurrentCategoryMeta.label) : (lang === 'ar' ? (CurrentCategoryMeta.label_ar || CurrentCategoryMeta.label) : CurrentCategoryMeta.label)}
-                                  </h2>
-                                  <p className="text-slate-500 dark:text-slate-400 mt-1">
+                          {/* ALL CATEGORIES VIEW */}
+                          {activeCategory === 'ALL_CATEGORIES' && (
+                              <div className="animate-in fade-in slide-in-from-bottom-4">
+                                  <div className="mb-8">
+                                      <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                                          <Icons.LayoutGrid className="h-8 w-8 text-indigo-500" />
+                                          {t('categories')}
+                                      </h2>
+                                      <p className="text-slate-500 dark:text-slate-400 text-lg mt-2">
+                                          Explore our wide range of digital services and products.
+                                      </p>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                      {categories.map(cat => {
+                                          const IconComponent = (Icons as any)[cat.icon] || Icons.HelpCircle;
+                                          const label = lang === 'fr' ? (cat.label_fr || cat.label) : (lang === 'ar' ? (cat.label_ar || cat.label) : cat.label);
+                                          const desc = lang === 'fr' ? (cat.desc_fr || cat.desc) : (lang === 'ar' ? (cat.desc_ar || cat.desc) : cat.desc);
+                                          
+                                          return (
+                                              <button
+                                                  key={cat.id}
+                                                  onClick={() => {
+                                                      setActiveCategory(cat.id);
+                                                      setActiveSubCategory(null);
+                                                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                  }}
+                                                  className="flex flex-col items-start p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-lg transition-all group text-left h-full"
+                                              >
+                                                  <div className={`h-12 w-12 rounded-xl flex items-center justify-center mb-4 ${cat.color.replace('text-', 'bg-').replace('500', '100')} dark:bg-opacity-20`}>
+                                                      <IconComponent className={`h-6 w-6 ${cat.color}`} />
+                                                  </div>
+                                                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                                      {label}
+                                                  </h3>
+                                                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">
+                                                      {desc}
+                                                  </p>
+                                                  <div className="mt-auto flex items-center text-sm font-medium text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition-transform">
+                                                      Explore <ArrowRight className="ml-1 h-4 w-4" />
+                                                  </div>
+                                              </button>
+                                          );
+                                      })}
+                                  </div>
+                              </div>
+                          )}
+
+                          {CurrentCategoryMeta && !searchQuery && !showFavoritesOnly && activeCategory !== 'ALL_CATEGORIES' && (
+                              <div className="mb-8 animate-in fade-in">
+                                  <div className="flex items-center gap-3 mb-2">
+                                      <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                                          {(() => {
+                                              const Icon = (Icons as any)[CurrentCategoryMeta.icon] || Icons.Box;
+                                              return <Icon className={`h-8 w-8 ${CurrentCategoryMeta.color}`} />;
+                                          })()}
+                                          {lang === 'fr' ? (CurrentCategoryMeta.label_fr || CurrentCategoryMeta.label) : (lang === 'ar' ? (CurrentCategoryMeta.label_ar || CurrentCategoryMeta.label) : CurrentCategoryMeta.label)}
+                                      </h2>
+                                  </div>
+                                  <p className="text-slate-500 dark:text-slate-400 text-lg max-w-2xl mb-6">
                                       {lang === 'fr' ? (CurrentCategoryMeta.desc_fr || CurrentCategoryMeta.desc) : (lang === 'ar' ? (CurrentCategoryMeta.desc_ar || CurrentCategoryMeta.desc) : CurrentCategoryMeta.desc)}
                                   </p>
+
+                                  {/* Subcategories List */}
+                                  {CurrentCategoryMeta.subcategories && CurrentCategoryMeta.subcategories.length > 0 ? (
+                                      !activeSubCategory ? (
+                                          // Grid View of Subcategories (Drill-down)
+                                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-6">
+                                              {CurrentCategoryMeta.subcategories.map(sub => {
+                                                  const subLabel = lang === 'fr' ? (sub.label_fr || sub.label) : (lang === 'ar' ? (sub.label_ar || sub.label) : sub.label);
+                                                  return (
+                                                      <button
+                                                          key={sub.id}
+                                                          onClick={() => setActiveSubCategory(sub.id)}
+                                                          className="relative flex flex-col items-center p-0 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-md transition-all group text-center h-full overflow-hidden"
+                                                      >
+                                                          {/* Image Area */}
+                                                          <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 relative overflow-hidden">
+                                                              {sub.image ? (
+                                                                  <img src={sub.image} alt={subLabel} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                              ) : (
+                                                                  <div className="w-full h-full flex items-center justify-center">
+                                                                      <FolderTree className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                                                                  </div>
+                                                              )}
+                                                          </div>
+                                                          
+                                                          {/* Content Area */}
+                                                          <div className="p-4 flex flex-col items-center w-full flex-1">
+                                                              <span className="font-semibold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{subLabel}</span>
+                                                              {/* Subcategory Description */}
+                                                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 px-1 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
+                                                                  {lang === 'fr' ? (sub.desc_fr || sub.desc) : (lang === 'ar' ? (sub.desc_ar || sub.desc) : sub.desc)}
+                                                              </p>
+                                                          </div>
+                                                      </button>
+                                                  );
+                                              })}
+                                          </div>
+                                      ) : (
+                                          // Active Subcategory Header & Back Button
+                                          <div className="flex items-center gap-4 mt-6 mb-4">
+                                              <button 
+                                                  onClick={() => setActiveSubCategory(null)}
+                                                  className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                              >
+                                                  <ArrowLeft className="h-4 w-4" />
+                                                  {t('backToCategories') || 'Back'}
+                                              </button>
+                                              <div className="h-4 w-px bg-slate-300 dark:bg-slate-700"></div>
+                                              <span className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
+                                                  {(() => {
+                                                      const sub = CurrentCategoryMeta.subcategories.find(s => s.id === activeSubCategory);
+                                                      return sub ? (lang === 'fr' ? (sub.label_fr || sub.label) : (lang === 'ar' ? (sub.label_ar || sub.label) : sub.label)) : '';
+                                                  })()}
+                                              </span>
+                                          </div>
+                                      )
+                                  ) : null}
                               </div>
                           )}
 
-                          {showFavoritesOnly && (
-                              <div className="mb-6">
-                                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                      <Heart className="h-6 w-6 text-rose-500" />
-                                      {t('myFavorites')}
-                                  </h2>
-                              </div>
-                          )}
-
-                          {displayedServices.length > 0 ? (
-                              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                  {displayedServices.map((service, idx) => (
-                                      <div key={service.id} className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${idx * 50}ms` }}>
-                                          <ServiceCard 
-                                            service={service} 
-                                            onClick={handleServiceClick}
-                                            isFavorite={favorites.includes(service.id)}
-                                            onToggleFavorite={handleToggleFavorite}
-                                          />
+                          {/* Services Grid - Only show if subcategory is selected OR category has no subcategories OR searching/favorites */}
+                          {(activeSubCategory || !CurrentCategoryMeta?.subcategories?.length || searchQuery || showFavoritesOnly) && (
+                              <>
+                                  {showFavoritesOnly && (
+                                      <div className="mb-6">
+                                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                              <Heart className="h-6 w-6 text-rose-500" />
+                                              {t('myFavorites')}
+                                          </h2>
                                       </div>
-                                  ))}
-                              </div>
-                          ) : (
-                              <div className="flex flex-col items-center justify-center py-16 text-center">
-                                  <div className="rounded-full bg-slate-100 dark:bg-slate-800 p-6 mb-4">
-                                      <Search className="h-8 w-8 text-slate-400" />
-                                  </div>
-                                  <h3 className="text-lg font-medium text-slate-900 dark:text-white">{t('noServices')}</h3>
-                                  <p className="text-slate-500 dark:text-slate-400 mt-2">{t('tryAdjusting')}</p>
-                                  <button 
-                                    onClick={() => { setSearchQuery(''); setPriceRange({min:'',max:''}); }}
-                                    className="mt-4 text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-medium"
-                                  >
-                                    Clear all filters
-                                  </button>
-                              </div>
+                                  )}
+
+                                  {displayedServices.length > 0 ? (
+                                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                          {displayedServices.map((service, idx) => (
+                                              <div key={service.id} className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${idx * 50}ms` }}>
+                                                  <ServiceCard 
+                                                    service={service} 
+                                                    onClick={handleServiceClick}
+                                                    isFavorite={favorites.includes(service.id)}
+                                                    onToggleFavorite={handleToggleFavorite}
+                                                  />
+                                              </div>
+                                          ))}
+                                      </div>
+                                  ) : (
+                                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                                          <div className="rounded-full bg-slate-100 dark:bg-slate-800 p-6 mb-4">
+                                              <Search className="h-8 w-8 text-slate-400" />
+                                          </div>
+                                          <h3 className="text-lg font-medium text-slate-900 dark:text-white">{t('noServices')}</h3>
+                                          <p className="text-slate-500 dark:text-slate-400 mt-2">{t('tryAdjusting')}</p>
+                                          <button 
+                                            onClick={() => { setSearchQuery(''); setPriceRange({min:'',max:''}); }}
+                                            className="mt-4 text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-medium"
+                                          >
+                                            Clear all filters
+                                          </button>
+                                      </div>
+                                  )}
+                              </>
                           )}
                       </div>
                   </div>

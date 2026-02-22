@@ -14,6 +14,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
   const [formData, setFormData] = useState<ServiceFormData>({
     name: initialData?.name || '',
     category: initialData?.category || (categories[0]?.id || ''),
+    subcategory: initialData?.subcategory || '',
     description: initialData?.description || '',
     price: initialData?.price || 0,
     promoPrice: initialData?.promoPrice || undefined,
@@ -82,11 +83,30 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
           <select
             name="category"
             value={formData.category}
-            onChange={handleInputChange}
+            onChange={(e) => {
+                handleInputChange(e);
+                setFormData(prev => ({ ...prev, subcategory: '' })); // Reset subcategory on category change
+            }}
             className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none"
           >
             {categories.map(cat => (
               <option key={cat.id} value={cat.id}>{cat.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Subcategory (Optional)</label>
+          <select
+            name="subcategory"
+            value={formData.subcategory || ''}
+            onChange={handleInputChange}
+            disabled={!formData.category}
+            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none disabled:opacity-50"
+          >
+            <option value="">None</option>
+            {categories.find(c => c.id === formData.category)?.subcategories?.map(sub => (
+              <option key={sub.id} value={sub.id}>{sub.label}</option>
             ))}
           </select>
         </div>

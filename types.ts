@@ -6,6 +6,17 @@ export enum ServiceCategory {
   BUSINESS_SUITE = 'Business Suite',
 }
 
+export interface Subcategory {
+  id: string;
+  label: string;
+  label_fr: string;
+  label_ar: string;
+  desc?: string;
+  desc_fr?: string;
+  desc_ar?: string;
+  image?: string;
+}
+
 export interface Category {
   id: string; // Matches ServiceCategory values
   label: string;
@@ -17,6 +28,7 @@ export interface Category {
   desc_fr: string; 
   desc_ar: string; 
   order: number;
+  subcategories?: Subcategory[];
 }
 
 // Keeping CategoryMeta for backward compat if needed, but Category replaces it mostly
@@ -37,6 +49,7 @@ export interface ServiceItem {
   promoPrice?: number; // New field for discounted price
   badgeLabel?: string; // New field for marketing badge (e.g. "50% OFF")
   videoUri?: string; // New field for Veo video URI
+  subcategory?: string; // New field for subcategory filtering
 }
 
 export type ServiceFormData = Omit<ServiceItem, 'id' | 'createdAt'>;
@@ -49,6 +62,7 @@ export interface Order {
   serviceId: string;
   serviceName: string;
   category: string;
+  subcategory?: string; // Added subcategory to Order
   price: number;
   currency: string;
   customerInfo: string; 

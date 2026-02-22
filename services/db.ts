@@ -6,42 +6,106 @@ import { ServiceItem, Order, User, Review, Category } from '../types';
 export const db = {
   // --- Categories ---
   async getCategories(): Promise<Category[]> {
-    const { data, error } = await supabase
+    const { data: categories, error: catError } = await supabase
       .from('categories')
       .select('*')
       .order('order', { ascending: true });
 
-    if (error) {
-        console.error('Error fetching categories:', error);
+    if (catError) {
+        console.error('Error fetching categories:', catError);
         return [];
     }
-    return data as Category[];
+
+    const { data: subcategories, error: subError } = await supabase
+      .from('subcategories')
+      .select('*')
+      .order('order', { ascending: true });
+
+    if (subError) {
+        console.error('Error fetching subcategories:', subError);
+        // Return categories without subcategories if sub fetch fails
+        return categories as Category[];
+    }
+
+    // Map subcategories to their parent categories
+    return (categories as Category[]).map(cat => ({
+        ...cat,
+        subcategories: (subcategories as any[]).filter(sub => sub.category_id === cat.id)
+    }));
   },
 
   async addCategory(category: Category): Promise<Category> {
-    const { data, error } = await supabase
+    // 1. Insert Category
+    const { subcategories, ...catData } = category;
+    const { data: newCat, error } = await supabase
       .from('categories')
-      .insert([category])
+      .insert([catData])
       .select()
       .single();
 
     if (error) throw error;
-    return data as Category;
+
+    // 2. Insert Subcategories if any
+    if (subcategories && subcategories.length > 0) {
+        const subsToInsert = subcategories.map(sub => ({
+            id: sub.id,
+            category_id: newCat.id,
+            label: sub.label,
+            label_fr: sub.label_fr,
+            label_ar: sub.label_ar,
+            desc: sub.desc,
+            desc_fr: sub.desc_fr,
+            desc_ar: sub.desc_ar,
+            image: sub.image
+        }));
+        
+        const { error: subError } = await supabase
+            .from('subcategories')
+            .insert(subsToInsert);
+            
+        if (subError) console.error('Error adding subcategories:', subError);
+    }
+
+    // Return full object by re-fetching or constructing
+    return this.getCategories().then(cats => cats.find(c => c.id === newCat.id) || newCat as Category);
   },
 
   async updateCategory(category: Category): Promise<Category> {
-    const { data, error } = await supabase
+    const { subcategories, ...catData } = category;
+    
+    // 1. Update Category
+    const { error } = await supabase
       .from('categories')
-      .update(category)
-      .eq('id', category.id)
-      .select()
-      .single();
+      .update(catData)
+      .eq('id', category.id);
 
     if (error) throw error;
-    return data as Category;
+
+    // 2. Sync Subcategories (Delete all and re-insert is simplest for now, or diffing)
+    // For simplicity in this demo: Delete all for this category and re-insert
+    await supabase.from('subcategories').delete().eq('category_id', category.id);
+    
+    if (subcategories && subcategories.length > 0) {
+        const subsToInsert = subcategories.map(sub => ({
+            id: sub.id,
+            category_id: category.id,
+            label: sub.label,
+            label_fr: sub.label_fr,
+            label_ar: sub.label_ar,
+            desc: sub.desc,
+            desc_fr: sub.desc_fr,
+            desc_ar: sub.desc_ar,
+            image: sub.image
+        }));
+        
+        await supabase.from('subcategories').insert(subsToInsert);
+    }
+
+    return this.getCategories().then(cats => cats.find(c => c.id === category.id) as Category);
   },
 
   async deleteCategory(id: string): Promise<void> {
+    // Subcategories cascade delete due to FK constraint, but good to be explicit or rely on DB
     const { error } = await supabase.from('categories').delete().eq('id', id);
     if (error) throw error;
   },
