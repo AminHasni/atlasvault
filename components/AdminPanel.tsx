@@ -237,9 +237,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
 
   const handleDeleteClick = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this service?')) {
-      await deleteService(id);
-      onUpdate();
-      notify('Service deleted successfully.', 'info');
+      try {
+        await deleteService(id);
+        onUpdate();
+        notify('Service deleted successfully.', 'info');
+      } catch (e: any) {
+        console.error("Delete service error:", e);
+        notify(e.message || 'Failed to delete service. It might be linked to existing orders.', 'error');
+      }
     }
   };
 

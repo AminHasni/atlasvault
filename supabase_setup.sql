@@ -63,7 +63,7 @@ create table public.profiles (
 create table public.orders (
   "id" text primary key,
   "userId" text,
-  "serviceId" text references public.services("id"),
+  "serviceId" text references public.services("id") on delete set null,
   "serviceName" text,
   "category" text,
   "subcategory" text, -- Added subcategory
@@ -80,7 +80,7 @@ create table public.orders (
 -- 6. Create Reviews Table
 create table public.reviews (
   "id" text primary key,
-  "serviceId" text references public.services("id"),
+  "serviceId" text references public.services("id") on delete cascade,
   "userId" text, 
   "userName" text,
   "rating" integer,

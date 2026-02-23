@@ -20,7 +20,7 @@ type Theme = 'light' | 'dark';
 
 const App: React.FC = () => {
   // Theme & Language State
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('light');
   const [lang, setLang] = useState<Language>('fr'); 
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(true);

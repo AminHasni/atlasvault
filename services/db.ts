@@ -172,6 +172,13 @@ export const db = {
   },
 
   async deleteService(id: string): Promise<void> {
+    // 1. Handle reviews (cascade delete)
+    await supabase.from('reviews').delete().eq('serviceId', id);
+    
+    // 2. Handle orders (set serviceId to null to preserve history)
+    await supabase.from('orders').update({ serviceId: null }).eq('serviceId', id);
+
+    // 3. Delete the service
     const { error } = await supabase.from('services').delete().eq('id', id);
     if (error) throw error;
   },

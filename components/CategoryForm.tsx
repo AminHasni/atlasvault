@@ -10,12 +10,15 @@ interface CategoryFormProps {
 }
 
 const AVAILABLE_ICONS = [
-  'Shield', 'Smartphone', 'Gamepad2', 'Briefcase', 'Zap', 'Globe', 'Server', 'Cloud', 'Lock', 'Wifi', 'Box', 'Layers', 'Tag', 'Star', 'Heart'
+  'Shield', 'Smartphone', 'Gamepad2', 'Briefcase', 'Zap', 'Globe', 'Server', 'Cloud', 'Lock', 'Wifi', 'Box', 'Layers', 'Tag', 'Star', 'Heart',
+  'Monitor', 'Cpu', 'Database', 'Code', 'PenTool', 'Camera', 'Music', 'Video', 'Book', 'Coffee', 'Truck', 'ShoppingBag', 'Home', 'Tool', 'Activity', 'TrendingUp', 'Users', 'MessageSquare', 'Mail', 'Calendar', 'Car', 'Wrench', 'Scissors', 'Paintbrush', 'Palette', 'MapPin', 'Compass', 'Navigation', 'Plane', 'Bike'
 ];
 
 const AVAILABLE_COLORS = [
   'text-emerald-500', 'text-blue-500', 'text-purple-500', 'text-slate-500', 
-  'text-rose-500', 'text-amber-500', 'text-indigo-500', 'text-cyan-500', 'text-pink-500'
+  'text-rose-500', 'text-amber-500', 'text-indigo-500', 'text-cyan-500', 'text-pink-500',
+  'text-red-500', 'text-orange-500', 'text-yellow-500', 'text-lime-500', 'text-green-500',
+  'text-teal-500', 'text-sky-500', 'text-fuchsia-500', 'text-violet-500'
 ];
 
 export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmit, onCancel }) => {
@@ -36,6 +39,8 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
   const [newSub, setNewSub] = useState({ id: '', label: '', label_fr: '', label_ar: '', desc: '', desc_fr: '', desc_ar: '', image: '' });
   const [editingSubIndex, setEditingSubIndex] = useState<number | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isTranslatingCat, setIsTranslatingCat] = useState(false);
+  const [isTranslatingSub, setIsTranslatingSub] = useState(false);
 
   const isEditing = !!initialData;
 
@@ -56,8 +61,37 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewSub(prev => ({ ...prev, image: reader.result as string }));
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Compress to JPEG with 70% quality to significantly reduce base64 string size
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
+          setNewSub(prev => ({ ...prev, image: dataUrl }));
+        };
+        img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -100,6 +134,72 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
     } finally {
         setIsGeneratingImage(false);
     }
+  };
+
+  const handleTranslateCategory = async () => {
+      if (!formData.label && !formData.desc) return;
+      setIsTranslatingCat(true);
+      try {
+          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+          const prompt = `Translate the following category label and description into French and Arabic.
+          Return ONLY a valid JSON object with the following keys: label_fr, label_ar, desc_fr, desc_ar.
+          Label to translate: "${formData.label}"
+          Description to translate: "${formData.desc}"`;
+
+          const response = await ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: prompt,
+              config: {
+                  responseMimeType: "application/json",
+              }
+          });
+
+          const result = JSON.parse(response.text || '{}');
+          setFormData(prev => ({
+              ...prev,
+              label_fr: result.label_fr || prev.label_fr,
+              label_ar: result.label_ar || prev.label_ar,
+              desc_fr: result.desc_fr || prev.desc_fr,
+              desc_ar: result.desc_ar || prev.desc_ar,
+          }));
+      } catch (error) {
+          console.error("Translation failed", error);
+      } finally {
+          setIsTranslatingCat(false);
+      }
+  };
+
+  const handleTranslateSubcategory = async () => {
+      if (!newSub.label && !newSub.desc) return;
+      setIsTranslatingSub(true);
+      try {
+          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+          const prompt = `Translate the following subcategory label and description into French and Arabic.
+          Return ONLY a valid JSON object with the following keys: label_fr, label_ar, desc_fr, desc_ar.
+          Label to translate: "${newSub.label}"
+          Description to translate: "${newSub.desc}"`;
+
+          const response = await ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: prompt,
+              config: {
+                  responseMimeType: "application/json",
+              }
+          });
+
+          const result = JSON.parse(response.text || '{}');
+          setNewSub(prev => ({
+              ...prev,
+              label_fr: result.label_fr || prev.label_fr,
+              label_ar: result.label_ar || prev.label_ar,
+              desc_fr: result.desc_fr || prev.desc_fr,
+              desc_ar: result.desc_ar || prev.desc_ar,
+          }));
+      } catch (error) {
+          console.error("Translation failed", error);
+      } finally {
+          setIsTranslatingSub(false);
+      }
   };
 
   const handleAddSubcategory = () => {
@@ -172,7 +272,18 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Label (EN)</label>
+          <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Label (EN)</label>
+              <button
+                  type="button"
+                  onClick={handleTranslateCategory}
+                  disabled={isTranslatingCat || (!formData.label && !formData.desc)}
+                  className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+              >
+                  {isTranslatingCat ? <Icons.Loader2 className="h-3 w-3 animate-spin" /> : <Icons.Languages className="h-3 w-3" />}
+                  Auto Translate
+              </button>
+          </div>
           <input
             type="text"
             name="label"
@@ -343,7 +454,18 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
               />
            </div>
            <div className="sm:col-span-1">
-              <label className="text-xs text-slate-500 mb-1 block">Label (EN)</label>
+              <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-slate-500 block">Label (EN)</label>
+                  <button
+                      type="button"
+                      onClick={handleTranslateSubcategory}
+                      disabled={isTranslatingSub || (!newSub.label && !newSub.desc)}
+                      className="text-[10px] flex items-center gap-1 text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                  >
+                      {isTranslatingSub ? <Icons.Loader2 className="h-3 w-3 animate-spin" /> : <Icons.Languages className="h-3 w-3" />}
+                      Auto
+                  </button>
+              </div>
               <input 
                 type="text" 
                 name="label" 
