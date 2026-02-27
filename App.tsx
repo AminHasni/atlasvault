@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ServiceCategory, ServiceItem, Category, Order, OrderStatus, User, Review, GlobalSettings } from './types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ServiceCategory, ServiceItem, Category, Order, OrderStatus, User, Review, GlobalSettings, Subcategory, SecondSubcategory } from './types';
 import { TRANSLATIONS, LEGAL_CONTENT } from './constants';
 import { getServices, addOrder, getOrdersByEmail, getCurrentUser, setCurrentUserSession, getOrdersByUserId, getReviews, getFavorites, toggleFavorite, getCategories, signOutUser, updateService, getGlobalSettings, cancelOrder } from './services/storageService';
 import { ServiceCard } from './components/ServiceCard';
@@ -13,6 +14,7 @@ import { SettingsPage } from './components/SettingsPage';
 import { ChatAssistant } from './components/ChatAssistant';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
 import { LayoutDashboard, ShieldCheck, Shield, Box, Search, ArrowUpDown, Filter, Info, MessageCircle, ShoppingCart, Mail, Phone, FileText, AlertCircle, History, User as UserIcon, ChevronRight, ChevronDown, ArrowLeft, Calendar, Banknote, Tag, HelpCircle, X, SlidersHorizontal, Globe, Menu, LogOut, Home, List, Users, BarChart3, Sparkles, ArrowRight, Sun, Moon, Languages, LogIn, Settings, Heart, FolderTree, Flame, Check } from 'lucide-react';
+import { Logo } from './components/Logo';
 import * as Icons from 'lucide-react';
 
 type Language = 'en' | 'fr' | 'ar';
@@ -35,7 +37,7 @@ const App: React.FC = () => {
   const isUserAdmin = currentUser?.role === 'admin';
 
   const [activeCategory, setActiveCategory] = useState<string>('HOME');
-  const [activeSubCategory, setActiveSubCategory] = useState<string | null>(null);
+  const [activeSubCategoryPath, setActiveSubCategoryPath] = useState<string[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]); // Dynamic Categories
@@ -268,7 +270,18 @@ const App: React.FC = () => {
            }
        }
 
-       const matchesSubCategory = !activeSubCategory || s.subcategory === activeSubCategory;
+       const activeSubCategory = activeSubCategoryPath.length > 0 ? activeSubCategoryPath[activeSubCategoryPath.length - 1] : null;
+       const isLevel2 = activeSubCategoryPath.length === 2;
+       const activeSubCategoryPath0 = activeSubCategoryPath[0];
+       
+       let matchesSubCategory = true;
+       if (activeSubCategory) {
+           if (isLevel2) {
+               matchesSubCategory = s.subcategory === activeSubCategoryPath0 && s.second_subcategory_id === activeSubCategory;
+           } else {
+               matchesSubCategory = s.subcategory === activeSubCategory && !s.second_subcategory_id;
+           }
+       }
 
        const matchesFavorites = !showFavoritesOnly || favorites.includes(s.id);
 
@@ -286,7 +299,7 @@ const App: React.FC = () => {
         default: return 0;
       }
     });
-  }, [services, activeCategory, isAdminMode, searchQuery, sortOption, searchGlobal, priceRange, favorites, showFavoritesOnly]);
+  }, [services, activeCategory, activeSubCategoryPath, isAdminMode, searchQuery, sortOption, searchGlobal, priceRange, favorites, showFavoritesOnly]);
 
   const similarServices = useMemo(() => {
     if (!selectedService) return [];
@@ -523,8 +536,8 @@ const App: React.FC = () => {
       <aside className={`fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-r rtl:border-r-0 rtl:border-l bg-white dark:bg-[#0B1120] border-slate-200 dark:border-slate-800 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : (lang === 'ar' ? 'translate-x-full' : '-translate-x-full')}`}>
         {/* Sidebar Header */}
         <div className="flex h-16 items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800/50">
-           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/20">
-              <Box className="h-5 w-5 text-white" />
+           <div className="flex h-8 w-8 items-center justify-center">
+              <Logo className="h-8 w-8" />
            </div>
            <div>
              <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none">ATLASVAULT</h1>
@@ -557,6 +570,18 @@ const App: React.FC = () => {
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeAdminTab === 'categories' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 <FolderTree className="h-4 w-4" /> {t('categories')}
+              </button>
+              <button
+                onClick={() => setActiveAdminTab('subcategories')}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeAdminTab === 'subcategories' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
+              >
+                <FolderTree className="h-4 w-4" /> Subcategories (L1)
+              </button>
+              <button
+                onClick={() => setActiveAdminTab('level3_subcategories')}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeAdminTab === 'level3_subcategories' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
+              >
+                <FolderTree className="h-4 w-4 ml-2" /> Subcategories (L2)
               </button>
               <button
                 onClick={() => setActiveAdminTab('services')}
@@ -597,7 +622,7 @@ const App: React.FC = () => {
               <button
                 onClick={() => {
                   setActiveCategory('HOME');
-                  setActiveSubCategory(null);
+                  setActiveSubCategoryPath([]);
                   setSearchQuery('');
                   setShowFavoritesOnly(false);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
@@ -611,7 +636,7 @@ const App: React.FC = () => {
               <button
                 onClick={() => {
                   setActiveCategory('ALL_CATEGORIES');
-                  setActiveSubCategory(null);
+                  setActiveSubCategoryPath([]);
                   setSearchQuery('');
                   setShowFavoritesOnly(false);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
@@ -630,7 +655,7 @@ const App: React.FC = () => {
                 onClick={() => {
                   setShowFavoritesOnly(true);
                   setActiveCategory('HOME');
-                  setActiveSubCategory(null);
+                  setActiveSubCategoryPath([]);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
                 }}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 mb-1 ${showFavoritesOnly ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}`}
@@ -653,7 +678,7 @@ const App: React.FC = () => {
               <button
                 onClick={() => {
                   setActiveCategory('SETTINGS');
-                  setActiveSubCategory(null);
+                  setActiveSubCategoryPath([]);
                   setShowFavoritesOnly(false);
                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
                 }}
@@ -875,8 +900,14 @@ const App: React.FC = () => {
                                           <div className="space-y-1">
                                               <label className="text-xs font-semibold text-slate-500 uppercase">{t('subcategory')}</label>
                                               <select 
-                                                value={activeSubCategory || ''}
-                                                onChange={(e) => setActiveSubCategory(e.target.value || null)}
+                                                value={activeSubCategoryPath.length > 0 ? activeSubCategoryPath[activeSubCategoryPath.length - 1] : ''}
+                                                onChange={(e) => {
+                                                    if (e.target.value) {
+                                                        setActiveSubCategoryPath([e.target.value]);
+                                                    } else {
+                                                        setActiveSubCategoryPath([]);
+                                                    }
+                                                }}
                                                 className="block w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm"
                                               >
                                                   <option value="">{t('all')}</option>
@@ -896,128 +927,298 @@ const App: React.FC = () => {
                       <div id="catalog-start">
                           {/* ALL CATEGORIES VIEW */}
                           {activeCategory === 'ALL_CATEGORIES' && (
-                              <div className="animate-in fade-in slide-in-from-bottom-4">
+                              <motion.div 
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.4 }}
+                                className="space-y-8"
+                              >
                                   <div className="mb-8">
-                                      <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                                          <Icons.LayoutGrid className="h-8 w-8 text-indigo-500" />
+                                      <h2 className="text-4xl font-extrabold text-slate-900 dark:text-white flex items-center gap-4 tracking-tight">
+                                          <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-500">
+                                            <Icons.LayoutGrid className="h-8 w-8" />
+                                          </div>
                                           {t('categories')}
                                       </h2>
-                                      <p className="text-slate-500 dark:text-slate-400 text-lg mt-2">
-                                          Explore our wide range of digital services and products.
+                                      <p className="text-slate-500 dark:text-slate-400 text-lg mt-3 max-w-2xl">
+                                          Explore our wide range of digital services and products, organized to help you find exactly what you need.
                                       </p>
                                   </div>
                                   
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                      {categories.map(cat => {
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                                      {categories.map((cat, idx) => {
                                           const IconComponent = (Icons as any)[cat.icon] || Icons.HelpCircle;
                                           const label = lang === 'fr' ? (cat.label_fr || cat.label) : (lang === 'ar' ? (cat.label_ar || cat.label) : cat.label);
                                           const desc = lang === 'fr' ? (cat.desc_fr || cat.desc) : (lang === 'ar' ? (cat.desc_ar || cat.desc) : cat.desc);
                                           
                                           return (
-                                              <button
+                                              <motion.button
                                                   key={cat.id}
+                                                  initial={{ opacity: 0, y: 20 }}
+                                                  animate={{ opacity: 1, y: 0 }}
+                                                  transition={{ duration: 0.3, delay: idx * 0.05 }}
+                                                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
                                                   onClick={() => {
                                                       setActiveCategory(cat.id);
-                                                      setActiveSubCategory(null);
+                                                      setActiveSubCategoryPath([]);
                                                       window.scrollTo({ top: 0, behavior: 'smooth' });
                                                   }}
-                                                  className="flex flex-col items-start p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-lg transition-all group text-left h-full"
+                                                  className="flex flex-col items-start p-8 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all group text-left h-full relative overflow-hidden"
                                               >
-                                                  <div className={`h-12 w-12 rounded-xl flex items-center justify-center mb-4 ${cat.color.replace('text-', 'bg-').replace('500', '100')} dark:bg-opacity-20`}>
-                                                      <IconComponent className={`h-6 w-6 ${cat.color}`} />
+                                                  {/* Decorative background element */}
+                                                  <div className={`absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-5 group-hover:scale-150 transition-transform duration-700 ${cat.color.replace('text-', 'bg-')}`}></div>
+                                                  
+                                                  <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-6 shadow-sm transition-transform group-hover:scale-110 duration-300 ${cat.color.replace('text-', 'bg-').replace('500', '100')} dark:bg-opacity-10`}>
+                                                      <IconComponent className={`h-7 w-7 ${cat.color}`} />
                                                   </div>
-                                                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                                                       {label}
                                                   </h3>
-                                                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">
+                                                  <p className="text-slate-500 dark:text-slate-400 mb-6 line-clamp-2 leading-relaxed">
                                                       {desc}
                                                   </p>
-                                                  <div className="mt-auto flex items-center text-sm font-medium text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition-transform">
-                                                      Explore <ArrowRight className="ml-1 h-4 w-4" />
+                                                  <div className="mt-auto flex items-center text-sm font-bold text-indigo-600 dark:text-indigo-400 group-hover:gap-2 transition-all">
+                                                      {t('explore') || 'Explore'} <ArrowRight className="h-4 w-4" />
                                                   </div>
-                                              </button>
+                                              </motion.button>
                                           );
                                       })}
                                   </div>
-                              </div>
+                              </motion.div>
                           )}
 
                           {CurrentCategoryMeta && !searchQuery && !showFavoritesOnly && activeCategory !== 'ALL_CATEGORIES' && (
-                              <div className="mb-8 animate-in fade-in">
-                                  <div className="flex items-center gap-3 mb-2">
-                                      <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                                          {(() => {
-                                              const Icon = (Icons as any)[CurrentCategoryMeta.icon] || Icons.Box;
-                                              return <Icon className={`h-8 w-8 ${CurrentCategoryMeta.color}`} />;
-                                          })()}
+                              <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 0.5 }}
+                                className="mb-12"
+                              >
+                                  {/* Breadcrumbs */}
+                                  <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6 overflow-x-auto whitespace-nowrap pb-2 no-scrollbar">
+                                      <button 
+                                        onClick={() => {
+                                            setActiveCategory('ALL_CATEGORIES');
+                                            setActiveSubCategoryPath([]);
+                                        }}
+                                        className="hover:text-indigo-600 transition-colors flex items-center gap-1"
+                                      >
+                                          <Icons.Home className="h-3.5 w-3.5" />
+                                          {t('home') || 'Home'}
+                                      </button>
+                                      <ChevronRight className="h-3 w-3 opacity-50" />
+                                      <button 
+                                        onClick={() => setActiveSubCategoryPath([])}
+                                        className={`${activeSubCategoryPath.length === 0 ? 'text-indigo-600 font-bold' : 'hover:text-indigo-600'} transition-colors`}
+                                      >
                                           {lang === 'fr' ? (CurrentCategoryMeta.label_fr || CurrentCategoryMeta.label) : (lang === 'ar' ? (CurrentCategoryMeta.label_ar || CurrentCategoryMeta.label) : CurrentCategoryMeta.label)}
-                                      </h2>
+                                      </button>
+                                      
+                                      {activeSubCategoryPath.map((pathId, idx) => {
+                                          let label = '';
+                                          if (idx === 0) {
+                                              const sub = CurrentCategoryMeta.subcategories?.find(s => s.id === pathId);
+                                              label = sub ? (lang === 'fr' ? (sub.label_fr || sub.label) : (lang === 'ar' ? (sub.label_ar || sub.label) : sub.label)) : '';
+                                          } else if (idx === 1) {
+                                              const parentSub = CurrentCategoryMeta.subcategories?.find(s => s.id === activeSubCategoryPath[0]);
+                                              const sub = parentSub?.second_subcategories?.find(ss => ss.id === pathId);
+                                              label = sub ? (lang === 'fr' ? (sub.label_fr || sub.label) : (lang === 'ar' ? (sub.label_ar || sub.label) : sub.label)) : '';
+                                          }
+                                          
+                                          return (
+                                              <React.Fragment key={pathId}>
+                                                  <ChevronRight className="h-3 w-3 opacity-50" />
+                                                  <button 
+                                                    onClick={() => setActiveSubCategoryPath(activeSubCategoryPath.slice(0, idx + 1))}
+                                                    className={`${idx === activeSubCategoryPath.length - 1 ? 'text-indigo-600 font-bold' : 'hover:text-indigo-600'} transition-colors`}
+                                                  >
+                                                      {label}
+                                                  </button>
+                                              </React.Fragment>
+                                          );
+                                      })}
+                                  </nav>
+
+                                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+                                      <div className="space-y-3">
+                                          <h2 className="text-4xl font-extrabold text-slate-900 dark:text-white flex items-center gap-4 tracking-tight">
+                                              {(() => {
+                                                  const Icon = (Icons as any)[CurrentCategoryMeta.icon] || Icons.Box;
+                                                  return (
+                                                    <div className={`p-3 rounded-2xl ${CurrentCategoryMeta.color.replace('text-', 'bg-').replace('500', '100')} dark:bg-opacity-10`}>
+                                                        <Icon className={`h-8 w-8 ${CurrentCategoryMeta.color}`} />
+                                                    </div>
+                                                  );
+                                              })()}
+                                              {lang === 'fr' ? (CurrentCategoryMeta.label_fr || CurrentCategoryMeta.label) : (lang === 'ar' ? (CurrentCategoryMeta.label_ar || CurrentCategoryMeta.label) : CurrentCategoryMeta.label)}
+                                          </h2>
+                                          <p className="text-slate-500 dark:text-slate-400 text-lg max-w-2xl leading-relaxed">
+                                              {lang === 'fr' ? (CurrentCategoryMeta.desc_fr || CurrentCategoryMeta.desc) : (lang === 'ar' ? (CurrentCategoryMeta.desc_ar || CurrentCategoryMeta.desc) : CurrentCategoryMeta.desc)}
+                                          </p>
+                                      </div>
                                   </div>
-                                  <p className="text-slate-500 dark:text-slate-400 text-lg max-w-2xl mb-6">
-                                      {lang === 'fr' ? (CurrentCategoryMeta.desc_fr || CurrentCategoryMeta.desc) : (lang === 'ar' ? (CurrentCategoryMeta.desc_ar || CurrentCategoryMeta.desc) : CurrentCategoryMeta.desc)}
-                                  </p>
 
                                   {/* Subcategories List */}
-                                  {CurrentCategoryMeta.subcategories && CurrentCategoryMeta.subcategories.length > 0 ? (
-                                      !activeSubCategory ? (
-                                          // Grid View of Subcategories (Drill-down)
-                                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-6">
-                                              {CurrentCategoryMeta.subcategories.map(sub => {
-                                                  const subLabel = lang === 'fr' ? (sub.label_fr || sub.label) : (lang === 'ar' ? (sub.label_ar || sub.label) : sub.label);
-                                                  return (
-                                                      <button
-                                                          key={sub.id}
-                                                          onClick={() => setActiveSubCategory(sub.id)}
-                                                          className="relative flex flex-col items-center p-0 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-md transition-all group text-center h-full overflow-hidden"
-                                                      >
-                                                          {/* Image Area */}
-                                                          <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 relative overflow-hidden">
-                                                              {sub.image ? (
-                                                                  <img src={sub.image} alt={subLabel} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                                              ) : (
-                                                                  <div className="w-full h-full flex items-center justify-center">
-                                                                      <FolderTree className="h-10 w-10 text-slate-300 dark:text-slate-600" />
-                                                                  </div>
-                                                              )}
+                                  {(() => {
+                                      let currentSubs: (Subcategory | SecondSubcategory)[] = CurrentCategoryMeta?.subcategories || [];
+                                      let currentSubMeta: Subcategory | SecondSubcategory | null = null;
+                                      
+                                      // Drill down through the path
+                                      if (activeSubCategoryPath.length > 0) {
+                                          const subId = activeSubCategoryPath[0];
+                                          const found = (CurrentCategoryMeta?.subcategories || []).find(s => s.id === subId);
+                                          if (found) {
+                                              currentSubMeta = found;
+                                              currentSubs = found.second_subcategories || [];
+                                              
+                                              if (activeSubCategoryPath.length > 1) {
+                                                  const secondSubId = activeSubCategoryPath[1];
+                                                  const foundSecond = (found.second_subcategories || []).find(ss => ss.id === secondSubId);
+                                                  if (foundSecond) {
+                                                      currentSubMeta = foundSecond;
+                                                      currentSubs = []; // No more levels
+                                                  }
+                                              }
+                                          }
+                                      }
+
+                                      return (
+                                          <AnimatePresence mode="wait">
+                                              <motion.div
+                                                key={activeSubCategoryPath.join('-')}
+                                                initial={{ opacity: 0, x: 20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: -20 }}
+                                                transition={{ duration: 0.3 }}
+                                              >
+                                                  {currentSubs.length > 0 ? (
+                                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                                                          {currentSubs.map((sub, idx) => {
+                                                              const subLabel = lang === 'fr' ? (sub.label_fr || sub.label) : (lang === 'ar' ? (sub.label_ar || sub.label) : sub.label);
+                                                              return (
+                                                                  <motion.button
+                                                                      key={sub.id}
+                                                                      initial={{ opacity: 0, scale: 0.95 }}
+                                                                      animate={{ opacity: 1, scale: 1 }}
+                                                                      transition={{ duration: 0.2, delay: idx * 0.05 }}
+                                                                      whileHover={{ y: -5 }}
+                                                                      onClick={() => setActiveSubCategoryPath([...activeSubCategoryPath, sub.id])}
+                                                                      className="relative flex flex-col items-center p-0 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-xl transition-all group text-center h-full overflow-hidden"
+                                                                  >
+                                                                      {/* Image/Icon Area */}
+                                                                      <div className={`w-full h-40 relative overflow-hidden flex items-center justify-center ${sub.color ? sub.color.replace('text-', 'bg-').replace('500', '500/10') : 'bg-slate-100 dark:bg-slate-700'}`}>
+                                                                          {/* Abstract background pattern inspired by color */}
+                                                                          <div className={`absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] ${sub.color ? `from-${sub.color.replace('text-', '').replace('-500', '')}-400 via-transparent to-transparent` : 'from-slate-400 via-transparent to-transparent'}`}></div>
+                                                                          
+                                                                          {(() => {
+                                                                              const SubIcon = (Icons as any)[sub.icon || 'Box'] || Icons.Box;
+                                                                              return <SubIcon className={`h-16 w-16 relative z-10 group-hover:scale-110 transition-transform duration-500 ${sub.color || 'text-slate-500'}`} />;
+                                                                          })()}
+                                                                          
+                                                                          {(() => {
+                                                                              const subServiceCount = services.filter(s => 
+                                                                                  s.active && (
+                                                                                      activeSubCategoryPath.length === 0 
+                                                                                      ? (s.subcategory === sub.id && !s.second_subcategory_id) 
+                                                                                      : s.second_subcategory_id === sub.id
+                                                                                  )
+                                                                              ).length;
+                                                                              return subServiceCount > 0 ? (
+                                                                                  <div className="absolute top-4 left-4 bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg z-20">
+                                                                                      {subServiceCount} {subServiceCount === 1 ? 'Service' : 'Services'}
+                                                                                  </div>
+                                                                              ) : null;
+                                                                          })()}
+                                                                          
+                                                                          {sub.fee !== undefined && sub.fee > 0 && (
+                                                                              <div className="absolute top-4 right-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-700 dark:text-slate-300 shadow-lg border border-white/20 z-20">
+                                                                                  Fee: {sub.fee}%
+                                                                              </div>
+                                                                          )}
+                                                                      </div>
+                                                                      
+                                                                      {/* Content Area */}
+                                                                      <div className="p-6 flex flex-col items-center w-full flex-1">
+                                                                          <span className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{subLabel}</span>
+                                                                          {/* Subcategory Description */}
+                                                                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 line-clamp-2 px-1 leading-relaxed">
+                                                                              {lang === 'fr' ? (sub.desc_fr || sub.desc) : (lang === 'ar' ? (sub.desc_ar || sub.desc) : sub.desc)}
+                                                                          </p>
+                                                                      </div>
+                                                                  </motion.button>
+                                                              );
+                                                          })}
+                                                      </div>
+                                                  ) : null}
+
+                                                  {/* Active Subcategory Header & Back Button */}
+                                                  {activeSubCategoryPath.length > 0 && (
+                                                      <div className="flex flex-col gap-6 mt-10 mb-6">
+                                                          <div className="flex items-center gap-4">
+                                                              <button 
+                                                                  onClick={() => setActiveSubCategoryPath(activeSubCategoryPath.slice(0, -1))}
+                                                                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                                                              >
+                                                                  <ArrowLeft className="h-4 w-4" />
+                                                                  {t('back') || 'Back'}
+                                                              </button>
+                                                              <div className="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
+                                                              <div className="flex flex-col">
+                                                                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                                                      {activeSubCategoryPath.length === 1 ? t('subcategory') : t('secondSubcategory') || 'Level 2 Subcategory'}
+                                                                  </span>
+                                                                  <span className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">
+                                                                      {currentSubMeta ? (lang === 'fr' ? (currentSubMeta.label_fr || currentSubMeta.label) : (lang === 'ar' ? (currentSubMeta.label_ar || currentSubMeta.label) : currentSubMeta.label)) : ''}
+                                                                  </span>
+                                                              </div>
                                                           </div>
                                                           
-                                                          {/* Content Area */}
-                                                          <div className="p-4 flex flex-col items-center w-full flex-1">
-                                                              <span className="font-semibold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{subLabel}</span>
-                                                              {/* Subcategory Description */}
-                                                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 px-1 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
-                                                                  {lang === 'fr' ? (sub.desc_fr || sub.desc) : (lang === 'ar' ? (sub.desc_ar || sub.desc) : sub.desc)}
-                                                              </p>
-                                                          </div>
-                                                      </button>
-                                                  );
-                                              })}
-                                          </div>
-                                      ) : (
-                                          // Active Subcategory Header & Back Button
-                                          <div className="flex items-center gap-4 mt-6 mb-4">
-                                              <button 
-                                                  onClick={() => setActiveSubCategory(null)}
-                                                  className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-                                              >
-                                                  <ArrowLeft className="h-4 w-4" />
-                                                  {t('backToCategories') || 'Back'}
-                                              </button>
-                                              <div className="h-4 w-px bg-slate-300 dark:bg-slate-700"></div>
-                                              <span className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
-                                                  {(() => {
-                                                      const sub = CurrentCategoryMeta.subcategories.find(s => s.id === activeSubCategory);
-                                                      return sub ? (lang === 'fr' ? (sub.label_fr || sub.label) : (lang === 'ar' ? (sub.label_ar || sub.label) : sub.label)) : '';
-                                                  })()}
-                                              </span>
-                                          </div>
-                                      )
-                                  ) : null}
-                              </div>
+                                                          {/* Fee Explanation Section */}
+                                                          {currentSubMeta && currentSubMeta.fee !== undefined && currentSubMeta.fee > 0 && (
+                                                              <motion.div 
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 border-l-8 border-amber-400 text-white shadow-2xl relative overflow-hidden"
+                                                              >
+                                                                  <div className="absolute top-0 right-0 p-8 opacity-10">
+                                                                      <Icons.Info className="h-32 w-32" />
+                                                                  </div>
+                                                                  <div className="relative z-10">
+                                                                      <h3 className="font-black text-2xl mb-4 flex items-center gap-3">
+                                                                          <Icons.AlertCircle className="h-6 w-6 text-amber-400" />
+                                                                          Important: Payment Fees
+                                                                      </h3>
+                                                                      <p className="text-slate-300 text-lg mb-6 max-w-2xl">
+                                                                          To provide the best service, we apply a small processing fee depending on your chosen payment method.
+                                                                      </p>
+                                                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                                                          <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                                                                              <span className="block text-xs font-bold text-amber-400 uppercase mb-1">D17 / Sobflous</span>
+                                                                              <span className="text-xl font-bold">Fee: {currentSubMeta.fee}%</span>
+                                                                          </div>
+                                                                          <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                                                                              <span className="block text-xs font-bold text-indigo-400 uppercase mb-1">Bank Transfer</span>
+                                                                              <span className="text-xl font-bold">Fee: 0%</span>
+                                                                          </div>
+                                                                      </div>
+                                                                      <div className="flex items-center gap-2 text-sm text-slate-400 italic">
+                                                                          <Icons.Check className="h-4 w-4 text-emerald-500" />
+                                                                          Fees are automatically calculated at checkout.
+                                                                      </div>
+                                                                  </div>
+                                                              </motion.div>
+                                                          )}
+                                                      </div>
+                                                  )}
+                                              </motion.div>
+                                          </AnimatePresence>
+                                      );
+                                    })()}
+                              </motion.div>
                           )}
 
                           {/* Services Grid - Only show if subcategory is selected OR category has no subcategories OR searching/favorites */}
-                          {(activeSubCategory || !CurrentCategoryMeta?.subcategories?.length || searchQuery || showFavoritesOnly) && (
+                          {activeCategory !== 'ALL_CATEGORIES' && (activeSubCategoryPath.length > 0 || !CurrentCategoryMeta?.subcategories?.length || searchQuery || showFavoritesOnly || activeCategory === 'HOME') && (
                               <>
                                   {showFavoritesOnly && (
                                       <div className="mb-6">
@@ -1041,7 +1242,7 @@ const App: React.FC = () => {
                                               </div>
                                           ))}
                                       </div>
-                                  ) : (
+                                  ) : (activeSubCategoryPath.length === 2 || !CurrentCategoryMeta?.subcategories?.length || searchQuery || showFavoritesOnly || activeCategory === 'HOME') ? (
                                       <div className="flex flex-col items-center justify-center py-16 text-center">
                                           <div className="rounded-full bg-slate-100 dark:bg-slate-800 p-6 mb-4">
                                               <Search className="h-8 w-8 text-slate-400" />
@@ -1055,7 +1256,7 @@ const App: React.FC = () => {
                                             Clear all filters
                                           </button>
                                       </div>
-                                  )}
+                                  ) : null}
                               </>
                           )}
                       </div>

@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ServiceItem, ServiceFormData, Order, OrderStatus, Category, User, GlobalSettings } from '../types';
-import { addService, updateService, deleteService, toggleServiceStatus, getOrders, updateOrder, addCategory, updateCategory, deleteCategory, getUsers, deleteUser, addUserByAdmin, updateUser, getCurrentUser, updateGlobalSettings } from '../services/storageService';
+import { ServiceItem, ServiceFormData, Order, OrderStatus, Category, User, GlobalSettings, Subcategory, SecondSubcategory } from '../types';
+import { addService, updateService, deleteService, toggleServiceStatus, getOrders, updateOrder, addCategory, updateCategory, deleteCategory, getUsers, deleteUser, addUserByAdmin, updateUser, getCurrentUser, updateGlobalSettings, addSubcategory, updateSubcategory, deleteSubcategory, addSecondSubcategory, updateSecondSubcategory, deleteSecondSubcategory } from '../services/storageService';
 import { ServiceForm } from './ServiceForm';
 import { CategoryForm } from './CategoryForm';
+import { SubcategoryForm } from './SubcategoryForm';
+import { SecondSubcategoryForm } from './SecondSubcategoryForm';
 import { UserForm } from './UserForm';
 import { Modal } from './Modal';
 import { Plus, Edit2, Trash2, Power, Search, ShoppingCart, List, ExternalLink, FileText, Save, Clock, User as UserIcon, Banknote, Tag, CheckCircle2, AlertCircle, XCircle, Truck, PlayCircle, BarChart3, Users, TrendingUp, PieChart, ArrowUpRight, FolderTree, Smartphone, Settings } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
-export type AdminTab = 'dashboard' | 'services' | 'categories' | 'orders' | 'users';
+export type AdminTab = 'dashboard' | 'services' | 'categories' | 'subcategories' | 'level3_subcategories' | 'orders' | 'users';
 
 interface AdminPanelProps {
   services: ServiceItem[];
@@ -44,10 +46,14 @@ const getStatusLabel = (status: OrderStatus) => {
 export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, onUpdate, notify, activeTab, globalSettings }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
+  const [isSubcategoryFormOpen, setIsSubcategoryFormOpen] = useState(false);
+  const [isSecondSubcategoryFormOpen, setIsSecondSubcategoryFormOpen] = useState(false);
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
   
   const [editingService, setEditingService] = useState<ServiceItem | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
+  const [editingSecondSubcategory, setEditingSecondSubcategory] = useState<SecondSubcategory | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   
   // Search States
@@ -194,6 +200,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
     s.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const sortedSubcategories = useMemo(() => {
+    const flatList = categories.flatMap(cat => (cat.subcategories || []).map(sub => ({
+      ...sub, 
+      category_id: cat.id, 
+      category_label: cat.label
+    })));
+
+    // Group by category
+    const byCategory: Record<string, typeof flatList> = {};
+    flatList.forEach(sub => {
+      if (!byCategory[sub.category_id]) byCategory[sub.category_id] = [];
+      byCategory[sub.category_id].push(sub);
+    });
+
+    const result: (typeof flatList[0] & { level: number })[] = [];
+    
+    // Process each category
+    Object.values(byCategory).forEach(subs => {
+      const roots = subs.filter(s => !s.parent_id);
+      const children = subs.filter(s => s.parent_id);
+      
+      const processNode = (node: any, level: number) => {
+        result.push({ ...node, level }); 
+        const nodeChildren = children.filter(c => c.parent_id === node.id);
+        nodeChildren.forEach(child => processNode(child, level + 1));
+      };
+      
+      roots.forEach(root => processNode(root, 0));
+    });
+    
+    return result;
+  }, [categories]);
+
+  const secondSubcategories = useMemo(() => {
+    return categories.flatMap(cat => 
+        (cat.subcategories || []).flatMap(sub => 
+            (sub.second_subcategories || []).map(ss => ({
+                ...ss,
+                subcategory_label: sub.label,
+                category_label: cat.label
+            }))
+        )
+    );
+  }, [categories]);
+
   const filteredOrders = useMemo(() => {
      return orders.filter(o => {
         const q = orderSearchTerm.toLowerCase();
@@ -266,6 +317,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
         setIsFormOpen(false);
         onUpdate();
     } catch (e) {
+        console.error('Error saving service:', e);
         notify('Failed to save service.', 'error');
     }
   };
@@ -307,6 +359,86 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
     } catch (e) {
         console.error(e);
         notify('Failed to save category.', 'error');
+    }
+  };
+
+  // --- Subcategory Handlers ---
+  const handleAddSubcategoryClick = () => {
+    setEditingSubcategory(null);
+    setIsSubcategoryFormOpen(true);
+  };
+
+  const handleEditSubcategoryClick = (subcategory: Subcategory) => {
+    setEditingSubcategory(subcategory);
+    setIsSubcategoryFormOpen(true);
+  };
+
+  const handleDeleteSubcategoryClick = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this subcategory?')) {
+        try {
+            await deleteSubcategory(id);
+            onUpdate();
+            notify('Subcategory deleted.', 'info');
+        } catch (e) {
+            notify('Failed to delete subcategory.', 'error');
+        }
+    }
+  };
+
+  const handleSubcategorySubmit = async (data: Subcategory) => {
+    try {
+        if (editingSubcategory) {
+            await updateSubcategory(data);
+            notify('Subcategory updated.', 'success');
+        } else {
+            await addSubcategory(data);
+            notify('New subcategory added.', 'success');
+        }
+        setIsSubcategoryFormOpen(false);
+        onUpdate();
+    } catch (e) {
+        console.error(e);
+        notify('Failed to save subcategory.', 'error');
+    }
+  };
+
+  // --- Second Subcategory Handlers ---
+  const handleAddSecondSubcategoryClick = () => {
+    setEditingSecondSubcategory(null);
+    setIsSecondSubcategoryFormOpen(true);
+  };
+
+  const handleEditSecondSubcategoryClick = (ss: SecondSubcategory) => {
+    setEditingSecondSubcategory(ss);
+    setIsSecondSubcategoryFormOpen(true);
+  };
+
+  const handleDeleteSecondSubcategoryClick = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this level 2 subcategory?')) {
+        try {
+            await deleteSecondSubcategory(id);
+            onUpdate();
+            notify('Level 2 subcategory deleted.', 'info');
+        } catch (e) {
+            notify('Failed to delete level 2 subcategory.', 'error');
+        }
+    }
+  };
+
+  const handleSecondSubcategorySubmit = async (data: SecondSubcategory) => {
+    try {
+        if (editingSecondSubcategory) {
+            await updateSecondSubcategory(data);
+            notify('Level 2 subcategory updated.', 'success');
+        } else {
+            await addSecondSubcategory(data);
+            notify('New level 2 subcategory added.', 'success');
+        }
+        setIsSecondSubcategoryFormOpen(false);
+        onUpdate();
+    } catch (e) {
+        console.error(e);
+        notify('Failed to save level 2 subcategory.', 'error');
     }
   };
 
@@ -675,6 +807,288 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
         </div>
       )}
 
+      {/* --- SUBCATEGORIES TAB --- */}
+      {activeTab === 'subcategories' && (
+        <div className="animate-in fade-in duration-300 space-y-4">
+            <div className="flex justify-end">
+                <button 
+                onClick={handleAddSubcategoryClick}
+                className="flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white hover:bg-emerald-500 transition-colors"
+                >
+                <Plus className="h-4 w-4" />
+                Add Subcategory
+                </button>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 shadow-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+                    <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500 dark:text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                        <th className="px-6 py-4 font-semibold text-center">Icon</th>
+                        <th className="px-6 py-4 font-semibold">ID</th>
+                        <th className="px-6 py-4 font-semibold">Label</th>
+                        <th className="px-6 py-4 font-semibold">Parent</th>
+                        <th className="px-6 py-4 font-semibold">Fee</th>
+                        <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {sortedSubcategories.map((sub) => {
+                        const Icon = (Icons as any)[sub.icon || 'Box'] || Icons.Box;
+                        // Find parent subcategory label if exists
+                        const parentSub = sub.parent_id 
+                            ? categories.find(c => c.id === sub.category_id)?.subcategories?.find(s => s.id === sub.parent_id) 
+                            : null;
+                        
+                        return (
+                            <tr key={`${sub.category_id}-${sub.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                <td className="px-6 py-4 text-center">
+                                    <div className={`mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 ${sub.color?.replace('text-', 'text-') || 'text-slate-500'}`}>
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 font-mono text-xs text-slate-500">{sub.id}</td>
+                                <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
+                                    <div className="flex flex-col" style={{ paddingLeft: `${sub.level * 20}px` }}>
+                                        <div className="flex items-center gap-2">
+                                            {sub.level > 0 && <Icons.CornerDownRight className="h-3 w-3 text-slate-400" />}
+                                            <span>{sub.label}</span>
+                                        </div>
+                                        {parentSub && (
+                                            <span className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                                                Child of {parentSub.label}
+                                            </span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-slate-500">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-800 dark:text-slate-200 w-fit">
+                                            {sub.category_label}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">{sub.fee ? `${sub.fee}%` : '-'}</td>
+                                <td className="px-6 py-4 text-right">
+                                    <div className="flex justify-end gap-2">
+                                        <button 
+                                            onClick={() => handleEditSubcategoryClick(sub)}
+                                            className="rounded-lg p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
+                                            title="Edit"
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteSubcategoryClick(sub.id)}
+                                            className="rounded-lg p-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* --- NESTED SUBCATEGORIES TAB --- */}
+      {activeTab === 'nested_subcategories' && (
+        <div className="animate-in fade-in duration-300 space-y-4">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h3 className="text-lg font-medium text-slate-900 dark:text-white">Nested Subcategories (Level 2+)</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Manage subcategories that are children of other subcategories.</p>
+                </div>
+                <button 
+                onClick={handleAddSubcategoryClick}
+                className="flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white hover:bg-emerald-500 transition-colors"
+                >
+                <Plus className="h-4 w-4" />
+                Add Nested Subcategory
+                </button>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 shadow-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+                    <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500 dark:text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                        <th className="px-6 py-4 font-semibold text-center">Icon</th>
+                        <th className="px-6 py-4 font-semibold">ID</th>
+                        <th className="px-6 py-4 font-semibold">Label</th>
+                        <th className="px-6 py-4 font-semibold">Parent Subcategory</th>
+                        <th className="px-6 py-4 font-semibold">Root Category</th>
+                        <th className="px-6 py-4 font-semibold">Fee</th>
+                        <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {sortedSubcategories.filter(s => s.level > 0).map((sub) => {
+                        const Icon = (Icons as any)[sub.icon || 'Box'] || Icons.Box;
+                        // Find parent subcategory label if exists
+                        const parentSub = sub.parent_id 
+                            ? categories.find(c => c.id === sub.category_id)?.subcategories?.find(s => s.id === sub.parent_id) 
+                            : null;
+                        
+                        return (
+                            <tr key={`${sub.category_id}-${sub.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                <td className="px-6 py-4 text-center">
+                                    <div className={`mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 ${sub.color?.replace('text-', 'text-') || 'text-slate-500'}`}>
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 font-mono text-xs text-slate-500">{sub.id}</td>
+                                <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
+                                    <div className="flex items-center gap-2">
+                                        <span>{sub.label}</span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-slate-900 dark:text-white">
+                                    {parentSub ? (
+                                        <div className="flex items-center gap-2">
+                                            <Icons.CornerDownRight className="h-3 w-3 text-slate-400" />
+                                            <span>{parentSub.label}</span>
+                                        </div>
+                                    ) : '-'}
+                                </td>
+                                <td className="px-6 py-4 text-slate-500">
+                                    <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-800 dark:text-slate-200 w-fit">
+                                        {sub.category_label}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4">{sub.fee ? `${sub.fee}%` : '-'}</td>
+                                <td className="px-6 py-4 text-right">
+                                    <div className="flex justify-end gap-2">
+                                        <button 
+                                            onClick={() => handleEditSubcategoryClick(sub)}
+                                            className="rounded-lg p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
+                                            title="Edit"
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteSubcategoryClick(sub.id)}
+                                            className="rounded-lg p-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                    {sortedSubcategories.filter(s => s.level > 0).length === 0 && (
+                        <tr>
+                            <td colSpan={7} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                                No nested subcategories found. Click "Add Nested Subcategory" to create one.
+                            </td>
+                        </tr>
+                    )}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* --- LEVEL 3 SUBCATEGORIES TAB --- */}
+      {activeTab === 'level3_subcategories' && (
+        <div className="animate-in fade-in duration-300 space-y-4">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h3 className="text-lg font-medium text-slate-900 dark:text-white">Level 3 Subcategories (Nested)</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Manage subcategories that are children of Level 2 subcategories.</p>
+                </div>
+                <button 
+                onClick={handleAddSecondSubcategoryClick}
+                className="flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white hover:bg-emerald-500 transition-colors"
+                >
+                <Plus className="h-4 w-4" />
+                Add Level 3 Subcategory
+                </button>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 shadow-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+                    <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500 dark:text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                        <th className="px-6 py-4 font-semibold text-center">Icon</th>
+                        <th className="px-6 py-4 font-semibold">ID</th>
+                        <th className="px-6 py-4 font-semibold">Label</th>
+                        <th className="px-6 py-4 font-semibold">Parent Subcategory</th>
+                        <th className="px-6 py-4 font-semibold">Root Category</th>
+                        <th className="px-6 py-4 font-semibold">Fee</th>
+                        <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {secondSubcategories.map((ss) => {
+                        const Icon = (Icons as any)[ss.icon || 'Box'] || Icons.Box;
+                        return (
+                            <tr key={ss.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                <td className="px-6 py-4 text-center">
+                                    <div className={`mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 ${ss.color?.replace('text-', 'text-') || 'text-slate-500'}`}>
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 font-mono text-xs text-slate-500">{ss.id}</td>
+                                <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{ss.label}</td>
+                                <td className="px-6 py-4 text-slate-900 dark:text-white">
+                                    <div className="flex items-center gap-2">
+                                        <Icons.CornerDownRight className="h-3 w-3 text-slate-400" />
+                                        <span>{ss.subcategory_label}</span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-slate-500">
+                                    <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-800 dark:text-slate-200 w-fit">
+                                        {ss.category_label}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4">{ss.fee ? `${ss.fee}%` : '-'}</td>
+                                <td className="px-6 py-4 text-right">
+                                    <div className="flex justify-end gap-2">
+                                        <button 
+                                            onClick={() => handleEditSecondSubcategoryClick(ss)}
+                                            className="rounded-lg p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
+                                            title="Edit"
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteSecondSubcategoryClick(ss.id)}
+                                            className="rounded-lg p-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                    {secondSubcategories.length === 0 && (
+                        <tr>
+                            <td colSpan={7} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                                No level 3 subcategories found. Click "Add Level 3 Subcategory" to create one.
+                            </td>
+                        </tr>
+                    )}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+      )}
+
       {/* --- ORDERS TAB --- */}
       {activeTab === 'orders' && (
         <div className="space-y-4 animate-in fade-in duration-300">
@@ -872,6 +1286,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
             initialData={editingCategory || undefined}
             onSubmit={handleCategorySubmit}
             onCancel={() => setIsCategoryFormOpen(false)}
+        />
+      </Modal>
+
+      {/* Subcategory Modal */}
+      <Modal
+        isOpen={isSubcategoryFormOpen}
+        onClose={() => setIsSubcategoryFormOpen(false)}
+        title={editingSubcategory ? 'Edit Subcategory' : 'Add New Subcategory'}
+      >
+        <SubcategoryForm
+            initialData={editingSubcategory || undefined}
+            categories={categories}
+            onSubmit={handleSubcategorySubmit}
+            onCancel={() => setIsSubcategoryFormOpen(false)}
+        />
+      </Modal>
+
+      {/* Second Subcategory Modal */}
+      <Modal
+        isOpen={isSecondSubcategoryFormOpen}
+        onClose={() => setIsSecondSubcategoryFormOpen(false)}
+        title={editingSecondSubcategory ? 'Edit Level 2 Subcategory' : 'Add New Level 2 Subcategory'}
+      >
+        <SecondSubcategoryForm
+            initialData={editingSecondSubcategory || undefined}
+            categories={categories}
+            onSubmit={handleSecondSubcategorySubmit}
+            onCancel={() => setIsSecondSubcategoryFormOpen(false)}
         />
       </Modal>
 

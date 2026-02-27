@@ -1,4 +1,4 @@
-import { ServiceItem, Order, User, Review, Category, GlobalSettings } from '../types';
+import { ServiceItem, Order, User, Review, Category, GlobalSettings, Subcategory, SecondSubcategory } from '../types';
 import { INITIAL_SERVICES, CATEGORIES as DEFAULT_CATEGORIES } from '../constants';
 import { db } from './db';
 import { isDbConnected } from './supabaseClient';
@@ -77,6 +77,190 @@ export const deleteCategory = async (id: string): Promise<Category[]> => {
   const updated = current.filter(c => c.id !== id);
   setLocal(CATEGORIES_KEY, updated);
   return updated;
+};
+
+// --- Subcategories ---
+export const getSubcategories = async (): Promise<Subcategory[]> => {
+  if (isDbConnected()) {
+    return db.getSubcategories();
+  }
+  const categories = await getCategories();
+  return categories.flatMap(c => (c.subcategories || []).map(s => ({ ...s, category_id: c.id })));
+};
+
+export const addSubcategory = async (subcategory: Subcategory): Promise<Subcategory> => {
+  if (isDbConnected()) {
+    return db.addSubcategory(subcategory);
+  }
+  const categories = await getCategories();
+  const categoryIndex = categories.findIndex(c => c.id === subcategory.category_id);
+  
+  if (categoryIndex !== -1) {
+    const category = categories[categoryIndex];
+    const newSub = { ...subcategory, id: subcategory.id || crypto.randomUUID() };
+    const updatedCategory = {
+      ...category,
+      subcategories: [...(category.subcategories || []), newSub]
+    };
+    categories[categoryIndex] = updatedCategory;
+    setLocal(CATEGORIES_KEY, categories);
+    return newSub;
+  }
+  throw new Error('Category not found');
+};
+
+export const updateSubcategory = async (subcategory: Subcategory): Promise<Subcategory> => {
+  if (isDbConnected()) {
+    return db.updateSubcategory(subcategory);
+  }
+  const categories = await getCategories();
+  
+  // Find current category (might have changed if category_id updated, but for now assume same or handle move)
+  // Simple update in place
+  for (let i = 0; i < categories.length; i++) {
+    const cat = categories[i];
+    if (cat.subcategories) {
+      const subIndex = cat.subcategories.findIndex(s => s.id === subcategory.id);
+      if (subIndex !== -1) {
+        // Check if category changed
+        if (subcategory.category_id && subcategory.category_id !== cat.id) {
+            // Move to new category
+            cat.subcategories.splice(subIndex, 1); // Remove from old
+            const newCatIndex = categories.findIndex(c => c.id === subcategory.category_id);
+            if (newCatIndex !== -1) {
+                categories[newCatIndex].subcategories = [...(categories[newCatIndex].subcategories || []), subcategory];
+            }
+        } else {
+            // Update in place
+            cat.subcategories[subIndex] = subcategory;
+        }
+        setLocal(CATEGORIES_KEY, categories);
+        return subcategory;
+      }
+    }
+  }
+  throw new Error('Subcategory not found');
+};
+
+export const deleteSubcategory = async (id: string): Promise<void> => {
+  if (isDbConnected()) {
+    await db.deleteSubcategory(id);
+    return;
+  }
+  const categories = await getCategories();
+  for (let i = 0; i < categories.length; i++) {
+    const cat = categories[i];
+    if (cat.subcategories) {
+      const filtered = cat.subcategories.filter(s => s.id !== id);
+      if (filtered.length !== cat.subcategories.length) {
+        categories[i] = { ...cat, subcategories: filtered };
+        setLocal(CATEGORIES_KEY, categories);
+        return;
+      }
+    }
+  }
+};
+
+// --- Second Subcategories (Level 3) ---
+export const getSecondSubcategories = async (): Promise<SecondSubcategory[]> => {
+  if (isDbConnected()) {
+    return db.getSecondSubcategories();
+  }
+  const categories = await getCategories();
+  return categories.flatMap(c => 
+    (c.subcategories || []).flatMap(s => 
+        (s.second_subcategories || []).map(ss => ({ ...ss, subcategory_id: s.id }))
+    )
+  );
+};
+
+export const addSecondSubcategory = async (ss: SecondSubcategory): Promise<SecondSubcategory> => {
+  if (isDbConnected()) {
+    return db.addSecondSubcategory(ss);
+  }
+  const categories = await getCategories();
+  for (let i = 0; i < categories.length; i++) {
+    const cat = categories[i];
+    if (cat.subcategories) {
+      const subIndex = cat.subcategories.findIndex(s => s.id === ss.subcategory_id);
+      if (subIndex !== -1) {
+        const sub = cat.subcategories[subIndex];
+        const newSS = { ...ss, id: ss.id || crypto.randomUUID() };
+        sub.second_subcategories = [...(sub.second_subcategories || []), newSS];
+        setLocal(CATEGORIES_KEY, categories);
+        return newSS;
+      }
+    }
+  }
+  throw new Error('Parent subcategory not found');
+};
+
+export const updateSecondSubcategory = async (ss: SecondSubcategory): Promise<SecondSubcategory> => {
+  if (isDbConnected()) {
+    return db.updateSecondSubcategory(ss);
+  }
+  const categories = await getCategories();
+  for (let i = 0; i < categories.length; i++) {
+    const cat = categories[i];
+    if (cat.subcategories) {
+      for (let j = 0; j < cat.subcategories.length; j++) {
+        const sub = cat.subcategories[j];
+        if (sub.second_subcategories) {
+          const ssIndex = sub.second_subcategories.findIndex(item => item.id === ss.id);
+          if (ssIndex !== -1) {
+             // Handle move if subcategory_id changed
+             if (ss.subcategory_id && ss.subcategory_id !== sub.id) {
+                sub.second_subcategories.splice(ssIndex, 1);
+                // Find new parent
+                // This is complex for local storage, but let's try a simple search
+                let found = false;
+                for (let k = 0; k < categories.length; k++) {
+                    const targetCat = categories[k];
+                    if (targetCat.subcategories) {
+                        const targetSub = targetCat.subcategories.find(s => s.id === ss.subcategory_id);
+                        if (targetSub) {
+                            targetSub.second_subcategories = [...(targetSub.second_subcategories || []), ss];
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!found) throw new Error('New parent subcategory not found');
+             } else {
+                sub.second_subcategories[ssIndex] = ss;
+             }
+             setLocal(CATEGORIES_KEY, categories);
+             return ss;
+          }
+        }
+      }
+    }
+  }
+  throw new Error('Second subcategory not found');
+};
+
+export const deleteSecondSubcategory = async (id: string): Promise<void> => {
+  if (isDbConnected()) {
+    await db.deleteSecondSubcategory(id);
+    return;
+  }
+  const categories = await getCategories();
+  for (let i = 0; i < categories.length; i++) {
+    const cat = categories[i];
+    if (cat.subcategories) {
+      for (let j = 0; j < cat.subcategories.length; j++) {
+        const sub = cat.subcategories[j];
+        if (sub.second_subcategories) {
+          const filtered = sub.second_subcategories.filter(ss => ss.id !== id);
+          if (filtered.length !== sub.second_subcategories.length) {
+            sub.second_subcategories = filtered;
+            setLocal(CATEGORIES_KEY, categories);
+            return;
+          }
+        }
+      }
+    }
+  }
 };
 
 // --- User Management ---

@@ -6,15 +6,36 @@ export enum ServiceCategory {
   BUSINESS_SUITE = 'Business Suite',
 }
 
-export interface Subcategory {
+export interface SecondSubcategory {
   id: string;
+  subcategory_id: string;
   label: string;
   label_fr: string;
   label_ar: string;
   desc?: string;
   desc_fr?: string;
   desc_ar?: string;
-  image?: string;
+  icon?: string;
+  color?: string;
+  fee?: number;
+  order?: number;
+}
+
+export interface Subcategory {
+  id: string;
+  category_id?: string; 
+  parent_id?: string; 
+  label: string;
+  label_fr: string;
+  label_ar: string;
+  desc?: string;
+  desc_fr?: string;
+  desc_ar?: string;
+  icon?: string;
+  color?: string;
+  fee?: number;
+  order?: number;
+  second_subcategories?: SecondSubcategory[];
 }
 
 export interface Category {
@@ -50,6 +71,7 @@ export interface ServiceItem {
   badgeLabel?: string; // New field for marketing badge (e.g. "50% OFF")
   videoUri?: string; // New field for Veo video URI
   subcategory?: string; // New field for subcategory filtering
+  second_subcategory_id?: string; // New field for Level 3 subcategory
 }
 
 export type ServiceFormData = Omit<ServiceItem, 'id' | 'createdAt'>;

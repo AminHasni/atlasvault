@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ServiceFormData, ServiceItem, Category } from '../types';
+import React, { useState, useMemo } from 'react';
+import { ServiceFormData, ServiceItem, Category, Subcategory } from '../types';
 import { generateServiceDescription } from '../services/geminiService';
 import { Sparkles, Loader2, Tag, Percent } from 'lucide-react';
 
@@ -15,9 +15,10 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
     name: initialData?.name || '',
     category: initialData?.category || (categories[0]?.id || ''),
     subcategory: initialData?.subcategory || '',
+    second_subcategory_id: initialData?.second_subcategory_id || '',
     description: initialData?.description || '',
     price: initialData?.price || 0,
-    promoPrice: initialData?.promoPrice || undefined,
+    promoPrice: initialData?.promoPrice ?? '',
     badgeLabel: initialData?.badgeLabel || '',
     currency: 'TND', // Force TND
     conditions: initialData?.conditions || '',
@@ -28,12 +29,49 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
 
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // Helper to organize subcategories into a hierarchy
+  const organizedSubcategories = useMemo(() => {
+    const selectedCategory = categories.find(c => c.id === formData.category);
+    if (!selectedCategory || !selectedCategory.subcategories) return [];
+
+    const tree: { id: string; label: string; level: number; parentId?: string }[] = [];
+    
+    for (const sub of selectedCategory.subcategories) {
+      tree.push({ id: sub.id, label: sub.label, level: 0 });
+      if (sub.second_subcategories) {
+        for (const secondSub of sub.second_subcategories) {
+          tree.push({ id: secondSub.id, label: secondSub.label, level: 1, parentId: sub.id });
+        }
+      }
+    }
+    return tree;
+  }, [categories, formData.category]);
+
+  const handleSubcategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = e.target.value;
+    if (!selectedId) {
+      setFormData(prev => ({ ...prev, subcategory: '', second_subcategory_id: '' }));
+      return;
+    }
+
+    const selected = organizedSubcategories.find(s => s.id === selectedId);
+    if (selected) {
+      if (selected.level === 0) {
+        // Level 1 selected
+        setFormData(prev => ({ ...prev, subcategory: selected.id, second_subcategory_id: '' }));
+      } else {
+        // Level 2 selected
+        setFormData(prev => ({ ...prev, subcategory: selected.parentId || '', second_subcategory_id: selected.id }));
+      }
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: (name === 'price' || name === 'promoPrice') 
-        ? (value === '' ? undefined : parseFloat(value)) 
+        ? (value === '' ? '' : parseFloat(value)) 
         : value
     }));
   };
@@ -59,7 +97,14 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    // Convert empty strings to null for optional foreign keys and handle promoPrice
+    const submissionData = {
+      ...formData,
+      subcategory: formData.subcategory || null,
+      second_subcategory_id: formData.second_subcategory_id || null,
+      promoPrice: formData.promoPrice === '' ? null : Number(formData.promoPrice),
+    };
+    onSubmit(submissionData as any);
   };
 
   return (
@@ -98,15 +143,18 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Subcategory (Optional)</label>
           <select
-            name="subcategory"
-            value={formData.subcategory || ''}
-            onChange={handleInputChange}
+            name="subcategory_selection"
+            value={formData.second_subcategory_id || formData.subcategory || ''}
+            onChange={handleSubcategoryChange}
             disabled={!formData.category}
             className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none disabled:opacity-50"
           >
             <option value="">None</option>
-            {categories.find(c => c.id === formData.category)?.subcategories?.map(sub => (
-              <option key={sub.id} value={sub.id}>{sub.label}</option>
+            {organizedSubcategories.map(sub => (
+              <option key={sub.id} value={sub.id}>
+                {/* Visual indentation using non-breaking spaces */}
+                {'\u00A0'.repeat(sub.level * 4)}{sub.label}
+              </option>
             ))}
           </select>
         </div>
@@ -162,7 +210,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
                 <input
                     type="number"
                     name="promoPrice"
-                    value={formData.promoPrice || ''}
+                    value={formData.promoPrice ?? ''}
                     onChange={handleInputChange}
                     min="0"
                     step="0.01"

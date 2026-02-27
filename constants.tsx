@@ -301,7 +301,13 @@ export const TRANSLATIONS = {
     cancelOrderConfirm: "Are you sure you want to cancel this order?",
     orderCancelled: "Order cancelled successfully",
     subcategory: "Subcategory",
-    all: "All"
+    subcategories: "Subcategories",
+    nested_subcategories: "Nested Subcategories",
+    all: "All",
+    backToCategories: "Back to Categories",
+    explore: "Explore",
+    back: "Back",
+    secondSubcategory: "Second Subcategory",
   },
   fr: {
     searchPlaceholder: "Rechercher...",
@@ -427,7 +433,13 @@ export const TRANSLATIONS = {
     cancelOrderConfirm: "Êtes-vous sûr de vouloir annuler cette commande ?",
     orderCancelled: "Commande annulée avec succès",
     subcategory: "Sous-catégorie",
-    all: "Tout"
+    subcategories: "Sous-catégories",
+    nested_subcategories: "Sous-catégories imbriquées",
+    all: "Tout",
+    backToCategories: "Retour aux catégories",
+    explore: "Explorer",
+    back: "Retour",
+    secondSubcategory: "Sous-catégorie de niveau 2",
   },
   ar: {
     searchPlaceholder: "البحث عن الخدمات...",
@@ -553,7 +565,13 @@ export const TRANSLATIONS = {
     cancelOrderConfirm: "هل أنت متأكد أنك تريد إلغاء هذا الطلب؟",
     orderCancelled: "تم إلغاء الطلب بنجاح",
     subcategory: "فئة فرعية",
-    all: "الكل"
+    subcategories: "فئات فرعية",
+    nested_subcategories: "فئات فرعية متداخلة",
+    all: "الكل",
+    backToCategories: "العودة إلى الفئات",
+    explore: "استكشاف",
+    back: "رجوع",
+    secondSubcategory: "فئة فرعية من المستوى الثاني",
   }
 };
 
@@ -573,6 +591,15 @@ export const CATEGORIES: CategoryMeta[] = [
       { id: 'ESIM', label: 'eSIMs', label_fr: 'eSIMs', label_ar: 'شرائح إلكترونية' },
       { id: 'VIRTUAL_NUMBERS', label: 'Virtual Numbers', label_fr: 'Numéros Virtuels', label_ar: 'أرقام افتراضية' },
       { id: 'PAYMENT_CARDS', label: 'Payment Cards', label_fr: 'Cartes de Paiement', label_ar: 'بطاقات دفع' },
+      { 
+        id: 'INTERNET_BUNDLES', 
+        label: 'Internet Bundles', 
+        label_fr: 'Forfaits Internet', 
+        label_ar: 'حزم الإنترنت',
+        second_subcategories: [
+          { id: 'OOREDOO', subcategory_id: 'INTERNET_BUNDLES', label: 'Ooredoo', label_fr: 'Ooredoo', label_ar: 'أوريدو' }
+        ]
+      },
     ]
   },
   {
@@ -748,5 +775,19 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     active: true,
     createdAt: Date.now() - 40000,
     popularity: 98,
+  },
+  {
+    id: '6',
+    name: 'Ooredoo 25GB Data Plan',
+    category: 'CONNECTIVITY',
+    subcategory: 'OOREDOO',
+    description: 'High-speed 4G/5G data bundle for Ooredoo subscribers.',
+    price: 25.00,
+    currency: 'TND',
+    conditions: 'Valid for 30 days.',
+    requiredInfo: 'Phone number',
+    active: true,
+    createdAt: Date.now() - 50000,
+    popularity: 75,
   },
 ];

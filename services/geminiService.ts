@@ -50,13 +50,25 @@ export const streamChatResponse = async (
   }
 
   // Build system context from catalog
-  const catalogContext = context.services.map(s => 
-    `- ${s.name} (${s.category}): ${s.price} ${s.currency}. Desc: ${s.description}. Active: ${s.active}`
-  ).join('\n');
+  const catalogContext = context.services.map(s => {
+    const subPath = [s.category, s.subcategory, s.second_subcategory_id].filter(Boolean).join(' > ');
+    return `- ${s.name} (${subPath}): ${s.price} ${s.currency}. Desc: ${s.description}. Active: ${s.active}`;
+  }).join('\n');
 
-  const categoriesContext = context.categories.map(c => 
-    `- ${c.label} (${c.id}): ${c.desc}`
-  ).join('\n');
+  const categoriesContext = context.categories.map(c => {
+    let text = `- ${c.label} (${c.id}): ${c.desc}`;
+    if (c.subcategories) {
+      c.subcategories.forEach(sub => {
+        text += `\n  - Sub: ${sub.label} (${sub.id})`;
+        if (sub.second_subcategories) {
+          sub.second_subcategories.forEach(ss => {
+            text += `\n    - L2: ${ss.label} (${ss.id})`;
+          });
+        }
+      });
+    }
+    return text;
+  }).join('\n');
 
   const systemInstruction = `You are ATLAS, the elite AI concierge for ATLASVAULT.
   

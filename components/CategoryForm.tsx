@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Category } from '../types';
 import * as Icons from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
+import { SubcategoryManager } from './SubcategoryManager';
 
 interface CategoryFormProps {
   initialData?: Category;
@@ -35,12 +36,8 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
     order: initialData?.order || 0,
   });
 
-  const [subcategories, setSubcategories] = useState<{id: string, label: string, label_fr: string, label_ar: string, desc?: string, desc_fr?: string, desc_ar?: string, image?: string}[]>(initialData?.subcategories || []);
-  const [newSub, setNewSub] = useState({ id: '', label: '', label_fr: '', label_ar: '', desc: '', desc_fr: '', desc_ar: '', image: '' });
-  const [editingSubIndex, setEditingSubIndex] = useState<number | null>(null);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [subcategories, setSubcategories] = useState<Category['subcategories']>(initialData?.subcategories || []);
   const [isTranslatingCat, setIsTranslatingCat] = useState(false);
-  const [isTranslatingSub, setIsTranslatingSub] = useState(false);
 
   const isEditing = !!initialData;
 
@@ -50,90 +47,6 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
       ...prev,
       [name]: name === 'order' ? parseInt(value) || 0 : value
     }));
-  };
-
-  const handleSubInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewSub(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 600;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // Compress to JPEG with 70% quality to significantly reduce base64 string size
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
-          setNewSub(prev => ({ ...prev, image: dataUrl }));
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleGenerateImage = async () => {
-    if (!newSub.label) return;
-    setIsGeneratingImage(true);
-    try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const prompt = `A high quality, modern, abstract or illustrative background image representing the category: ${newSub.label}. Minimalist, tech-oriented, suitable for a digital service marketplace. No text.`;
-        
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: [{ text: prompt }] },
-             config: {
-                imageConfig: {
-                    aspectRatio: "16:9",
-                }
-            }
-        });
-
-        let imageUrl = '';
-        if (response.candidates?.[0]?.content?.parts) {
-             for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    const base64EncodeString = part.inlineData.data;
-                    imageUrl = `data:image/png;base64,${base64EncodeString}`;
-                    break;
-                }
-             }
-        }
-
-        if (imageUrl) {
-            setNewSub(prev => ({ ...prev, image: imageUrl }));
-        }
-    } catch (error) {
-        console.error("Failed to generate image", error);
-        alert("Failed to generate image. Please try again.");
-    } finally {
-        setIsGeneratingImage(false);
-    }
   };
 
   const handleTranslateCategory = async () => {
@@ -167,81 +80,6 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
       } finally {
           setIsTranslatingCat(false);
       }
-  };
-
-  const handleTranslateSubcategory = async () => {
-      if (!newSub.label && !newSub.desc) return;
-      setIsTranslatingSub(true);
-      try {
-          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-          const prompt = `Translate the following subcategory label and description into French and Arabic.
-          Return ONLY a valid JSON object with the following keys: label_fr, label_ar, desc_fr, desc_ar.
-          Label to translate: "${newSub.label}"
-          Description to translate: "${newSub.desc}"`;
-
-          const response = await ai.models.generateContent({
-              model: 'gemini-2.5-flash',
-              contents: prompt,
-              config: {
-                  responseMimeType: "application/json",
-              }
-          });
-
-          const result = JSON.parse(response.text || '{}');
-          setNewSub(prev => ({
-              ...prev,
-              label_fr: result.label_fr || prev.label_fr,
-              label_ar: result.label_ar || prev.label_ar,
-              desc_fr: result.desc_fr || prev.desc_fr,
-              desc_ar: result.desc_ar || prev.desc_ar,
-          }));
-      } catch (error) {
-          console.error("Translation failed", error);
-      } finally {
-          setIsTranslatingSub(false);
-      }
-  };
-
-  const handleAddSubcategory = () => {
-    if (!newSub.label) return;
-    
-    if (editingSubIndex !== null) {
-        // Update existing
-        const updatedSubs = [...subcategories];
-        updatedSubs[editingSubIndex] = { ...newSub, id: newSub.id || newSub.label.toUpperCase().replace(/\s+/g, '_') };
-        setSubcategories(updatedSubs);
-        setEditingSubIndex(null);
-    } else {
-        // Add new
-        const id = newSub.id || newSub.label.toUpperCase().replace(/\s+/g, '_');
-        setSubcategories([...subcategories, { ...newSub, id }]);
-    }
-    setNewSub({ id: '', label: '', label_fr: '', label_ar: '', desc: '', desc_fr: '', desc_ar: '', image: '' });
-  };
-
-  const handleEditSubcategory = (index: number) => {
-      const sub = subcategories[index];
-      setNewSub({
-          id: sub.id,
-          label: sub.label,
-          label_fr: sub.label_fr,
-          label_ar: sub.label_ar,
-          desc: sub.desc || '',
-          desc_fr: sub.desc_fr || '',
-          desc_ar: sub.desc_ar || '',
-          image: sub.image || ''
-      });
-      setEditingSubIndex(index);
-  };
-
-  const handleCancelSubEdit = () => {
-      setNewSub({ id: '', label: '', label_fr: '', label_ar: '', desc: '', desc_fr: '', desc_ar: '', image: '' });
-      setEditingSubIndex(null);
-  };
-
-  const handleRemoveSubcategory = (index: number) => {
-    setSubcategories(subcategories.filter((_, i) => i !== index));
-    if (editingSubIndex === index) handleCancelSubEdit();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -400,191 +238,10 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
       <div className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
         <h3 className="text-sm font-medium text-slate-900 dark:text-white">Subcategories</h3>
         
-        {/* List */}
-        <div className="space-y-2">
-          {subcategories.map((sub, idx) => (
-            <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-3 w-full mr-4">
-                 {sub.image ? (
-                     <img src={sub.image} alt={sub.label} className="h-10 w-16 object-cover rounded" />
-                 ) : (
-                     <div className="h-10 w-16 bg-slate-200 dark:bg-slate-700 rounded flex items-center justify-center text-xs text-slate-400">No Img</div>
-                 )}
-                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs w-full">
-                     <div><span className="text-slate-500 block">ID</span>{sub.id}</div>
-                     <div><span className="text-slate-500 block">EN</span>{sub.label}</div>
-                     <div><span className="text-slate-500 block">FR</span>{sub.label_fr}</div>
-                     <div><span className="text-slate-500 block">AR</span>{sub.label_ar}</div>
-                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleEditSubcategory(idx)}
-                    className="text-indigo-500 hover:text-indigo-600 p-1"
-                  >
-                    <Icons.Edit2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSubcategory(idx)}
-                    className="text-rose-500 hover:text-rose-600 p-1"
-                  >
-                    <Icons.Trash2 className="h-4 w-4" />
-                  </button>
-              </div>
-            </div>
-          ))}
-          {subcategories.length === 0 && (
-            <p className="text-xs text-slate-500 italic">No subcategories added yet.</p>
-          )}
-        </div>
-
-        {/* Add Form */}
-        <div className={`grid grid-cols-1 sm:grid-cols-6 gap-2 items-end p-3 rounded-lg border transition-colors ${editingSubIndex !== null ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
-           <div className="sm:col-span-1">
-              <label className="text-xs text-slate-500 mb-1 block">ID (Auto)</label>
-              <input 
-                type="text" 
-                name="id" 
-                value={newSub.id} 
-                onChange={handleSubInputChange}
-                placeholder="Auto"
-                className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white"
-              />
-           </div>
-           <div className="sm:col-span-1">
-              <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs text-slate-500 block">Label (EN)</label>
-                  <button
-                      type="button"
-                      onClick={handleTranslateSubcategory}
-                      disabled={isTranslatingSub || (!newSub.label && !newSub.desc)}
-                      className="text-[10px] flex items-center gap-1 text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
-                  >
-                      {isTranslatingSub ? <Icons.Loader2 className="h-3 w-3 animate-spin" /> : <Icons.Languages className="h-3 w-3" />}
-                      Auto
-                  </button>
-              </div>
-              <input 
-                type="text" 
-                name="label" 
-                value={newSub.label} 
-                onChange={handleSubInputChange}
-                placeholder="Name"
-                className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white"
-              />
-           </div>
-           <div className="sm:col-span-1">
-              <label className="text-xs text-slate-500 mb-1 block">Label (FR)</label>
-              <input 
-                type="text" 
-                name="label_fr" 
-                value={newSub.label_fr} 
-                onChange={handleSubInputChange}
-                placeholder="Nom"
-                className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white"
-              />
-           </div>
-           <div className="sm:col-span-1">
-              <label className="text-xs text-slate-500 mb-1 block">Label (AR)</label>
-              <input 
-                type="text" 
-                name="label_ar" 
-                value={newSub.label_ar} 
-                onChange={handleSubInputChange}
-                placeholder="الاسم"
-                className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white text-right"
-              />
-           </div>
-           
-           {/* Descriptions */}
-           <div className="sm:col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">Description (EN)</label>
-              <textarea 
-                name="desc" 
-                value={newSub.desc} 
-                onChange={handleSubInputChange}
-                rows={2}
-                className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white"
-              />
-           </div>
-           <div className="sm:col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">Description (FR)</label>
-              <textarea 
-                name="desc_fr" 
-                value={newSub.desc_fr} 
-                onChange={handleSubInputChange}
-                rows={2}
-                className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white"
-              />
-           </div>
-           <div className="sm:col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">Description (AR)</label>
-              <textarea 
-                name="desc_ar" 
-                value={newSub.desc_ar} 
-                onChange={handleSubInputChange}
-                rows={2}
-                className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white text-right"
-              />
-           </div>
-
-           <div className="sm:col-span-6">
-               <label className="text-xs text-slate-500 mb-1 block">Image</label>
-               <div className="flex gap-2 items-center">
-                   {newSub.image ? (
-                       <div className="relative w-24 h-16 group shrink-0">
-                           <img src={newSub.image} alt="Preview" className="w-full h-full object-cover rounded border border-slate-300 dark:border-slate-600" />
-                           <button 
-                                type="button" 
-                                onClick={() => setNewSub(prev => ({...prev, image: ''}))}
-                                className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                           >
-                               <Icons.X className="h-3 w-3" />
-                           </button>
-                       </div>
-                   ) : (
-                       <div className="flex gap-2 w-full">
-                           <label className="flex-1 h-8 flex items-center justify-center gap-1 rounded border border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-500 text-[10px] hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
-                               <Icons.Upload className="h-3 w-3" />
-                               Upload
-                               <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                           </label>
-                           <button
-                                type="button"
-                                onClick={handleGenerateImage}
-                                disabled={!newSub.label || isGeneratingImage}
-                                className="flex-1 h-8 flex items-center justify-center gap-1 rounded border border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[10px] hover:bg-indigo-100 dark:hover:bg-indigo-900/40 disabled:opacity-50"
-                           >
-                               {isGeneratingImage ? <Icons.Loader2 className="h-3 w-3 animate-spin" /> : <Icons.Sparkles className="h-3 w-3" />}
-                               {isGeneratingImage ? 'Gen...' : 'AI Gen'}
-                           </button>
-                       </div>
-                   )}
-               </div>
-           </div>
-           <div className="sm:col-span-6 flex gap-1 justify-end mt-2">
-              <button
-                type="button"
-                onClick={handleAddSubcategory}
-                disabled={!newSub.label}
-                className={`flex-1 flex items-center justify-center gap-1 rounded px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed ${editingSubIndex !== null ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}
-              >
-                {editingSubIndex !== null ? <Icons.Check className="h-3 w-3" /> : <Icons.Plus className="h-3 w-3" />}
-                {editingSubIndex !== null ? 'Update' : 'Add'}
-              </button>
-              {editingSubIndex !== null && (
-                  <button
-                    type="button"
-                    onClick={handleCancelSubEdit}
-                    className="flex items-center justify-center rounded bg-slate-200 dark:bg-slate-700 px-2 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
-                  >
-                    <Icons.X className="h-3 w-3" />
-                  </button>
-              )}
-           </div>
-        </div>
+        <SubcategoryManager 
+            subcategories={subcategories || []} 
+            onChange={setSubcategories} 
+        />
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">

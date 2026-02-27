@@ -1,5 +1,5 @@
 import { supabase, isDbConnected } from './supabaseClient';
-import { ServiceItem, Order, User, Review, Category } from '../types';
+import { ServiceItem, Order, User, Review, Category, Subcategory, SecondSubcategory } from '../types';
 
 // This service handles the direct DB communication
 
@@ -23,15 +23,33 @@ export const db = {
 
     if (subError) {
         console.error('Error fetching subcategories:', subError);
-        // Return categories without subcategories if sub fetch fails
         return categories as Category[];
     }
 
-    // Map subcategories to their parent categories
-    return (categories as Category[]).map(cat => ({
-        ...cat,
-        subcategories: (subcategories as any[]).filter(sub => sub.category_id === cat.id)
-    }));
+    const { data: secondSubcategories, error: secondSubError } = await supabase
+      .from('second_subcategories')
+      .select('*')
+      .order('order', { ascending: true });
+
+    if (secondSubError) {
+        console.error('Error fetching second subcategories:', secondSubError);
+    }
+
+    // Map subcategories and second subcategories
+    return (categories as Category[]).map(cat => {
+        const catSubs = (subcategories as any[])
+            .filter(sub => sub.category_id === cat.id)
+            .map(sub => ({
+                ...sub,
+                second_subcategories: (secondSubcategories || [])
+                    .filter((ss: any) => ss.subcategory_id === sub.id)
+            }));
+            
+        return {
+            ...cat,
+            subcategories: catSubs
+        };
+    });
   },
 
   async addCategory(category: Category): Promise<Category> {
@@ -50,13 +68,17 @@ export const db = {
         const subsToInsert = subcategories.map(sub => ({
             id: sub.id,
             category_id: newCat.id,
+            parent_id: sub.parent_id,
             label: sub.label,
             label_fr: sub.label_fr,
             label_ar: sub.label_ar,
             desc: sub.desc,
             desc_fr: sub.desc_fr,
             desc_ar: sub.desc_ar,
-            image: sub.image
+            icon: sub.icon,
+            color: sub.color,
+            fee: sub.fee,
+            order: sub.order
         }));
         
         const { error: subError } = await supabase
@@ -89,13 +111,17 @@ export const db = {
         const subsToInsert = subcategories.map(sub => ({
             id: sub.id,
             category_id: category.id,
+            parent_id: sub.parent_id,
             label: sub.label,
             label_fr: sub.label_fr,
             label_ar: sub.label_ar,
             desc: sub.desc,
             desc_fr: sub.desc_fr,
             desc_ar: sub.desc_ar,
-            image: sub.image
+            icon: sub.icon,
+            color: sub.color,
+            fee: sub.fee,
+            order: sub.order
         }));
         
         await supabase.from('subcategories').insert(subsToInsert);
@@ -107,6 +133,190 @@ export const db = {
   async deleteCategory(id: string): Promise<void> {
     // Subcategories cascade delete due to FK constraint, but good to be explicit or rely on DB
     const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  // --- Subcategories ---
+  async getSubcategories(): Promise<Subcategory[]> {
+    const { data, error } = await supabase
+      .from('subcategories')
+      .select('*')
+      .order('order', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching subcategories:', error);
+      return [];
+    }
+    
+    return (data || []).map((item: any) => ({
+        ...item,
+        fee: Number(item.fee)
+    })) as Subcategory[];
+  },
+
+  async addSubcategory(subcategory: Subcategory): Promise<Subcategory> {
+    const id = subcategory.id || `SUB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    if (!subcategory.category_id) {
+        throw new Error('Category ID is required to create a subcategory.');
+    }
+
+    const { data, error } = await supabase
+      .from('subcategories')
+      .insert([{
+        id: id,
+        category_id: subcategory.category_id,
+        parent_id: subcategory.parent_id || null,
+        label: subcategory.label || '',
+        label_fr: subcategory.label_fr || '',
+        label_ar: subcategory.label_ar || '',
+        desc: subcategory.desc || '',
+        desc_fr: subcategory.desc_fr || '',
+        desc_ar: subcategory.desc_ar || '',
+        icon: subcategory.icon || 'Box',
+        color: subcategory.color || 'text-slate-500',
+        fee: subcategory.fee || 0,
+        order: subcategory.order || 0
+      }])
+      .select()
+      .single();
+
+    if (error) {
+        console.error('Supabase error adding subcategory:', error);
+        throw error;
+    }
+    
+    if (!data) {
+        throw new Error('No data returned from subcategory insertion');
+    }
+
+    const item = data as any;
+    return {
+        ...item,
+        fee: Number(item.fee)
+    };
+  },
+
+  async updateSubcategory(subcategory: Subcategory): Promise<Subcategory> {
+    const { data, error } = await supabase
+      .from('subcategories')
+      .update({
+        category_id: subcategory.category_id,
+        parent_id: subcategory.parent_id || null, // Convert empty string to null
+        label: subcategory.label,
+        label_fr: subcategory.label_fr,
+        label_ar: subcategory.label_ar,
+        desc: subcategory.desc,
+        desc_fr: subcategory.desc_fr,
+        desc_ar: subcategory.desc_ar,
+        icon: subcategory.icon,
+        color: subcategory.color,
+        fee: subcategory.fee,
+        order: subcategory.order
+      })
+      .eq('id', subcategory.id)
+      .select()
+      .single();
+
+    if (error) {
+        console.error('Error updating subcategory:', error);
+        throw error;
+    }
+    
+    const item = data as any;
+    return {
+        ...item,
+        fee: Number(item.fee)
+    };
+  },
+
+  async deleteSubcategory(id: string): Promise<void> {
+    const { error } = await supabase.from('subcategories').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  // --- Second Subcategories (Level 3) ---
+  async getSecondSubcategories(): Promise<SecondSubcategory[]> {
+    const { data, error } = await supabase
+      .from('second_subcategories')
+      .select('*')
+      .order('order', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching second subcategories:', error);
+      return [];
+    }
+    
+    return (data || []).map((item: any) => ({
+        ...item,
+        fee: Number(item.fee)
+    })) as SecondSubcategory[];
+  },
+
+  async addSecondSubcategory(ss: SecondSubcategory): Promise<SecondSubcategory> {
+    const id = ss.id || `SUB2_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    if (!ss.subcategory_id) {
+        throw new Error('Parent subcategory ID is required to create a level 2 subcategory.');
+    }
+
+    const { data, error } = await supabase
+      .from('second_subcategories')
+      .insert([{
+        id: id,
+        subcategory_id: ss.subcategory_id,
+        label: ss.label || '',
+        label_fr: ss.label_fr || '',
+        label_ar: ss.label_ar || '',
+        desc: ss.desc || '',
+        desc_fr: ss.desc_fr || '',
+        desc_ar: ss.desc_ar || '',
+        icon: ss.icon || 'Box',
+        color: ss.color || 'text-slate-500',
+        fee: ss.fee || 0,
+        order: ss.order || 0
+      }])
+      .select()
+      .single();
+
+    if (error) {
+        console.error('Supabase error adding second subcategory:', error);
+        throw error;
+    }
+    
+    if (!data) {
+        throw new Error('No data returned from second subcategory insertion');
+    }
+
+    const item = data as any;
+    return {
+        ...item,
+        fee: Number(item.fee)
+    };
+  },
+
+  async updateSecondSubcategory(ss: SecondSubcategory): Promise<SecondSubcategory> {
+    const { data, error } = await supabase
+      .from('second_subcategories')
+      .update(ss)
+      .eq('id', ss.id)
+      .select()
+      .single();
+
+    if (error) {
+        console.error('Error updating second subcategory:', error);
+        throw error;
+    }
+    
+    const item = data as any;
+    return {
+        ...item,
+        fee: Number(item.fee)
+    };
+  },
+
+  async deleteSecondSubcategory(id: string): Promise<void> {
+    const { error } = await supabase.from('second_subcategories').delete().eq('id', id);
     if (error) throw error;
   },
 
@@ -133,13 +343,24 @@ export const db = {
   },
 
   async addService(service: ServiceItem): Promise<ServiceItem> {
+    // Ensure empty strings for optional foreign keys are null
+    const serviceToInsert = {
+        ...service,
+        subcategory: service.subcategory || null,
+        second_subcategory_id: service.second_subcategory_id || null,
+        promoPrice: service.promoPrice || null
+    };
+
     const { data, error } = await supabase
       .from('services')
-      .insert([service])
+      .insert([serviceToInsert])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+        console.error('Error adding service:', error);
+        throw error;
+    }
     
     const item = data as any;
     return {
@@ -152,14 +373,25 @@ export const db = {
   },
 
   async updateService(service: ServiceItem): Promise<ServiceItem> {
+    // Ensure empty strings for optional foreign keys are null
+    const serviceToUpdate = {
+        ...service,
+        subcategory: service.subcategory || null,
+        second_subcategory_id: service.second_subcategory_id || null,
+        promoPrice: service.promoPrice || null
+    };
+
     const { data, error } = await supabase
       .from('services')
-      .update(service)
+      .update(serviceToUpdate)
       .eq('id', service.id)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+        console.error('Error updating service:', error);
+        throw error;
+    }
     
     const item = data as any;
     return {
