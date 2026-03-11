@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { SecondSubcategory, Subcategory, Category } from '../types';
 import * as Icons from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
+import { motion, AnimatePresence } from 'motion/react';
 
 interface SecondSubcategoryFormProps {
   initialData?: SecondSubcategory;
@@ -9,6 +10,8 @@ interface SecondSubcategoryFormProps {
   onSubmit: (data: SecondSubcategory) => void;
   onCancel: () => void;
 }
+
+type Tab = 'en' | 'fr' | 'ar';
 
 const AVAILABLE_ICONS = [
   'Shield', 'Smartphone', 'Gamepad2', 'Briefcase', 'Zap', 'Globe', 'Server', 'Cloud', 'Lock', 'Wifi', 'Box', 'Layers', 'Tag', 'Star', 'Heart',
@@ -23,8 +26,13 @@ const AVAILABLE_COLORS = [
 ];
 
 export const SecondSubcategoryForm: React.FC<SecondSubcategoryFormProps> = ({ initialData, categories, onSubmit, onCancel }) => {
+  const [activeTab, setActiveTab] = useState<Tab>('en');
+  
   // Flatten all subcategories from all categories
-  const allSubcategories = categories.flatMap(cat => (cat.subcategories || []).map(sub => ({ ...sub, category_label: cat.label })));
+  const allSubcategories = useMemo(() => 
+    categories.flatMap(cat => (cat.subcategories || []).map(sub => ({ ...sub, category_label: cat.label }))),
+    [categories]
+  );
 
   const [formData, setFormData] = useState<SecondSubcategory>({
     id: initialData?.id || '',
@@ -42,7 +50,13 @@ export const SecondSubcategoryForm: React.FC<SecondSubcategoryFormProps> = ({ in
   });
 
   const [isTranslating, setIsTranslating] = useState(false);
+  const [iconSearch, setIconSearch] = useState('');
   const isEditing = !!initialData;
+
+  const filteredIcons = useMemo(() => 
+    AVAILABLE_ICONS.filter(icon => icon.toLowerCase().includes(iconSearch.toLowerCase())),
+    [iconSearch]
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -65,9 +79,7 @@ export const SecondSubcategoryForm: React.FC<SecondSubcategoryFormProps> = ({ in
           const response = await ai.models.generateContent({
               model: 'gemini-2.5-flash',
               contents: prompt,
-              config: {
-                  responseMimeType: "application/json",
-              }
+              config: { responseMimeType: "application/json" }
           });
 
           const result = JSON.parse(response.text || '{}');
@@ -87,12 +99,7 @@ export const SecondSubcategoryForm: React.FC<SecondSubcategoryFormProps> = ({ in
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!formData.subcategory_id) {
-        alert('Please select a parent subcategory.');
-        return;
-    }
-
+    if (!formData.subcategory_id) return;
     const dataToSubmit = {
         ...formData,
         id: formData.id || `SUB2_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
@@ -100,180 +107,220 @@ export const SecondSubcategoryForm: React.FC<SecondSubcategoryFormProps> = ({ in
     onSubmit(dataToSubmit);
   };
 
+  const ActiveIcon = (Icons as any)[formData.icon] || Icons.Box;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-            <h3 className="text-sm font-medium text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2">Basic Info</h3>
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Parent Subcategory (Level 1)</label>
-              <select
-                name="subcategory_id"
-                value={formData.subcategory_id}
-                onChange={handleInputChange}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                required
+    <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-8">
+      {/* Main Form Area */}
+      <div className="flex-1 space-y-8">
+        {/* Header & Tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
+            {(['en', 'fr', 'ar'] as Tab[]).map(tab => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
               >
-                {allSubcategories.map(sub => (
-                    <option key={sub.id} value={sub.id}>{sub.category_label} → {sub.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ID (Auto-generated if empty)</label>
-              <input
-                type="text"
-                name="id"
-                value={formData.id}
-                onChange={handleInputChange}
-                disabled={isEditing}
-                placeholder="e.g. SUB_CAT_L2_1"
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Label (English)</label>
-                  <button
-                      type="button"
-                      onClick={handleTranslate}
-                      disabled={isTranslating || (!formData.label && !formData.desc)}
-                      className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
-                  >
-                      {isTranslating ? <Icons.Loader2 className="h-3 w-3 animate-spin" /> : <Icons.Languages className="h-3 w-3" />}
-                      Auto Translate
-                  </button>
-              </div>
-              <input
-                type="text"
-                name="label"
-                value={formData.label}
-                onChange={handleInputChange}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                required
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Label (French)</label>
-                    <input
-                        type="text"
-                        name="label_fr"
-                        value={formData.label_fr}
-                        onChange={handleInputChange}
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Label (Arabic)</label>
-                    <input
-                        type="text"
-                        name="label_ar"
-                        value={formData.label_ar}
-                        onChange={handleInputChange}
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 text-right"
-                    />
-                </div>
-            </div>
+                {tab === 'en' ? 'English' : tab === 'fr' ? 'Français' : 'العربية'}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={handleTranslate}
+            disabled={isTranslating || (!formData.label && !formData.desc)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-100 transition-all disabled:opacity-50"
+          >
+            {isTranslating ? <Icons.Loader2 className="h-4 w-4 animate-spin" /> : <Icons.Languages className="h-4 w-4" />}
+            Auto-Translate All
+          </button>
         </div>
 
-        <div className="space-y-4">
-            <h3 className="text-sm font-medium text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2">Appearance & Details</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Icon</label>
-                  <div className="relative">
-                    <select
-                        name="icon"
-                        value={formData.icon}
-                        onChange={handleInputChange}
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 pl-10 pr-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 appearance-none"
-                    >
-                        {AVAILABLE_ICONS.map(icon => (
-                        <option key={icon} value={icon}>{icon}</option>
-                        ))}
-                    </select>
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                        {(() => {
-                            const Icon = (Icons as any)[formData.icon || 'Box'] || Icons.Box;
-                            return <Icon className="h-4 w-4" />;
-                        })()}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Color</label>
-                  <select
-                    name="color"
-                    value={formData.color}
-                    onChange={handleInputChange}
-                    className={`w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 ${formData.color}`}
-                  >
-                    {AVAILABLE_COLORS.map(color => (
-                      <option key={color} value={color} className={color}>{color.replace('text-', '')}</option>
-                    ))}
-                  </select>
-                </div>
+        {/* Content Section */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            className="space-y-6"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Label ({activeTab.toUpperCase()})</label>
+                <input
+                  type="text"
+                  name={activeTab === 'en' ? 'label' : `label_${activeTab}`}
+                  value={activeTab === 'en' ? formData.label : (formData as any)[`label_${activeTab}`]}
+                  onChange={handleInputChange}
+                  placeholder={`Enter ${activeTab} label`}
+                  dir={activeTab === 'ar' ? 'rtl' : 'ltr'}
+                  className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-3 text-sm font-medium outline-none focus:border-indigo-500 transition-all"
+                  required={activeTab === 'en'}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID / Slug</label>
+                <input
+                  type="text"
+                  name="id"
+                  value={formData.id}
+                  onChange={handleInputChange}
+                  disabled={isEditing}
+                  placeholder="e.g. SUB2_ELECTRONICS"
+                  className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-5 py-3 text-sm font-mono outline-none focus:border-indigo-500 transition-all disabled:opacity-50"
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fee (%)</label>
-                    <input
-                        type="number"
-                        name="fee"
-                        value={formData.fee}
-                        onChange={handleInputChange}
-                        min="0"
-                        step="0.1"
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Order</label>
-                    <input
-                        type="number"
-                        name="order"
-                        value={formData.order}
-                        onChange={handleInputChange}
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                    />
-                </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description (English)</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description ({activeTab.toUpperCase()})</label>
               <textarea
-                name="desc"
-                value={formData.desc}
+                name={activeTab === 'en' ? 'desc' : `desc_${activeTab}`}
+                value={activeTab === 'en' ? formData.desc : (formData as any)[`desc_${activeTab}`]}
                 onChange={handleInputChange}
-                rows={2}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                rows={3}
+                placeholder={`Enter ${activeTab} description`}
+                dir={activeTab === 'ar' ? 'rtl' : 'ltr'}
+                className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-3 text-sm font-medium outline-none focus:border-indigo-500 transition-all resize-none"
               />
             </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Hierarchy Section */}
+        <div className="p-6 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Parent Subcategory (Level 1)</label>
+            <select
+              name="subcategory_id"
+              value={formData.subcategory_id}
+              onChange={handleInputChange}
+              className="w-full rounded-2xl border-2 border-white dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
+              required
+            >
+              {allSubcategories.map(sub => (
+                  <option key={sub.id} value={sub.id}>{sub.category_label} → {sub.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Visuals Section */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Icons.Palette className="h-4 w-4 text-indigo-500" />
+            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">Visual Identity</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <div className="relative">
+                <Icons.Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search icons..."
+                  value={iconSearch}
+                  onChange={(e) => setIconSearch(e.target.value)}
+                  className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 pl-12 pr-4 py-3 text-sm outline-none focus:border-indigo-500 transition-all"
+                />
+              </div>
+              <div className="grid grid-cols-6 gap-2 h-48 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 custom-scrollbar">
+                {filteredIcons.map(iconName => {
+                  const Icon = (Icons as any)[iconName] || Icons.Box;
+                  return (
+                    <button
+                      key={iconName}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, icon: iconName }))}
+                      className={`flex items-center justify-center p-3 rounded-xl transition-all ${formData.icon === iconName ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 scale-110' : 'bg-white dark:bg-slate-900 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50'}`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Brand Color</label>
+              <div className="grid grid-cols-6 gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                {AVAILABLE_COLORS.map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, color }))}
+                    className={`h-8 w-8 rounded-full transition-all flex items-center justify-center ${color.replace('text-', 'bg-')} ${formData.color === color ? 'ring-4 ring-white dark:ring-slate-700 scale-125 shadow-lg' : 'hover:scale-110'}`}
+                  >
+                    {formData.color === color && <Icons.Check className="h-4 w-4 text-white" />}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fee (%)</label>
+                  <input type="number" name="fee" value={formData.fee} onChange={handleInputChange} className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 transition-all" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order</label>
+                  <input type="number" name="order" value={formData.order} onChange={handleInputChange} className="w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 transition-all" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-4 pt-8 border-t border-slate-100 dark:border-slate-800">
+          <button type="button" onClick={onCancel} className="px-8 py-3 rounded-2xl text-sm font-black uppercase tracking-widest text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">Cancel</button>
+          <button type="submit" className="px-10 py-3 rounded-2xl text-sm font-black uppercase tracking-widest text-white bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-500/20 transition-all">
+            {isEditing ? 'Update Level 2 Subcategory' : 'Create Level 2 Subcategory'}
+          </button>
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 transition-colors"
-        >
-          {isEditing ? 'Update Level 2 Subcategory' : 'Create Level 2 Subcategory'}
-        </button>
+      {/* Live Preview Sidebar */}
+      <div className="w-full lg:w-80 space-y-6">
+        <div className="sticky top-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Icons.Eye className="h-4 w-4 text-emerald-500" />
+            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">Live Preview</h3>
+          </div>
+          
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl">
+            <div className={`h-16 w-16 rounded-2xl mb-6 flex items-center justify-center shadow-lg ${formData.color.replace('text-', 'bg-').replace('500', '500/10')} ${formData.color}`}>
+              <ActiveIcon className="h-8 w-8" />
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-xl font-black text-slate-900 dark:text-white">
+                {activeTab === 'en' ? formData.label : (formData as any)[`label_${activeTab}`] || 'Subcategory Label'}
+              </h4>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                {activeTab === 'en' ? formData.desc : (formData as any)[`desc_${activeTab}`] || 'Your subcategory description will appear here...'}
+              </p>
+            </div>
+            <div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Fee</span>
+                <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{formData.fee}%</span>
+              </div>
+              <div className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                <Icons.ArrowRight className="h-5 w-5 text-slate-400" />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20">
+            <div className="flex gap-3">
+              <Icons.Info className="h-5 w-5 text-amber-500 shrink-0" />
+              <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
+                Changes are reflected in real-time. Make sure to check all language tabs before saving.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </form>
   );

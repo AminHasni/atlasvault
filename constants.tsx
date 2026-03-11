@@ -308,6 +308,11 @@ export const TRANSLATIONS = {
     explore: "Explore",
     back: "Back",
     secondSubcategory: "Second Subcategory",
+    titleOnly: "Title Only",
+    descriptionOnly: "Description Only",
+    both: "Title & Description",
+    onlyPromos: "Promotions Only",
+    clearFilters: "Clear All Filters",
   },
   fr: {
     searchPlaceholder: "Rechercher...",
@@ -440,6 +445,11 @@ export const TRANSLATIONS = {
     explore: "Explorer",
     back: "Retour",
     secondSubcategory: "Sous-catégorie de niveau 2",
+    titleOnly: "Titre uniquement",
+    descriptionOnly: "Description uniquement",
+    both: "Titre & Description",
+    onlyPromos: "Promotions uniquement",
+    clearFilters: "Effacer les filtres",
   },
   ar: {
     searchPlaceholder: "البحث عن الخدمات...",
@@ -572,6 +582,11 @@ export const TRANSLATIONS = {
     explore: "استكشاف",
     back: "رجوع",
     secondSubcategory: "فئة فرعية من المستوى الثاني",
+    titleOnly: "العنوان فقط",
+    descriptionOnly: "الوصف فقط",
+    both: "العنوان والوصف",
+    onlyPromos: "العروض فقط",
+    clearFilters: "مسح جميع الفلاتر",
   }
 };
 
@@ -588,16 +603,17 @@ export const CATEGORIES: CategoryMeta[] = [
     desc_ar: 'شرائح إلكترونية، أرقام افتراضية، بطاقات دفع',
     order: 1,
     subcategories: [
-      { id: 'ESIM', label: 'eSIMs', label_fr: 'eSIMs', label_ar: 'شرائح إلكترونية' },
-      { id: 'VIRTUAL_NUMBERS', label: 'Virtual Numbers', label_fr: 'Numéros Virtuels', label_ar: 'أرقام افتراضية' },
-      { id: 'PAYMENT_CARDS', label: 'Payment Cards', label_fr: 'Cartes de Paiement', label_ar: 'بطاقات دفع' },
+      { id: 'ESIM', label: 'eSIMs', label_fr: 'eSIMs', label_ar: 'شرائح إلكترونية', color: 'text-blue-500' },
+      { id: 'VIRTUAL_NUMBERS', label: 'Virtual Numbers', label_fr: 'Numéros Virtuels', label_ar: 'أرقام افتراضية', color: 'text-cyan-500' },
+      { id: 'PAYMENT_CARDS', label: 'Payment Cards', label_fr: 'Cartes de Paiement', label_ar: 'بطاقات دفع', color: 'text-indigo-500' },
       { 
         id: 'INTERNET_BUNDLES', 
         label: 'Internet Bundles', 
         label_fr: 'Forfaits Internet', 
         label_ar: 'حزم الإنترنت',
+        color: 'text-sky-500',
         second_subcategories: [
-          { id: 'OOREDOO', subcategory_id: 'INTERNET_BUNDLES', label: 'Ooredoo', label_fr: 'Ooredoo', label_ar: 'أوريدو' }
+          { id: 'OOREDOO', subcategory_id: 'INTERNET_BUNDLES', label: 'Ooredoo', label_fr: 'Ooredoo', label_ar: 'أوريدو', color: 'text-red-500' }
         ]
       },
     ]
@@ -614,9 +630,9 @@ export const CATEGORIES: CategoryMeta[] = [
     desc_ar: 'نتفليكس، سبوتيفاي، IPTV',
     order: 2,
     subcategories: [
-      { id: 'NETFLIX', label: 'Netflix', label_fr: 'Netflix', label_ar: 'نتفليكس' },
-      { id: 'SPOTIFY', label: 'Spotify', label_fr: 'Spotify', label_ar: 'سبوتيفاي' },
-      { id: 'IPTV', label: 'IPTV', label_fr: 'IPTV', label_ar: 'IPTV' },
+      { id: 'NETFLIX', label: 'Netflix', label_fr: 'Netflix', label_ar: 'نتفليكس', color: 'text-red-600' },
+      { id: 'SPOTIFY', label: 'Spotify', label_fr: 'Spotify', label_ar: 'سبوتيفاي', color: 'text-green-500' },
+      { id: 'IPTV', label: 'IPTV', label_fr: 'IPTV', label_ar: 'IPTV', color: 'text-purple-500' },
     ]
   },
   {
@@ -631,9 +647,9 @@ export const CATEGORIES: CategoryMeta[] = [
     desc_ar: 'مفاتيح الألعاب، الأرصدة، التعزيزات',
     order: 3,
     subcategories: [
-      { id: 'GAME_KEYS', label: 'Game Keys', label_fr: 'Clés de jeux', label_ar: 'مفاتيح الألعاب' },
-      { id: 'CREDITS', label: 'Credits', label_fr: 'Crédits', label_ar: 'الأرصدة' },
-      { id: 'BOOSTS', label: 'Boosts', label_fr: 'Boosts', label_ar: 'التعزيزات' },
+      { id: 'GAME_KEYS', label: 'Game Keys', label_fr: 'Clés de jeux', label_ar: 'مفاتيح الألعاب', color: 'text-emerald-500' },
+      { id: 'CREDITS', label: 'Credits', label_fr: 'Crédits', label_ar: 'الأرصدة', color: 'text-yellow-500' },
+      { id: 'BOOSTS', label: 'Boosts', label_fr: 'Boosts', label_ar: 'التعزيزات', color: 'text-orange-500' },
     ]
   },
   {
@@ -648,9 +664,9 @@ export const CATEGORIES: CategoryMeta[] = [
     desc_ar: 'شات جي بي تي، ميدجورني، أوفيس 365',
     order: 4,
     subcategories: [
-      { id: 'CHATGPT', label: 'ChatGPT', label_fr: 'ChatGPT', label_ar: 'شات جي بي تي' },
-      { id: 'MIDJOURNEY', label: 'Midjourney', label_fr: 'Midjourney', label_ar: 'ميدجورني' },
-      { id: 'OFFICE_365', label: 'Office 365', label_fr: 'Office 365', label_ar: 'أوفيس 365' },
+      { id: 'CHATGPT', label: 'ChatGPT', label_fr: 'ChatGPT', label_ar: 'شات جي بي تي', color: 'text-teal-500' },
+      { id: 'MIDJOURNEY', label: 'Midjourney', label_fr: 'Midjourney', label_ar: 'ميدجورني', color: 'text-purple-400' },
+      { id: 'OFFICE_365', label: 'Office 365', label_fr: 'Office 365', label_ar: 'أوفيس 365', color: 'text-red-500' },
     ]
   },
   {
@@ -665,9 +681,9 @@ export const CATEGORIES: CategoryMeta[] = [
     desc_ar: 'يوديمي، كورسيرا، لينكد إن ليرنينج',
     order: 5,
     subcategories: [
-      { id: 'UDEMY', label: 'Udemy', label_fr: 'Udemy', label_ar: 'يوديمي' },
-      { id: 'COURSERA', label: 'Coursera', label_fr: 'Coursera', label_ar: 'كورسيرا' },
-      { id: 'LINKEDIN_LEARNING', label: 'LinkedIn Learning', label_fr: 'LinkedIn Learning', label_ar: 'لينكد إن ليرنينج' },
+      { id: 'UDEMY', label: 'Udemy', label_fr: 'Udemy', label_ar: 'يوديمي', color: 'text-indigo-500' },
+      { id: 'COURSERA', label: 'Coursera', label_fr: 'Coursera', label_ar: 'كورسيرا', color: 'text-blue-600' },
+      { id: 'LINKEDIN_LEARNING', label: 'LinkedIn Learning', label_fr: 'LinkedIn Learning', label_ar: 'لينكد إن ليرنينج', color: 'text-sky-700' },
     ]
   },
   {
@@ -682,8 +698,8 @@ export const CATEGORIES: CategoryMeta[] = [
     desc_ar: 'التحقق، النمو الاجتماعي',
     order: 6,
     subcategories: [
-      { id: 'VERIFICATION', label: 'Verification', label_fr: 'Vérification', label_ar: 'التحقق' },
-      { id: 'SOCIAL_GROWTH', label: 'Social Growth', label_fr: 'Croissance Sociale', label_ar: 'النمو الاجتماعي' },
+      { id: 'VERIFICATION', label: 'Verification', label_fr: 'Vérification', label_ar: 'التحقق', color: 'text-blue-500' },
+      { id: 'SOCIAL_GROWTH', label: 'Social Growth', label_fr: 'Croissance Sociale', label_ar: 'النمو الاجتماعي', color: 'text-rose-500' },
     ]
   },
   {
@@ -698,9 +714,9 @@ export const CATEGORIES: CategoryMeta[] = [
     desc_ar: 'أبل، جوجل بلاي، بينانس',
     order: 7,
     subcategories: [
-      { id: 'APPLE', label: 'Apple', label_fr: 'Apple', label_ar: 'أبل' },
-      { id: 'GOOGLE_PLAY', label: 'Google Play', label_fr: 'Google Play', label_ar: 'جوجل بلاي' },
-      { id: 'BINANCE', label: 'Binance', label_fr: 'Binance', label_ar: 'بينانس' },
+      { id: 'APPLE', label: 'Apple', label_fr: 'Apple', label_ar: 'أبل', color: 'text-slate-800' },
+      { id: 'GOOGLE_PLAY', label: 'Google Play', label_fr: 'Google Play', label_ar: 'جوجل بلاي', color: 'text-emerald-500' },
+      { id: 'BINANCE', label: 'Binance', label_fr: 'Binance', label_ar: 'بينانس', color: 'text-yellow-500' },
     ]
   },
 ];

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { ServiceCategory, ServiceItem, Category, Order, OrderStatus, User, Review, GlobalSettings, Subcategory, SecondSubcategory } from './types';
 import { TRANSLATIONS, LEGAL_CONTENT } from './constants';
 import { getServices, addOrder, getOrdersByEmail, getCurrentUser, setCurrentUserSession, getOrdersByUserId, getReviews, getFavorites, toggleFavorite, getCategories, signOutUser, updateService, getGlobalSettings, cancelOrder } from './services/storageService';
@@ -54,6 +54,9 @@ const App: React.FC = () => {
   const [searchGlobal, setSearchGlobal] = useState(false);
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [searchScope, setSearchScope] = useState<'all' | 'title' | 'description'>('all');
+  const [onlyPromos, setOnlyPromos] = useState(false);
+  const [minRating, setMinRating] = useState(0);
 
   // Notification State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -95,6 +98,24 @@ const App: React.FC = () => {
 
   // Legal Modal State
   const [activeLegalDoc, setActiveLegalDoc] = useState<keyof typeof LEGAL_CONTENT | null>(null);
+
+  // Dynamic Background Color for Subcategories
+  const activeSubCategoryColor = useMemo(() => {
+    if (activeSubCategoryPath.length === 0 || isAdminMode) return null;
+    
+    const CurrentCategoryMeta = categories.find(c => c.id === activeCategory);
+    if (!CurrentCategoryMeta) return null;
+
+    const subId = activeSubCategoryPath[0];
+    const sub = CurrentCategoryMeta.subcategories?.find(s => s.id === subId);
+    if (!sub) return null;
+
+    if (activeSubCategoryPath.length === 1) return sub.color;
+
+    const secondSubId = activeSubCategoryPath[1];
+    const secondSub = sub.second_subcategories?.find(ss => ss.id === secondSubId);
+    return secondSub?.color || sub.color;
+  }, [activeSubCategoryPath, activeCategory, categories, isAdminMode]);
 
   const languages = [
     { code: 'en', label: 'English', flag: '🇺🇸' },
@@ -245,14 +266,22 @@ const App: React.FC = () => {
   const displayedServices = useMemo(() => {
     let filtered = services.filter(s => {
        const q = searchQuery.toLowerCase();
-       const matchesSearch = s.name.toLowerCase().includes(q) || 
-                             s.description.toLowerCase().includes(q);
+       let matchesSearch = true;
+       if (q.trim().length > 0) {
+         const inTitle = s.name.toLowerCase().includes(q);
+         const inDesc = s.description.toLowerCase().includes(q);
+         if (searchScope === 'title') matchesSearch = inTitle;
+         else if (searchScope === 'description') matchesSearch = inDesc;
+         else matchesSearch = inTitle || inDesc;
+       }
        
        const isActive = isAdminMode || s.active;
 
        const min = priceRange.min === '' ? 0 : parseFloat(priceRange.min);
        const max = priceRange.max === '' ? Infinity : parseFloat(priceRange.max);
        const matchesPrice = s.price >= min && s.price <= max;
+
+       const matchesPromos = !onlyPromos || (s.promoPrice !== undefined && s.promoPrice > 0);
 
        let matchesCategory = false;
        
@@ -285,7 +314,7 @@ const App: React.FC = () => {
 
        const matchesFavorites = !showFavoritesOnly || favorites.includes(s.id);
 
-       return matchesCategory && matchesSubCategory && matchesSearch && isActive && matchesPrice && matchesFavorites;
+       return matchesCategory && matchesSubCategory && matchesSearch && isActive && matchesPrice && matchesFavorites && matchesPromos;
     });
 
     return filtered.sort((a, b) => {
@@ -789,8 +818,39 @@ const App: React.FC = () => {
               </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
-              <div className="flex-1 p-4 sm:p-6 lg:p-8">
+          <motion.div 
+            animate={{ 
+              backgroundColor: activeSubCategoryColor 
+                ? (theme === 'dark' ? 'rgba(11, 17, 32, 0.98)' : 'rgba(255, 255, 255, 0.98)') 
+                : (theme === 'dark' ? 'rgba(15, 23, 42, 1)' : 'rgba(248, 250, 252, 1)')
+            }}
+            className="flex-1 overflow-y-auto custom-scrollbar flex flex-col relative"
+          >
+              {/* Dynamic Background Overlay - Immersive Atmosphere */}
+              <AnimatePresence>
+                {activeSubCategoryColor && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 1.2 }}
+                    className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
+                  >
+                    {/* Base Tint */}
+                    <div className={`absolute inset-0 ${activeSubCategoryColor.replace('text-', 'bg-').replace('500', '500/10')} dark:${activeSubCategoryColor.replace('text-', 'bg-').replace('500', '500/20')}`} />
+                    
+                    {/* Atmospheric Glows */}
+                    <div className={`absolute -top-48 -right-48 w-[600px] h-[600px] blur-[150px] rounded-full opacity-30 dark:opacity-40 ${activeSubCategoryColor.replace('text-', 'bg-')}`} />
+                    <div className={`absolute top-1/3 -left-48 w-[400px] h-[400px] blur-[120px] rounded-full opacity-20 dark:opacity-30 ${activeSubCategoryColor.replace('text-', 'bg-')}`} />
+                    <div className={`absolute -bottom-48 right-1/4 w-[500px] h-[500px] blur-[140px] rounded-full opacity-15 dark:opacity-25 ${activeSubCategoryColor.replace('text-', 'bg-')}`} />
+                    
+                    {/* Subtle Gradient Overlay for depth */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/20 dark:to-black/20" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="flex-1 p-4 sm:p-6 lg:p-8 relative z-10">
               {isAdminMode ? (
                   <AdminPanel 
                     services={services}
@@ -824,7 +884,6 @@ const App: React.FC = () => {
 
                       {/* Search & Filters */}
                       <div className="sticky top-0 z-20 -mx-4 px-4 py-4 bg-slate-50/95 dark:bg-nexus-900/95 backdrop-blur-sm sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent">
-                          {/* Search Input and Filter Buttons ... */}
                           <div className="flex flex-col sm:flex-row gap-4">
                               <div className="relative flex-1">
                                   <Search className={`absolute top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 ${searchIconPosition}`} />
@@ -846,81 +905,168 @@ const App: React.FC = () => {
                               </div>
                               <button
                                 onClick={() => setShowFilters(!showFilters)}
-                                className={`flex items-center justify-center gap-2 px-4 h-12 rounded-xl border font-medium transition-colors ${showFilters ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                                className={`flex items-center justify-center gap-2 px-4 h-12 rounded-xl border font-bold transition-all ${showFilters ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-500 hover:text-indigo-600'}`}
                               >
                                 <SlidersHorizontal className="h-5 w-5" />
                                 <span className="hidden sm:inline">{t('filters')}</span>
+                                {showFilters ? <ChevronDown className="h-4 w-4 rotate-180 transition-transform" /> : <ChevronDown className="h-4 w-4 transition-transform" />}
                               </button>
                           </div>
                           
                           {/* Expanded Filters */}
-                          {showFilters && (
-                              <div className="mt-4 p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm animate-in slide-in-from-top-2">
-                                  {/* ... Filter Controls ... */}
-                                  <div className="flex flex-wrap gap-4">
-                                      {/* Sort */}
-                                      <div className="space-y-1">
-                                          <label className="text-xs font-semibold text-slate-500 uppercase">{t('sortBy')}</label>
-                                          <select 
-                                            value={sortOption}
-                                            onChange={(e) => setSortOption(e.target.value)}
-                                            className="block w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm"
-                                          >
-                                              <option value="newest">{t('newest')}</option>
-                                              <option value="popularity-desc">{t('popularity')}</option>
-                                              <option value="price-asc">{t('price')} (Low to High)</option>
-                                              <option value="price-desc">{t('price')} (High to Low)</option>
-                                              <option value="name-asc">{t('nameAz')}</option>
-                                          </select>
-                                      </div>
-                                      {/* Price Range */}
-                                      <div className="space-y-1">
-                                          <label className="text-xs font-semibold text-slate-500 uppercase">{t('priceRange')}</label>
-                                          <div className="flex items-center gap-2">
-                                              <input 
-                                                type="number" 
-                                                placeholder="Min" 
-                                                value={priceRange.min}
-                                                onChange={(e) => setPriceRange(prev => ({...prev, min: e.target.value}))}
-                                                className="w-20 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm"
-                                              />
-                                              <span className="text-slate-400">-</span>
-                                              <input 
-                                                type="number" 
-                                                placeholder="Max" 
-                                                value={priceRange.max}
-                                                onChange={(e) => setPriceRange(prev => ({...prev, max: e.target.value}))}
-                                                className="w-20 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm"
-                                              />
+                          <AnimatePresence>
+                              {showFilters && (
+                                  <motion.div 
+                                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                    animate={{ opacity: 1, height: 'auto', marginTop: 24 }}
+                                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                    className="overflow-hidden"
+                                  >
+                                      <div className="p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl relative">
+                                          <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                                              <SlidersHorizontal className="h-24 w-24" />
                                           </div>
-                                      </div>
 
-                                      {/* Subcategory Filter */}
-                                      {CurrentCategoryMeta && CurrentCategoryMeta.subcategories && CurrentCategoryMeta.subcategories.length > 0 && (
-                                          <div className="space-y-1">
-                                              <label className="text-xs font-semibold text-slate-500 uppercase">{t('subcategory')}</label>
-                                              <select 
-                                                value={activeSubCategoryPath.length > 0 ? activeSubCategoryPath[activeSubCategoryPath.length - 1] : ''}
-                                                onChange={(e) => {
-                                                    if (e.target.value) {
-                                                        setActiveSubCategoryPath([e.target.value]);
-                                                    } else {
-                                                        setActiveSubCategoryPath([]);
-                                                    }
-                                                }}
-                                                className="block w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm"
-                                              >
-                                                  <option value="">{t('all')}</option>
-                                                  {CurrentCategoryMeta.subcategories.map(sub => {
-                                                      const subLabel = lang === 'fr' ? (sub.label_fr || sub.label) : (lang === 'ar' ? (sub.label_ar || sub.label) : sub.label);
-                                                      return <option key={sub.id} value={sub.id}>{subLabel}</option>;
-                                                  })}
-                                              </select>
+                                          <div className="relative z-10 space-y-6">
+                                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                                  {/* Sort */}
+                                                  <div className="space-y-2">
+                                                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                                          <ArrowUpDown className="h-3 w-3" />
+                                                          {t('sortBy')}
+                                                      </label>
+                                                      <select 
+                                                        value={sortOption}
+                                                        onChange={(e) => setSortOption(e.target.value)}
+                                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                                                      >
+                                                          <option value="newest">{t('newest')}</option>
+                                                          <option value="popularity-desc">{t('popularity')}</option>
+                                                          <option value="price-asc">{t('price')} (Low to High)</option>
+                                                          <option value="price-desc">{t('price')} (High to Low)</option>
+                                                          <option value="name-asc">{t('nameAz')}</option>
+                                                      </select>
+                                                  </div>
+
+                                                  {/* Search Scope */}
+                                                  <div className="space-y-2">
+                                                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                                          <Search className="h-3 w-3" />
+                                                          {t('searchScope')}
+                                                      </label>
+                                                      <select 
+                                                        value={searchScope}
+                                                        onChange={(e) => setSearchScope(e.target.value as any)}
+                                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                                                      >
+                                                          <option value="all">{t('both')}</option>
+                                                          <option value="title">{t('titleOnly')}</option>
+                                                          <option value="description">{t('descriptionOnly')}</option>
+                                                      </select>
+                                                  </div>
+
+                                                  {/* Price Range */}
+                                                  <div className="space-y-2">
+                                                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                                          <Banknote className="h-3 w-3" />
+                                                          {t('priceRange')}
+                                                      </label>
+                                                      <div className="flex items-center gap-2">
+                                                          <input 
+                                                            type="number" 
+                                                            placeholder="Min" 
+                                                            value={priceRange.min}
+                                                            onChange={(e) => setPriceRange(prev => ({...prev, min: e.target.value}))}
+                                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                                                          />
+                                                          <span className="text-slate-400">-</span>
+                                                          <input 
+                                                            type="number" 
+                                                            placeholder="Max" 
+                                                            value={priceRange.max}
+                                                            onChange={(e) => setPriceRange(prev => ({...prev, max: e.target.value}))}
+                                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                                                          />
+                                                      </div>
+                                                  </div>
+
+                                                  {/* Subcategory Filter (Contextual) */}
+                                                  {CurrentCategoryMeta && CurrentCategoryMeta.subcategories && CurrentCategoryMeta.subcategories.length > 0 && (
+                                                      <div className="space-y-2">
+                                                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                                              <FolderTree className="h-3 w-3" />
+                                                              {t('subcategory')}
+                                                          </label>
+                                                          <select 
+                                                            value={activeSubCategoryPath.length > 0 ? activeSubCategoryPath[activeSubCategoryPath.length - 1] : ''}
+                                                            onChange={(e) => {
+                                                                if (e.target.value) {
+                                                                    setActiveSubCategoryPath([e.target.value]);
+                                                                } else {
+                                                                    setActiveSubCategoryPath([]);
+                                                                }
+                                                            }}
+                                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                                                          >
+                                                              <option value="">{t('all')}</option>
+                                                              {CurrentCategoryMeta.subcategories.map(sub => {
+                                                                  const subLabel = lang === 'fr' ? (sub.label_fr || sub.label) : (lang === 'ar' ? (sub.label_ar || sub.label) : sub.label);
+                                                                  return <option key={sub.id} value={sub.id}>{subLabel}</option>;
+                                                              })}
+                                                          </select>
+                                                      </div>
+                                                  )}
+                                              </div>
+
+                                              <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                                                  <div className="flex items-center gap-6">
+                                                      <label className="flex items-center gap-3 cursor-pointer group">
+                                                          <div className="relative">
+                                                              <input 
+                                                                  type="checkbox" 
+                                                                  checked={onlyPromos}
+                                                                  onChange={(e) => setOnlyPromos(e.target.checked)}
+                                                                  className="sr-only peer"
+                                                              />
+                                                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                                          </div>
+                                                          <span className="text-sm font-bold text-slate-600 dark:text-slate-300 group-hover:text-indigo-600 transition-colors">{t('onlyPromos')}</span>
+                                                      </label>
+
+                                                      <label className="flex items-center gap-3 cursor-pointer group">
+                                                          <div className="relative">
+                                                              <input 
+                                                                  type="checkbox" 
+                                                                  checked={showFavoritesOnly}
+                                                                  onChange={(e) => setShowFavoritesOnly(e.target.checked)}
+                                                                  className="sr-only peer"
+                                                              />
+                                                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-rose-500"></div>
+                                                          </div>
+                                                          <span className="text-sm font-bold text-slate-600 dark:text-slate-300 group-hover:text-rose-500 transition-colors">{t('myFavorites')}</span>
+                                                      </label>
+                                                  </div>
+
+                                                  <button 
+                                                      onClick={() => {
+                                                          setSearchQuery('');
+                                                          setPriceRange({ min: '', max: '' });
+                                                          setSortOption('newest');
+                                                          setSearchScope('all');
+                                                          setOnlyPromos(false);
+                                                          setShowFavoritesOnly(false);
+                                                      }}
+                                                      className="px-6 py-2.5 text-sm font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-2xl transition-all flex items-center gap-2"
+                                                  >
+                                                      <X className="h-4 w-4" />
+                                                      {t('clearFilters')}
+                                                  </button>
+                                              </div>
                                           </div>
-                                      )}
-                                  </div>
-                              </div>
-                          )}
+                                      </div>
+                                  </motion.div>
+                              )}
+                          </AnimatePresence>
                       </div>
 
                       {/* Services Grid */}
@@ -1286,7 +1432,7 @@ const App: React.FC = () => {
                       </div>
                   </footer>
               )}
-          </div>
+          </motion.div>
       </main>
 
       {/* Modals */}
@@ -1555,7 +1701,7 @@ const App: React.FC = () => {
 
       {/* Chat Assistant */}
       {!isAdminMode && (
-          <ChatAssistant services={services} categories={categories} />
+          <ChatAssistant whatsappNumber={globalSettings.whatsappNumber} />
       )}
     </div>
   );

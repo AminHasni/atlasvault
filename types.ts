@@ -58,8 +58,12 @@ export type CategoryMeta = Category;
 export interface ServiceItem {
   id: string;
   name: string;
+  name_fr?: string;
+  name_ar?: string;
   category: string; // Changed from enum to string to support dynamic categories from DB
   description: string;
+  description_fr?: string;
+  description_ar?: string;
   price: number;
   currency: string;
   conditions: string;
