@@ -65,7 +65,12 @@ create table public.services (
   "badgeLabel" text,     -- New Column
   "videoUri" text,       -- New Column for Veo video
   "subcategory" text, -- Reference to either subcategories or second_subcategories
-  "second_subcategory_id" text references public.second_subcategories("id") -- Specific reference for Level 3
+  "second_subcategory_id" text references public.second_subcategories("id"), -- Specific reference for Level 3
+  "name_fr" text,
+  "name_ar" text,
+  "description_fr" text,
+  "description_ar" text,
+  "options" jsonb -- Customizable options
 );
 
 -- 4. Create Profiles Table (Users)
@@ -95,7 +100,9 @@ create table public.orders (
   "customerPhone" text,
   "status" text,
   "createdAt" bigint,
-  "internalNotes" text
+  "internalNotes" text,
+  "selectedOptions" jsonb,
+  "totalPrice" numeric
 );
 
 -- 6. Create Reviews Table
@@ -167,14 +174,14 @@ VALUES
 ('OOREDOO', 'CONNECTIVITY', 'INTERNET_BUNDLES', 'Ooredoo', 'Ooredoo', 'أوريدو', 'Smartphone', 'text-red-600', 0);
 
 -- Insert Services
-INSERT INTO public.services ("id", "name", "category", "subcategory", "description", "price", "currency", "conditions", "requiredInfo", "active", "createdAt", "popularity", "promoPrice", "badgeLabel", "videoUri")
+INSERT INTO public.services ("id", "name", "name_fr", "name_ar", "category", "subcategory", "description", "description_fr", "description_ar", "price", "currency", "conditions", "requiredInfo", "active", "createdAt", "popularity", "promoPrice", "badgeLabel", "videoUri", "options")
 VALUES 
-('1', 'Encrypted Cloud Storage 1TB', 'AI_PRODUCTIVITY', 'OFFICE_365', 'Military-grade encryption for your most sensitive data. Accessible anywhere, anytime, with zero-knowledge privacy architecture.', 60.00, 'TND', 'Subscription renews monthly. No refund after 3 days.', 'Email address, PGP Public Key (Optional)', true, 1709251200000, 85, 45.00, '25% OFF', null),
-('2', 'Global eSIM Data Plan', 'CONNECTIVITY', 'ESIM', 'Stay connected in over 140 countries with high-speed 5G data. No physical SIM required.', 135.00, 'TND', 'Valid for 30 days from activation. Device must be eSIM compatible.', 'Device EID, Email address', true, 1709241200000, 92, null, 'Best Seller', null),
-('3', 'Rank Boost - Apex Predator', 'GAMING', 'APEX_BOOST', 'Professional boosting service to reach the highest ranks. Streamed live for your assurance.', 450.00, 'TND', 'Account sharing required. 2FA must be temporarily disabled or coordinated.', 'Platform, Username, Current Rank', true, 1709231200000, 45, null, null, null),
-('4', 'SEO Audit Pro', 'BRANDING', 'SOCIAL_GROWTH', 'Comprehensive analysis of your website visibility, keyword rankings, and technical health.', 900.00, 'TND', 'Report delivered within 5 business days.', 'Website URL, Target Keywords, Competitor URLs', true, 1709221200000, 60, null, null, null),
-('5', 'Private VPN Access', 'CONNECTIVITY', 'VIRTUAL_NUMBERS', 'Anonymous browsing with dedicated IP options. Bypass geo-restrictions effortlessly.', 30.00, 'TND', 'Strict no-logs policy.', 'Desired username', true, 1709211200000, 98, null, 'Hot', null),
-('6', 'Ooredoo 25GB Data Plan', 'CONNECTIVITY', 'OOREDOO', 'High-speed 4G/5G data bundle for Ooredoo subscribers.', 25.00, 'TND', 'Valid for 30 days.', 'Phone number', true, 1709261200000, 75, null, 'New', null);
+('1', 'Encrypted Cloud Storage 1TB', 'Stockage Cloud Chiffré 1To', 'تخزين سحابي مشفر 1 تيرابايت', 'AI_PRODUCTIVITY', 'OFFICE_365', 'Military-grade encryption for your most sensitive data. Accessible anywhere, anytime, with zero-knowledge privacy architecture.', 'Chiffrement de niveau militaire pour vos données les plus sensibles. Accessible partout, à tout moment, avec une architecture de confidentialité sans connaissance.', 'تشفير عسكري لبياناتك الأكثر حساسية. يمكن الوصول إليه في أي مكان وفي أي وقت، مع بنية خصوصية المعرفة الصفرية.', 60.00, 'TND', 'Subscription renews monthly. No refund after 3 days.', 'Email address, PGP Public Key (Optional)', true, 1709251200000, 85, 45.00, '25% OFF', null, null),
+('2', 'Global eSIM Data Plan', 'Forfait de Données eSIM Mondial', 'خطة بيانات eSIM العالمية', 'CONNECTIVITY', 'ESIM', 'Stay connected in over 140 countries with high-speed 5G data. No physical SIM required.', 'Restez connecté dans plus de 140 pays avec des données 5G haut débit. Aucune carte SIM physique requise.', 'ابق على اتصال في أكثر من 140 دولة ببيانات 5G عالية السرعة. لا يلزم وجود بطاقة SIM فعلية.', 135.00, 'TND', 'Valid for 30 days from activation. Device must be eSIM compatible.', 'Device EID, Email address', true, 1709241200000, 92, null, 'Best Seller', null, null),
+('3', 'Rank Boost - Apex Predator', 'Boost de Rang - Apex Predator', 'تعزيز الرتبة - أبيكس بريداتور', 'GAMING', 'APEX_BOOST', 'Professional boosting service to reach the highest ranks. Streamed live for your assurance.', 'Service de boost professionnel pour atteindre les rangs les plus élevés. Diffusé en direct pour votre assurance.', 'خدمة تعزيز احترافية للوصول إلى أعلى الرتب. يتم بثها مباشرة لضمانك.', 450.00, 'TND', 'Account sharing required. 2FA must be temporarily disabled or coordinated.', 'Platform, Username, Current Rank', true, 1709231200000, 45, null, null, null, null),
+('4', 'SEO Audit Pro', 'Audit SEO Pro', 'تدقيق سيو برو', 'BRANDING', 'SOCIAL_GROWTH', 'Comprehensive analysis of your website visibility, keyword rankings, and technical health.', 'Analyse complète de la visibilité de votre site web, du classement des mots-clés et de la santé technique.', 'تحليل شامل لرؤية موقع الويب الخاص بك، وتصنيفات الكلمات الرئيسية، والصحة الفنية.', 900.00, 'TND', 'Report delivered within 5 business days.', 'Website URL, Target Keywords, Competitor URLs', true, 1709221200000, 60, null, null, null, null),
+('5', 'Private VPN Access', 'Accès VPN Privé', 'وصول في بي إن خاص', 'CONNECTIVITY', 'VIRTUAL_NUMBERS', 'Anonymous browsing with dedicated IP options. Bypass geo-restrictions effortlessly.', 'Navigation anonyme avec options d''IP dédiée. Contournez les géo-restrictions sans effort.', 'تصفح مجهول مع خيارات IP مخصصة. تجاوز القيود الجغرافية دون عناء.', 30.00, 'TND', 'Strict no-logs policy.', 'Desired username', true, 1709211200000, 98, null, 'Hot', null, null),
+('6', 'Ooredoo 25GB Data Plan', 'Forfait Ooredoo 25Go', 'خطة بيانات أوريدو 25 جيجابايت', 'CONNECTIVITY', 'OOREDOO', 'High-speed 4G/5G data bundle for Ooredoo subscribers.', 'Forfait de données 4G/5G haut débit pour les abonnés Ooredoo.', 'حزمة بيانات 4G/5G عالية السرعة لمشتركي أوريدو.', 25.00, 'TND', 'Valid for 30 days.', 'Phone number', true, 1709261200000, 75, null, 'New', null, null);
 
 -- Insert Admin User
 INSERT INTO public.profiles ("id", "email", "name", "phone", "role", "provider", "createdAt", "password")

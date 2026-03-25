@@ -9,9 +9,10 @@ interface ServiceCardProps {
   isAdmin?: boolean;
   isFavorite?: boolean;
   onToggleFavorite?: (e: React.MouseEvent, id: string) => void;
+  lang?: 'en' | 'fr' | 'ar';
 }
 
-export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onClick, isAdmin, isFavorite, onToggleFavorite }) => {
+export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onClick, isAdmin, isFavorite, onToggleFavorite, lang = 'en' }) => {
   const [ratingData, setRatingData] = useState({ average: 0, count: 0 });
 
   useEffect(() => {
@@ -96,7 +97,11 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onClick, isAd
 
       <div className="flex items-end justify-between border-t border-slate-100 dark:border-slate-700 pt-4 group-hover:border-slate-200 dark:group-hover:border-slate-600 transition-colors">
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider group-hover:text-indigo-600/70 dark:group-hover:text-indigo-300/70 transition-colors">Price</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wider group-hover:text-indigo-600/70 dark:group-hover:text-indigo-300/70 transition-colors">
+            {service.options?.some(o => o.type === 'pricing-table') 
+              ? (lang === 'fr' ? 'À partir de' : lang === 'ar' ? 'ابتداءً من' : 'Starting from') 
+              : (lang === 'fr' ? 'Prix' : lang === 'ar' ? 'السعر' : 'Price')}
+          </p>
           <div className="flex items-baseline gap-2">
               <p className={`text-2xl font-bold ${hasDiscount ? 'text-rose-500 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>
                 {service.currency}{hasDiscount ? service.promoPrice!.toFixed(2) : service.price.toFixed(2)}

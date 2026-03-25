@@ -55,6 +55,33 @@ export interface Category {
 // Keeping CategoryMeta for backward compat if needed, but Category replaces it mostly
 export type CategoryMeta = Category;
 
+export interface ServiceOptionValue {
+  id: string;
+  label: string;
+  label_fr: string;
+  label_ar: string;
+  priceModifier: number;
+}
+
+export interface ServiceOption {
+  id: string;
+  type: 'select' | 'checkbox' | 'text' | 'pricing-table';
+  label: string;
+  label_fr: string;
+  label_ar: string;
+  required: boolean;
+  values?: ServiceOptionValue[];
+}
+
+export interface SelectedOption {
+  optionId: string;
+  optionLabel: string;
+  valueId?: string;
+  valueLabel?: string;
+  textValue?: string;
+  priceModifier: number;
+}
+
 export interface ServiceItem {
   id: string;
   name: string;
@@ -76,9 +103,19 @@ export interface ServiceItem {
   videoUri?: string; // New field for Veo video URI
   subcategory?: string; // New field for subcategory filtering
   second_subcategory_id?: string; // New field for Level 3 subcategory
+  options?: ServiceOption[]; // New field for customizable options
 }
 
 export type ServiceFormData = Omit<ServiceItem, 'id' | 'createdAt'>;
+
+export interface CartItem {
+  id: string;
+  service: ServiceItem;
+  selectedOptions: SelectedOption[];
+  basePrice: number;
+  optionsTotal: number;
+  finalPrice: number;
+}
 
 export type OrderStatus = 'pending_whatsapp' | 'confirmed' | 'processing' | 'delivered' | 'cancelled';
 
@@ -97,6 +134,8 @@ export interface Order {
   status: OrderStatus;
   createdAt: number;
   internalNotes?: string; // Field for admin internal notes
+  selectedOptions?: SelectedOption[]; // New field for options selected by user
+  totalPrice?: number; // Final price including modifiers
 }
 
 export type UserRole = 'admin' | 'user';

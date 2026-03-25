@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { Category } from '../types';
 import * as Icons from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
-import { SubcategoryManager } from './SubcategoryManager';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CategoryFormProps {
@@ -41,7 +40,6 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
     order: initialData?.order || 0,
   });
 
-  const [subcategories, setSubcategories] = useState<Category['subcategories']>(initialData?.subcategories || []);
   const [isTranslatingCat, setIsTranslatingCat] = useState(false);
 
   const isEditing = !!initialData;
@@ -99,12 +97,12 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
         // Auto-generate simple ID if missing and not editing
         formData.id = formData.label.toLowerCase().replace(/\s+/g, '-');
     }
-    onSubmit({ ...formData, subcategories });
+    onSubmit({ ...formData, subcategories: initialData?.subcategories || [] });
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-8">
+    <div className="max-w-4xl mx-auto">
+      <form onSubmit={handleSubmit} className="space-y-8">
         {/* Header Info */}
         <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
           <div className="flex items-center gap-3 mb-2">
@@ -285,21 +283,6 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
           </div>
         </div>
 
-        {/* Subcategories Section */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-emerald-500/10 rounded-lg">
-              <Icons.Layers className="h-5 w-5 text-emerald-500" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Subcategories</h3>
-          </div>
-          
-          <SubcategoryManager 
-              subcategories={subcategories || []} 
-              onChange={setSubcategories} 
-          />
-        </div>
-
         {/* Actions */}
         <div className="flex items-center justify-between pt-8 border-t border-slate-100 dark:border-slate-800">
           <button
@@ -328,82 +311,6 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ initialData, onSubmi
           </button>
         </div>
       </form>
-
-      {/* Live Preview Sidebar */}
-      <div className="lg:col-span-1">
-        <div className="sticky top-8 space-y-6">
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-2">
-              <Icons.Eye className="h-4 w-4 text-indigo-500" />
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Live Preview</span>
-            </div>
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-          </div>
-
-          <div className="relative">
-            {/* Mock Category Card - Matching AdminPanel style */}
-            <div className="group relative bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-8 shadow-2xl transition-all duration-500">
-              <div className="flex items-start justify-between mb-8">
-                <div className={`flex h-16 w-16 items-center justify-center rounded-3xl shadow-lg transition-transform group-hover:scale-110 duration-500 ${formData.color.replace('text-', 'bg-').replace('500', '500/10')} ${formData.color}`}>
-                  {React.createElement((Icons as any)[formData.icon] || Icons.Box, {
-                    className: "h-8 w-8"
-                  })}
-                </div>
-                <div className="flex gap-2">
-                  <div className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-300">
-                    <Icons.Edit2 className="h-4 w-4" />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                    {activeTab === 'en' ? (formData.label || 'Category Label') : activeTab === 'fr' ? (formData.label_fr || 'Label') : (formData.label_ar || 'الفئة')}
-                  </h4>
-                  <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-1 rounded-lg uppercase tracking-widest">#ID</span>
-                </div>
-                <p className="text-sm font-bold text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed h-10">
-                  {activeTab === 'en' ? (formData.desc || 'Provide a description...') : activeTab === 'fr' ? (formData.desc_fr || 'Description...') : (formData.desc_ar || 'الوصف...')}
-                </p>
-                
-                <div className="flex items-center justify-between pt-6 border-t border-slate-50 dark:border-slate-800">
-                  <div className="flex items-center gap-6">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subcats</span>
-                      <span className="text-lg font-black text-slate-900 dark:text-white">{subcategories.length}</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order</span>
-                      <span className="text-lg font-black text-slate-900 dark:text-white">{formData.order}</span>
-                    </div>
-                  </div>
-                  <div className="flex -space-x-3">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="h-8 w-8 rounded-xl border-2 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                        <Icons.Circle className="h-2.5 w-2.5 text-indigo-500" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Hint */}
-            <div className="mt-8 p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/20">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-8 w-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-                  <Icons.Lightbulb className="h-4 w-4" />
-                </div>
-                <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Pro Tip</span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                Use high-quality icons and descriptive labels to improve user engagement. The color you choose will be used for accents throughout the category view.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

@@ -127,9 +127,9 @@ export const SubcategoryForm: React.FC<SubcategoryFormProps> = ({ initialData, c
   const ActiveIcon = (Icons as any)[formData.icon] || Icons.Box;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-8">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
       {/* Main Form Area */}
-      <div className="flex-1 space-y-8">
+      <div className="space-y-8">
         {/* Header & Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
@@ -313,48 +313,6 @@ export const SubcategoryForm: React.FC<SubcategoryFormProps> = ({ initialData, c
           <button type="submit" className="px-10 py-3 rounded-2xl text-sm font-black uppercase tracking-widest text-white bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-500/20 transition-all">
             {isEditing ? 'Update Subcategory' : 'Create Subcategory'}
           </button>
-        </div>
-      </div>
-
-      {/* Live Preview Sidebar */}
-      <div className="w-full lg:w-80 space-y-6">
-        <div className="sticky top-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Icons.Eye className="h-4 w-4 text-emerald-500" />
-            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">Live Preview</h3>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl">
-            <div className={`h-16 w-16 rounded-2xl mb-6 flex items-center justify-center shadow-lg ${formData.color.replace('text-', 'bg-').replace('500', '500/10')} ${formData.color}`}>
-              <ActiveIcon className="h-8 w-8" />
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-xl font-black text-slate-900 dark:text-white">
-                {activeTab === 'en' ? formData.label : (formData as any)[`label_${activeTab}`] || 'Subcategory Label'}
-              </h4>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                {activeTab === 'en' ? formData.desc : (formData as any)[`desc_${activeTab}`] || 'Your subcategory description will appear here...'}
-              </p>
-            </div>
-            <div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Fee</span>
-                <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{formData.fee}%</span>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
-                <Icons.ArrowRight className="h-5 w-5 text-slate-400" />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20">
-            <div className="flex gap-3">
-              <Icons.Info className="h-5 w-5 text-amber-500 shrink-0" />
-              <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
-                Changes are reflected in real-time. Make sure to check all language tabs before saving.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </form>

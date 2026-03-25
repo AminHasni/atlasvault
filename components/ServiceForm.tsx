@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { ServiceFormData, ServiceItem, Category } from '../types';
+import { ServiceFormData, ServiceItem, Category, ServiceOption, ServiceOptionValue } from '../types';
 import { generateServiceDescription } from '../services/geminiService';
-import { Sparkles, Loader2, Tag, Percent, Eye, Info, ArrowRight, Palette, Globe, Layers } from 'lucide-react';
+import { Sparkles, Loader2, Tag, Percent, Info, ArrowRight, Palette, Globe, Layers, Plus, Trash2, Settings2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 
@@ -34,6 +34,7 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
     requiredInfo: initialData?.requiredInfo || '',
     active: initialData?.active ?? true,
     popularity: initialData?.popularity || 0,
+    options: initialData?.options || [],
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -126,6 +127,111 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
     }
   };
 
+  const addOption = () => {
+    const newOption: ServiceOption = {
+      id: `opt_${Date.now()}`,
+      type: 'select',
+      label: '',
+      label_fr: '',
+      label_ar: '',
+      required: false,
+      values: []
+    };
+    setFormData(prev => ({ ...prev, options: [...(prev.options || []), newOption] }));
+  };
+
+  const removeOption = (id: string) => {
+    setFormData(prev => ({ ...prev, options: (prev.options || []).filter(o => o.id !== id) }));
+  };
+
+  const updateOption = (id: string, updates: Partial<ServiceOption>) => {
+    setFormData(prev => ({
+      ...prev,
+      options: (prev.options || []).map(o => o.id === id ? { ...o, ...updates } : o)
+    }));
+  };
+
+  const addOptionValue = (optionId: string) => {
+    const newValue: ServiceOptionValue = {
+      id: `val_${Date.now()}`,
+      label: '',
+      label_fr: '',
+      label_ar: '',
+      priceModifier: 0
+    };
+    setFormData(prev => ({
+      ...prev,
+      options: (prev.options || []).map(o => o.id === optionId ? { ...o, values: [...(o.values || []), newValue] } : o)
+    }));
+  };
+
+  const removeOptionValue = (optionId: string, valueId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      options: (prev.options || []).map(o => o.id === optionId ? { ...o, values: (o.values || []).filter(v => v.id !== valueId) } : o)
+    }));
+  };
+
+  const updateOptionValue = (optionId: string, valueId: string, updates: Partial<ServiceOptionValue>) => {
+    setFormData(prev => ({
+      ...prev,
+      options: (prev.options || []).map(o => o.id === optionId ? {
+        ...o,
+        values: (o.values || []).map(v => v.id === valueId ? { ...v, ...updates } : v)
+      } : o)
+    }));
+  };
+
+  const handleTranslateOptions = async () => {
+    if (!formData.options || formData.options.length === 0) return;
+    setIsTranslating(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const prompt = `Translate the following service options and their values into French and Arabic.
+      Return ONLY a valid JSON object where keys are option IDs and values are objects with translated labels and values.
+      Options to translate: ${JSON.stringify(formData.options.map(o => ({
+        id: o.id,
+        label: o.label,
+        values: o.values?.map(v => ({ id: v.id, label: v.label }))
+      })))}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+
+      const result = JSON.parse(response.text || '{}');
+      
+      setFormData(prev => ({
+        ...prev,
+        options: (prev.options || []).map(o => {
+          const trans = result[o.id];
+          if (!trans) return o;
+          
+          return {
+            ...o,
+            label_fr: trans.label_fr || o.label_fr,
+            label_ar: trans.label_ar || o.label_ar,
+            values: (o.values || []).map(v => {
+              const vTrans = trans.values?.find((vt: any) => vt.id === v.id);
+              if (!vTrans) return v;
+              return {
+                ...v,
+                label_fr: vTrans.label_fr || v.label_fr,
+                label_ar: vTrans.label_ar || v.label_ar,
+              };
+            })
+          };
+        })
+      }));
+    } catch (error) {
+      console.error("Options translation failed", error);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const submissionData = {
@@ -138,9 +244,9 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-8">
+    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
       {/* Main Form Area */}
-      <div className="flex-1 space-y-8">
+      <div className="space-y-8">
         {/* Header & Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
@@ -290,6 +396,157 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
           </div>
         </div>
 
+        {/* Customizable Options Section */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-indigo-500" />
+              <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">Service Plans & Options</h3>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleTranslateOptions}
+                disabled={isTranslating || !formData.options?.length}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold hover:bg-indigo-100 transition-all disabled:opacity-50"
+              >
+                <Globe className="h-3 w-3" />
+                Translate All
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const newOption: ServiceOption = {
+                    id: `opt_${Date.now()}`,
+                    type: 'pricing-table',
+                    label: 'Select Plan',
+                    label_fr: 'Choisir un Plan',
+                    label_ar: 'اختر الخطة',
+                    required: true,
+                    values: []
+                  };
+                  setFormData(prev => ({ ...prev, options: [...(prev.options || []), newOption] }));
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[10px] font-bold hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
+              >
+                <Plus className="h-3 w-3" />
+                Add Pricing Plan
+              </button>
+              <button
+                type="button"
+                onClick={addOption}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+              >
+                <Plus className="h-3 w-3" />
+                Custom Option
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {formData.options?.map((option, optIdx) => (
+              <div key={option.id} className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Option Label ({activeTab.toUpperCase()})</label>
+                      <input
+                        type="text"
+                        value={activeTab === 'en' ? option.label : (option as any)[`label_${activeTab}`]}
+                        onChange={(e) => updateOption(option.id, { [activeTab === 'en' ? 'label' : `label_${activeTab}`]: e.target.value })}
+                        className="w-full rounded-xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 text-sm font-bold outline-none focus:border-indigo-500 transition-all"
+                        placeholder="e.g. Duration"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</label>
+                      <select
+                        value={option.type}
+                        onChange={(e) => updateOption(option.id, { type: e.target.value as any })}
+                        className="w-full rounded-xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 text-sm font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
+                      >
+                        <option value="select">Selection (Dropdown)</option>
+                        <option value="checkbox">Multi-choice (Checkboxes)</option>
+                        <option value="text">Text Input</option>
+                        <option value="pricing-table">Pricing Table</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-4 pt-6">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={option.required}
+                          onChange={(e) => updateOption(option.id, { required: e.target.checked })}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Required</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => removeOption(option.id)}
+                        className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {option.type !== 'text' && (
+                  <div className="pl-6 border-l-2 border-slate-100 dark:border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Values & Price Modifiers</label>
+                      <button
+                        type="button"
+                        onClick={() => addOptionValue(option.id)}
+                        className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                      >
+                        + Add Value
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {option.values?.map((val) => (
+                        <div key={val.id} className="flex items-center gap-3">
+                          <input
+                            type="text"
+                            value={activeTab === 'en' ? val.label : (val as any)[`label_${activeTab}`]}
+                            onChange={(e) => updateOptionValue(option.id, val.id, { [activeTab === 'en' ? 'label' : `label_${activeTab}`]: e.target.value })}
+                            className="flex-1 rounded-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium outline-none focus:border-indigo-500 transition-all"
+                            placeholder="Value label"
+                          />
+                          <div className="flex items-center gap-2 w-32">
+                            <span className="text-[10px] font-bold text-slate-400">+</span>
+                            <input
+                              type="number"
+                              value={val.priceModifier}
+                              onChange={(e) => updateOptionValue(option.id, val.id, { priceModifier: parseFloat(e.target.value) || 0 })}
+                              className="w-full rounded-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-bold outline-none focus:border-indigo-500 transition-all"
+                              placeholder="0.00"
+                            />
+                            <span className="text-[10px] font-bold text-slate-400">TND</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeOptionValue(option.id, val.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+            {!formData.options?.length && (
+              <div className="py-8 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl">
+                <p className="text-xs text-slate-400 font-medium italic">No customizable options added yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Footer */}
         <div className="flex items-center justify-between pt-8 border-t border-slate-100 dark:border-slate-800">
           <label className="flex items-center gap-3 cursor-pointer group">
@@ -307,64 +564,6 @@ export const ServiceForm: React.FC<ServiceFormProps> = ({ initialData, categorie
             <button type="submit" className="px-10 py-3 rounded-2xl text-sm font-black uppercase tracking-widest text-white bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-500/20 transition-all">
               Save Service
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Live Preview Sidebar */}
-      <div className="w-full lg:w-80 space-y-6">
-        <div className="sticky top-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Eye className="h-4 w-4 text-emerald-500" />
-            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">Live Preview</h3>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl">
-            <div className="flex justify-between items-start mb-6">
-              <div className="h-12 w-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                <Tag className="h-6 w-6" />
-              </div>
-              {formData.badgeLabel && (
-                <span className="px-3 py-1 rounded-full bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest">
-                  {formData.badgeLabel}
-                </span>
-              )}
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-xl font-black text-slate-900 dark:text-white">
-                {activeTab === 'en' ? formData.name : (formData as any)[`name_${activeTab}`] || 'Service Name'}
-              </h4>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3">
-                {activeTab === 'en' ? formData.description : (formData as any)[`description_${activeTab}`] || 'Your service description will appear here...'}
-              </p>
-            </div>
-            <div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Price</span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-slate-900 dark:text-white">
-                    {formData.promoPrice || formData.price} TND
-                  </span>
-                  {formData.promoPrice && (
-                    <span className="text-sm text-slate-400 line-through font-bold">
-                      {formData.price} TND
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <button type="button" className="w-full mt-6 py-4 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest hover:bg-indigo-500 transition-all">
-              Order Now
-            </button>
-          </div>
-
-          <div className="mt-6 p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20">
-            <div className="flex gap-3">
-              <Info className="h-5 w-5 text-blue-500 shrink-0" />
-              <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed font-medium">
-                This is how the service will appear to customers. Make sure the pricing and description are clear.
-              </p>
-            </div>
           </div>
         </div>
       </div>

@@ -11,7 +11,7 @@ import { Modal } from './Modal';
 import { Plus, Edit2, Trash2, Power, Search, ShoppingCart, List, ExternalLink, FileText, Save, Clock, User as UserIcon, Banknote, Tag, CheckCircle2, AlertCircle, XCircle, Truck, PlayCircle, BarChart3, Users, TrendingUp, PieChart, ArrowUpRight, FolderTree, Smartphone, Settings, Filter, Calendar, ChevronDown, ShoppingBag, X } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
-export type AdminTab = 'dashboard' | 'services' | 'categories' | 'subcategories' | 'level3_subcategories' | 'orders' | 'users';
+export type AdminTab = 'dashboard' | 'categories' | 'subcategories' | 'level3_subcategories' | 'services' | 'orders' | 'users';
 
 interface AdminPanelProps {
   services: ServiceItem[];
@@ -63,6 +63,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
   const [orderDateRange, setOrderDateRange] = useState<{start: string, end: string}>({start: '', end: ''});
   const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [catalogSearch, setCatalogSearch] = useState('');
+
+  // Advanced Service Filters
+  const [serviceCategoryFilter, setServiceCategoryFilter] = useState<string>('all');
+  const [serviceSubcategoryFilter, setServiceSubcategoryFilter] = useState<string>('all');
+  const [serviceSecondSubcategoryFilter, setServiceSecondSubcategoryFilter] = useState<string>('all');
+  const [serviceStatusFilter, setServiceStatusFilter] = useState<string>('all');
+  const [serviceDateRange, setServiceDateRange] = useState<{start: string, end: string}>({start: '', end: ''});
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [dbUsers, setDbUsers] = useState<User[]>([]); // Store real users
@@ -198,10 +207,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
 
   // --- Filtering ---
   
-  const filteredServices = services.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredServices = services.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         s.category.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = serviceCategoryFilter === 'all' || s.category === serviceCategoryFilter;
+    
+    const matchesSubcategory = serviceSubcategoryFilter === 'all' || s.subcategory === serviceSubcategoryFilter;
+    
+    const matchesSecondSubcategory = serviceSecondSubcategoryFilter === 'all' || s.second_subcategory_id === serviceSecondSubcategoryFilter;
+    
+    const matchesStatus = serviceStatusFilter === 'all' || 
+                         (serviceStatusFilter === 'active' ? s.active : !s.active);
+    
+    const matchesDate = (!serviceDateRange.start || s.createdAt >= new Date(serviceDateRange.start).getTime()) &&
+                       (!serviceDateRange.end || s.createdAt <= new Date(serviceDateRange.end).getTime() + 86400000);
+
+    return matchesSearch && matchesCategory && matchesSubcategory && matchesSecondSubcategory && matchesStatus && matchesDate;
+  });
 
   const sortedSubcategories = useMemo(() => {
     const flatList = categories.flatMap(cat => (cat.subcategories || []).map(sub => ({
@@ -355,6 +378,66 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   const handleAddCategoryClick = () => {
     setEditingCategory(null);
     setIsCategoryFormOpen(true);
+  };
+
+  const handleAddSubcategoryToCategory = (categoryId: string) => {
+    setEditingSubcategory({
+      id: '',
+      parent_id: categoryId,
+      label: '',
+      label_fr: '',
+      label_ar: '',
+      desc: '',
+      desc_fr: '',
+      desc_ar: '',
+      icon: 'Layers',
+      color: 'text-indigo-500',
+      fee: 0,
+      order: 0
+    } as any);
+    setIsSubcategoryFormOpen(true);
+  };
+
+  const handleAddSecondSubcategoryToSubcategory = (subcategoryId: string) => {
+    setEditingSecondSubcategory({
+      id: '',
+      subcategory_id: subcategoryId,
+      label: '',
+      label_fr: '',
+      label_ar: '',
+      desc: '',
+      desc_fr: '',
+      desc_ar: '',
+      icon: 'Layers',
+      color: 'text-indigo-500',
+      fee: 0,
+      order: 0
+    } as any);
+    setIsSecondSubcategoryFormOpen(true);
+  };
+
+  const handleAddServiceToHierarchy = (categoryId: string, subcategoryId?: string, secondSubcategoryId?: string) => {
+    setEditingService({
+      id: '',
+      name: '',
+      name_fr: '',
+      name_ar: '',
+      category: categoryId,
+      subcategory: subcategoryId || '',
+      second_subcategory_id: secondSubcategoryId || '',
+      description: '',
+      description_fr: '',
+      description_ar: '',
+      price: 0,
+      currency: 'TND',
+      conditions: '',
+      requiredInfo: '',
+      active: true,
+      createdAt: Date.now(),
+      popularity: 0,
+      options: []
+    } as any);
+    setIsFormOpen(true);
   };
 
   const handleEditCategoryClick = (category: Category) => {
@@ -710,18 +793,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
       )}
 
       {/* --- SERVICES TAB --- */}
-      {activeTab === 'services' && (
+       {activeTab === 'services' && (
         <div className="animate-in fade-in duration-500 space-y-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="relative w-full md:w-96 group">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-              <input 
-                type="text" 
-                placeholder="Search services, categories..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-14 w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 pl-12 pr-4 text-sm font-bold text-slate-900 dark:text-white focus:border-indigo-500 outline-none transition-all shadow-sm"
-              />
+            <div className="flex flex-1 items-center gap-4 w-full md:w-auto">
+              <div className="relative flex-1 group">
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                <input 
+                  type="text" 
+                  placeholder="Search services..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-14 w-full rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 pl-12 pr-4 text-sm font-bold text-slate-900 dark:text-white focus:border-indigo-500 outline-none transition-all shadow-sm"
+                />
+              </div>
+              <button 
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className={`h-14 w-14 flex items-center justify-center rounded-2xl border-2 transition-all ${showAdvancedFilters ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-500 hover:border-indigo-500'}`}
+                title="Advanced Filters"
+              >
+                <Filter className="h-5 w-5" />
+              </button>
             </div>
             <div className="flex items-center gap-4 w-full md:w-auto">
               <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest">
@@ -737,6 +829,128 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
               </button>
             </div>
           </div>
+
+          {/* Advanced Filters Panel */}
+          {showAdvancedFilters && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-8"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</label>
+                  <select 
+                    value={serviceCategoryFilter}
+                    onChange={(e) => {
+                      setServiceCategoryFilter(e.target.value);
+                      setServiceSubcategoryFilter('all');
+                      setServiceSecondSubcategoryFilter('all');
+                    }}
+                    className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                  >
+                    <option value="all">All Categories</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.label}>{cat.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subcategory (L1)</label>
+                  <select 
+                    value={serviceSubcategoryFilter}
+                    onChange={(e) => {
+                      setServiceSubcategoryFilter(e.target.value);
+                      setServiceSecondSubcategoryFilter('all');
+                    }}
+                    className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                  >
+                    <option value="all">All Subcategories</option>
+                    {categories
+                      .find(c => c.label === serviceCategoryFilter)
+                      ?.subcategories?.map(sub => (
+                        <option key={sub.id} value={sub.label}>{sub.label}</option>
+                      ))}
+                    {serviceCategoryFilter === 'all' && categories.flatMap(c => c.subcategories || []).map(sub => (
+                      <option key={sub.id} value={sub.label}>{sub.label} ({categories.find(c => c.id === sub.category_id)?.label})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subcategory (L2)</label>
+                  <select 
+                    value={serviceSecondSubcategoryFilter}
+                    onChange={(e) => setServiceSecondSubcategoryFilter(e.target.value)}
+                    className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                  >
+                    <option value="all">All Level 2 Subcategories</option>
+                    {categories
+                      .flatMap(c => c.subcategories || [])
+                      .find(s => s.label === serviceSubcategoryFilter)
+                      ?.second_subcategories?.map(ss => (
+                        <option key={ss.id} value={ss.id}>{ss.label}</option>
+                      ))}
+                    {serviceSubcategoryFilter === 'all' && categories.flatMap(c => c.subcategories || []).flatMap(s => s.second_subcategories || []).map(ss => (
+                      <option key={ss.id} value={ss.id}>{ss.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</label>
+                  <select 
+                    value={serviceStatusFilter}
+                    onChange={(e) => setServiceStatusFilter(e.target.value)}
+                    className="w-full h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Creation Date Range</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input 
+                      type="date" 
+                      value={serviceDateRange.start}
+                      onChange={(e) => setServiceDateRange(prev => ({ ...prev, start: e.target.value }))}
+                      className="h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                    />
+                    <input 
+                      type="date" 
+                      value={serviceDateRange.end}
+                      onChange={(e) => setServiceDateRange(prev => ({ ...prev, end: e.target.value }))}
+                      className="h-12 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-6 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-xs font-bold text-slate-400">
+                  Showing {filteredServices.length} of {services.length} services
+                </p>
+                <button 
+                  onClick={() => {
+                    setServiceCategoryFilter('all');
+                    setServiceSubcategoryFilter('all');
+                    setServiceSecondSubcategoryFilter('all');
+                    setServiceStatusFilter('all');
+                    setServiceDateRange({start: '', end: ''});
+                    setSearchTerm('');
+                  }}
+                  className="flex items-center gap-2 text-xs font-black text-rose-500 uppercase tracking-widest hover:text-rose-600 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                  Reset Filters
+                </button>
+              </div>
+            </motion.div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredServices.map((service) => (
@@ -814,97 +1028,89 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
 
       {/* --- CATEGORIES TAB --- */}
       {activeTab === 'categories' && (
-        <div className="animate-in fade-in duration-300 space-y-6">
+        <div className="animate-in fade-in duration-500 space-y-8">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div>
-                    <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Main Categories</h3>
-                    <p className="text-sm font-bold text-slate-500 uppercase tracking-tighter">Manage top-level service categories and their appearance.</p>
+                    <h3 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Categories Management</h3>
+                    <p className="text-sm font-bold text-slate-500 uppercase tracking-tighter">Manage your root categories (L0).</p>
                 </div>
-                <button 
-                    onClick={handleAddCategoryClick}
-                    className="h-14 flex items-center justify-center gap-3 rounded-2xl bg-indigo-600 px-8 text-sm font-black text-white hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20 uppercase tracking-widest active:scale-95"
-                >
-                    <Plus className="h-5 w-5" />
-                    Add Category
-                </button>
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input 
+                            type="text" 
+                            placeholder="Search categories..." 
+                            value={catalogSearch}
+                            onChange={(e) => setCatalogSearch(e.target.value)}
+                            className="w-full h-12 pl-12 pr-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-bold outline-none focus:border-indigo-500 transition-all"
+                        />
+                    </div>
+                    <button 
+                        onClick={handleAddCategoryClick}
+                        className="h-12 flex items-center justify-center gap-3 rounded-2xl bg-indigo-600 px-6 text-sm font-black text-white hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20 uppercase tracking-widest active:scale-95 whitespace-nowrap"
+                    >
+                        <Plus className="h-5 w-5" />
+                        New Category
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {categories.sort((a, b) => (a.order || 0) - (b.order || 0)).map((cat, i) => {
-                const Icon = (Icons as any)[cat.icon] || Icons.Box;
-                return (
-                  <motion.div 
-                    key={cat.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="group relative bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-8 shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
-                  >
-                    <div className="flex items-start justify-between mb-8">
-                      <div className={`flex h-16 w-16 items-center justify-center rounded-3xl shadow-lg transition-transform group-hover:scale-110 duration-500 ${cat.color.replace('text-', 'bg-').replace('500', '500/10')} ${cat.color}`}>
-                        <Icon className="h-8 w-8" />
-                      </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
-                        <button 
-                          onClick={() => handleEditCategoryClick(cat)}
-                          className="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all"
-                          title="Edit"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteCategoryClick(cat.id)}
-                          className="h-10 w-10 flex items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white transition-all"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <h4 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{cat.label}</h4>
-                        <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-1 rounded-lg uppercase tracking-widest">#{cat.id}</span>
-                      </div>
-                      <p className="text-sm font-bold text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed h-10">
-                        {cat.desc || 'No description provided for this category.'}
-                      </p>
-                      
-                      <div className="flex items-center justify-between pt-6 border-t border-slate-50 dark:border-slate-800">
-                        <div className="flex items-center gap-6">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subcats</span>
-                            <span className="text-lg font-black text-slate-900 dark:text-white">{cat.subcategories?.length || 0}</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order</span>
-                            <span className="text-lg font-black text-slate-900 dark:text-white">{cat.order || 0}</span>
-                          </div>
-                        </div>
-                        <div className="flex -space-x-3">
-                          {(cat.subcategories || []).slice(0, 3).map((sub, i) => (
-                            <div key={i} className="h-8 w-8 rounded-xl border-2 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                              <Icons.Circle className="h-2.5 w-2.5 text-indigo-500" />
+                {categories
+                    .filter(cat => 
+                        cat.label.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                        (cat.desc || '').toLowerCase().includes(catalogSearch.toLowerCase())
+                    )
+                    .sort((a, b) => (a.order || 0) - (b.order || 0))
+                    .map((cat) => {
+                    const Icon = (Icons as any)[cat.icon] || Icons.Box;
+                    return (
+                        <div key={cat.id} className="group bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden hover:border-indigo-500 transition-all">
+                            <div className="p-8">
+                                <div className="flex items-start justify-between mb-6">
+                                    <div className={`h-16 w-16 rounded-3xl flex items-center justify-center shadow-lg ${cat.color.replace('text-', 'bg-').replace('500', '500/10')} ${cat.color}`}>
+                                        <Icon className="h-8 w-8" />
+                                    </div>
+                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                        <button 
+                                            onClick={() => handleEditCategoryClick(cat)}
+                                            className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all"
+                                            title="Edit Category"
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteCategoryClick(cat.id)}
+                                            className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white transition-all"
+                                            title="Delete Category"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <h4 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{cat.label}</h4>
+                                        <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-400 px-2 py-1 rounded-lg uppercase tracking-widest">#{cat.id}</span>
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[2.5rem]">{cat.desc || 'No description provided for this category.'}</p>
+                                </div>
+
+                                <div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order</span>
+                                        <span className="text-sm font-black text-slate-900 dark:text-white">{cat.order || 0}</span>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subcategories</span>
+                                        <span className="text-sm font-black text-slate-900 dark:text-white">{cat.subcategories?.length || 0}</span>
+                                    </div>
+                                </div>
                             </div>
-                          ))}
-                          {(cat.subcategories?.length || 0) > 3 && (
-                            <div className="h-8 w-8 rounded-xl border-2 border-white dark:border-slate-900 bg-indigo-600 flex items-center justify-center text-[10px] font-black text-white shadow-sm">
-                              +{(cat.subcategories?.length || 0) - 3}
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-              {categories.length === 0 && (
-                <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                  <Icons.FolderTree className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                  <p className="text-slate-500 font-medium">No categories found. Start by adding one!</p>
-                </div>
-              )}
+                    );
+                })}
             </div>
         </div>
       )}
@@ -1007,103 +1213,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                           </div>
                         </td>
                       </tr>
-                    )}
-                    </tbody>
-                </table>
-                </div>
-            </div>
-        </div>
-      )}
-
-      {/* --- NESTED SUBCATEGORIES TAB --- */}
-      {activeTab === 'nested_subcategories' && (
-        <div className="animate-in fade-in duration-500 space-y-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div>
-                    <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Nested Subcategories (Level 2+)</h3>
-                    <p className="text-sm font-bold text-slate-500 uppercase tracking-tighter">Manage subcategories that are children of other subcategories.</p>
-                </div>
-                <button 
-                  onClick={handleAddSubcategoryClick}
-                  className="w-full md:w-auto flex h-14 items-center justify-center gap-3 rounded-2xl bg-indigo-600 px-8 text-sm font-black text-white hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20 uppercase tracking-widest active:scale-95"
-                >
-                  <Plus className="h-5 w-5" />
-                  Add Nested
-                </button>
-            </div>
-
-            <div className="overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl">
-                <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-500 dark:text-slate-400">
-                    <thead className="bg-slate-50 dark:bg-slate-900/50 text-[10px] uppercase tracking-widest font-black text-slate-400 border-b border-slate-100 dark:border-slate-800">
-                    <tr>
-                        <th className="px-8 py-6 text-center">Icon</th>
-                        <th className="px-8 py-6">Label</th>
-                        <th className="px-8 py-6">Parent Subcategory</th>
-                        <th className="px-8 py-6">Root Category</th>
-                        <th className="px-8 py-6">Fee</th>
-                        <th className="px-8 py-6 text-right">Actions</th>
-                    </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                    {sortedSubcategories.filter(s => s.level > 0).map((sub) => {
-                        const Icon = (Icons as any)[sub.icon || 'Box'] || Icons.Box;
-                        const parentSub = sub.parent_id 
-                            ? categories.find(c => c.id === sub.category_id)?.subcategories?.find(s => s.id === sub.parent_id) 
-                            : null;
-                        
-                        return (
-                            <tr key={`${sub.category_id}-${sub.id}`} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                <td className="px-8 py-6 text-center">
-                                    <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 ${sub.color?.replace('text-', 'text-') || 'text-slate-500'}`}>
-                                        <Icon className="h-5 w-5" />
-                                    </div>
-                                </td>
-                                <td className="px-8 py-6">
-                                    <div className="flex flex-col">
-                                        <span className="font-black text-slate-900 dark:text-white">{sub.label}</span>
-                                        <span className="text-[10px] font-mono text-slate-400">#{sub.id}</span>
-                                    </div>
-                                </td>
-                                <td className="px-8 py-6">
-                                    {parentSub ? (
-                                        <div className="flex items-center gap-2">
-                                            <Icons.CornerDownRight className="h-4 w-4 text-slate-400" />
-                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{parentSub.label}</span>
-                                        </div>
-                                    ) : '-'}
-                                </td>
-                                <td className="px-8 py-6">
-                                    <span className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
-                                        {sub.category_label}
-                                    </span>
-                                </td>
-                                <td className="px-8 py-6 font-black text-slate-900 dark:text-white">{sub.fee ? `${sub.fee}%` : '0%'}</td>
-                                <td className="px-8 py-6 text-right">
-                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                        <button 
-                                            onClick={() => handleEditSubcategoryClick(sub)}
-                                            className="h-10 w-10 rounded-xl flex items-center justify-center bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all"
-                                        >
-                                            <Edit2 className="h-4 w-4" />
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDeleteSubcategoryClick(sub.id)}
-                                            className="h-10 w-10 rounded-xl flex items-center justify-center bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white transition-all"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                    {sortedSubcategories.filter(s => s.level > 0).length === 0 && (
-                        <tr>
-                            <td colSpan={6} className="px-8 py-20 text-center text-slate-400 font-bold">
-                                No nested subcategories found.
-                            </td>
-                        </tr>
                     )}
                     </tbody>
                 </table>
@@ -1308,7 +1417,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                         <tr key={order.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-300">
                             <td className="px-8 py-6">
                                 <div className="flex flex-col">
-                                    <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">#{order.id.slice(0, 8)}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">#{order.id.slice(0, 8)}</span>
+                                        {order.internalNotes && (
+                                            <div className="h-4 w-4 rounded bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400" title="Has internal notes">
+                                                <FileText className="h-2.5 w-2.5" />
+                                            </div>
+                                        )}
+                                    </div>
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                                         {new Date(order.createdAt).toLocaleDateString()} • {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
@@ -1333,7 +1449,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                             </td>
                             <td className="px-8 py-6">
                                 <div className="flex flex-col">
-                                    <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">${order.totalPrice?.toFixed(2) || '0.00'}</span>
+                                    <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{order.currency}{(order.totalPrice || order.price).toFixed(2)}</span>
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Payment Due</span>
                                 </div>
                             </td>
@@ -1530,7 +1646,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
       <Modal
         isOpen={isSubcategoryFormOpen}
         onClose={() => setIsSubcategoryFormOpen(false)}
-        title={editingSubcategory ? 'Edit Subcategory' : 'Add New Subcategory'}
+        title={editingSubcategory ? 'Edit Level 1 Subcategory' : 'Add Level 1 Subcategory'}
       >
         <SubcategoryForm
             initialData={editingSubcategory || undefined}
@@ -1544,7 +1660,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
       <Modal
         isOpen={isSecondSubcategoryFormOpen}
         onClose={() => setIsSecondSubcategoryFormOpen(false)}
-        title={editingSecondSubcategory ? 'Edit Level 2 Subcategory' : 'Add New Level 2 Subcategory'}
+        title={editingSecondSubcategory ? 'Edit Level 2 Subcategory' : 'Add Level 2 Subcategory'}
       >
         <SecondSubcategoryForm
             initialData={editingSecondSubcategory || undefined}
@@ -1619,7 +1735,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                         </div>
                         <div>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Financial Summary</p>
-                            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{viewingOrder.currency}{viewingOrder.price.toFixed(2)}</p>
+                            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{viewingOrder.currency}{(viewingOrder.totalPrice || viewingOrder.price).toFixed(2)}</p>
                             <p className="text-[10px] font-bold text-emerald-600/60 dark:text-emerald-400/60 uppercase tracking-widest mt-1">Total Amount Due</p>
                         </div>
                       </div>
@@ -1649,6 +1765,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                               {viewingOrder.customerInfo.split('Details:')[1]?.trim() || viewingOrder.customerInfo}
                            </div>
                         </div>
+                        
+                        {viewingOrder.selectedOptions && viewingOrder.selectedOptions.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800">
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Selected Options</p>
+                             <div className="space-y-2">
+                                {viewingOrder.selectedOptions.map((opt, idx) => (
+                                   <div key={idx} className="flex justify-between items-center p-2 rounded-xl bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-900/20">
+                                      <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{opt.optionLabel}</span>
+                                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{opt.valueLabel || opt.textValue || 'N/A'}</span>
+                                   </div>
+                                ))}
+                             </div>
+                          </div>
+                        )}
                       </div>
                    </div>
                 </div>

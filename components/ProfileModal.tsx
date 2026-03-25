@@ -8,10 +8,11 @@ interface ProfileModalProps {
   user: User;
   onUpdate: (user: User) => void;
   onCancel: () => void;
+  onAdminClick?: () => void;
   lang: 'en' | 'fr' | 'ar';
 }
 
-export const ProfileModal: React.FC<ProfileModalProps> = ({ user, onUpdate, onCancel, lang }) => {
+export const ProfileModal: React.FC<ProfileModalProps> = ({ user, onUpdate, onCancel, onAdminClick, lang }) => {
   const [formData, setFormData] = useState({
     name: user.name,
     email: user.email,
@@ -103,6 +104,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ user, onUpdate, onCa
                     />
                 </div>
             </div>
+
+            {user.role === 'admin' && onAdminClick && (
+                <div className="pt-2">
+                    <button
+                        type="button"
+                        onClick={onAdminClick}
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-lg"
+                    >
+                        <Shield className="h-4 w-4 text-indigo-500" />
+                        <span>{lang === 'fr' ? "Panneau d'Administration" : lang === 'ar' ? "لوحة التحكم" : "Admin Panel"}</span>
+                    </button>
+                </div>
+            )}
 
             <div className="pt-4 flex gap-3 justify-end">
                 <button

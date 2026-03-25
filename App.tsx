@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ServiceCategory, ServiceItem, Category, Order, OrderStatus, User, Review, GlobalSettings, Subcategory, SecondSubcategory } from './types';
+import { ServiceCategory, ServiceItem, Category, Order, OrderStatus, User, Review, GlobalSettings, Subcategory, SecondSubcategory, SelectedOption, CartItem } from './types';
 import { TRANSLATIONS, LEGAL_CONTENT } from './constants';
-import { getServices, addOrder, getOrdersByEmail, getCurrentUser, setCurrentUserSession, getOrdersByUserId, getReviews, getFavorites, toggleFavorite, getCategories, signOutUser, updateService, getGlobalSettings, cancelOrder } from './services/storageService';
+import { getServices, addOrder, getOrdersByEmail, getCurrentUser, setCurrentUserSession, getOrdersByUserId, getReviews, getFavorites, toggleFavorite, getCategories, signOutUser, updateService, getGlobalSettings, cancelOrder, getOrders } from './services/storageService';
 import { ServiceCard } from './components/ServiceCard';
 import { HeroCarousel } from './components/HeroCarousel';
+import { FeaturesSection } from './components/FeaturesSection';
+import { TrendingSection } from './components/TrendingSection';
+import { TrustSection } from './components/TrustSection';
+import { NewsletterSection } from './components/NewsletterSection';
 import { AdminPanel, AdminTab } from './components/AdminPanel';
 import { Modal } from './components/Modal';
 import { AuthModal } from './components/AuthModal';
@@ -13,12 +17,46 @@ import { ReviewSection } from './components/ReviewSection';
 import { SettingsPage } from './components/SettingsPage';
 import { ChatAssistant } from './components/ChatAssistant';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
-import { LayoutDashboard, ShieldCheck, Shield, Box, Search, ArrowUpDown, Filter, Info, MessageCircle, ShoppingCart, Mail, Phone, FileText, AlertCircle, History, User as UserIcon, ChevronRight, ChevronDown, ArrowLeft, Calendar, Banknote, Tag, HelpCircle, X, SlidersHorizontal, Globe, Menu, LogOut, Home, List, Users, BarChart3, Sparkles, ArrowRight, Sun, Moon, Languages, LogIn, Settings, Heart, FolderTree, Flame, Check } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Shield, Box, Search, ArrowUpDown, Filter, Info, MessageCircle, ShoppingCart, Mail, Phone, FileText, AlertCircle, History, User as UserIcon, ChevronRight, ChevronLeft, ChevronDown, ArrowLeft, Calendar, Banknote, Tag, HelpCircle, X, SlidersHorizontal, Globe, Menu, LogOut, Home, List, Users, BarChart3, Sparkles, ArrowRight, Sun, Moon, Languages, LogIn, Settings, Heart, FolderTree, Flame, Check, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Logo } from './components/Logo';
 import * as Icons from 'lucide-react';
 
 type Language = 'en' | 'fr' | 'ar';
 type Theme = 'light' | 'dark';
+
+const SidebarLink = ({ active, onClick, icon: Icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) => (
+  <motion.button
+    whileHover={{ x: 4 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={onClick}
+    className={`group relative flex w-full items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-semibold transition-all duration-300 ${
+      active 
+        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' 
+        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+    }`}
+  >
+    {active && (
+      <motion.div
+        layoutId="sidebar-active-indicator"
+        className="absolute inset-0 rounded-xl bg-indigo-600 -z-10"
+        transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+      />
+    )}
+    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-300 ${
+      active ? 'bg-white/20 shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'bg-slate-100 dark:bg-slate-800/50 group-hover:bg-slate-200 dark:group-hover:bg-slate-800'
+    }`}>
+      <Icon className={`h-4.5 w-4.5 transition-transform duration-300 group-hover:scale-110 ${active ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`} />
+    </div>
+    <span className="truncate tracking-tight">{label}</span>
+    {active && (
+      <motion.div 
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        className="ms-auto h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" 
+      />
+    )}
+  </motion.button>
+);
 
 const App: React.FC = () => {
   // Theme & Language State
@@ -42,6 +80,8 @@ const App: React.FC = () => {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]); // Dynamic Categories
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Admin Navigation State
@@ -89,8 +129,15 @@ const App: React.FC = () => {
   // Favorites State
   const [favorites, setFavorites] = useState<string[]>([]);
 
+  // Service Options State
+  const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
+
   // Global Settings State
   const [globalSettings, setGlobalSettings] = useState<GlobalSettings>({ whatsappNumber: '21629292395' });
+
+  // User Preferences State
+  const [glassmorphism, setGlassmorphism] = useState(true);
+  const [compactMode, setCompactMode] = useState(false);
 
   // Auth & Profile Modals
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -139,12 +186,27 @@ const App: React.FC = () => {
 
   const loadData = async () => {
     try {
-        const [servicesData, categoriesData, settingsData] = await Promise.all([
+        const [servicesData, categoriesData, settingsData, ordersData] = await Promise.all([
             getServices(),
             getCategories(),
-            getGlobalSettings()
+            getGlobalSettings(),
+            getOrders()
         ]);
-        setServices(servicesData);
+
+        // Compute order counts to determine true popularity
+        const orderCounts: Record<string, number> = {};
+        ordersData.forEach(order => {
+            orderCounts[order.serviceId] = (orderCounts[order.serviceId] || 0) + 1;
+        });
+
+        // Update services with actual popularity
+        // We multiply order counts by 1000 to ensure actual orders always rank higher than default popularity
+        const updatedServices = servicesData.map(service => ({
+            ...service,
+            popularity: (orderCounts[service.id] || 0) * 1000 + (service.popularity || 0)
+        }));
+
+        setServices(updatedServices);
         setCategories(categoriesData);
         setGlobalSettings(settingsData);
     } catch (e) {
@@ -160,9 +222,7 @@ const App: React.FC = () => {
 
   // Update admin mode when user changes
   useEffect(() => {
-    if (currentUser?.role === 'admin') {
-       setIsAdminMode(true);
-    } else {
+    if (currentUser?.role !== 'admin') {
        setIsAdminMode(false);
     }
   }, [currentUser]);
@@ -191,6 +251,7 @@ const App: React.FC = () => {
           setCurrentReviews(reviews);
       };
       loadReviews();
+      setSelectedOptions([]); // Reset options when service changes
     }
   }, [selectedService]);
 
@@ -349,12 +410,7 @@ const App: React.FC = () => {
 
   const handleServiceClick = (service: ServiceItem) => {
     setSelectedService(service);
-    setOrderForm(prev => ({ 
-        ...prev, 
-        details: '' 
-    })); 
-    setTermsAccepted(false); // Reset terms acceptance
-    setFormErrors({ email: '', phone: '', details: '' });
+    setSelectedOptions([]);
   };
 
   const handleToggleFavorite = (e: React.MouseEvent, serviceId: string) => {
@@ -398,17 +454,67 @@ const App: React.FC = () => {
       isValid = false;
     }
 
-    if (!orderForm.details.trim()) {
-      errors.details = 'Required information is missing';
-      isValid = false;
-    }
-
     setFormErrors(errors);
     return isValid;
   };
 
-  const handleOrderViaWhatsApp = async () => {
+  const handleOptionChange = (optionId: string, optionLabel: string, valueId?: string, valueLabel?: string, textValue?: string, priceModifier: number = 0, isCheckbox: boolean = false) => {
+    setSelectedOptions(prev => {
+      if (isCheckbox) {
+        const existing = prev.find(o => o.optionId === optionId && o.valueId === valueId);
+        if (existing) {
+          return prev.filter(o => !(o.optionId === optionId && o.valueId === valueId));
+        } else {
+          return [...prev, { optionId, optionLabel, valueId, valueLabel, priceModifier }];
+        }
+      } else {
+        const filtered = prev.filter(o => o.optionId !== optionId);
+        if (valueId || textValue !== undefined) {
+          return [...filtered, { optionId, optionLabel, valueId, valueLabel, textValue, priceModifier }];
+        }
+        return filtered;
+      }
+    });
+  };
+
+  const handleAddToCart = () => {
     if (!selectedService) return;
+
+    // Check for required options
+    const missingRequired = selectedService.options?.filter(opt => 
+      opt.required && !selectedOptions.some(so => so.optionId === opt.id)
+    );
+
+    if (missingRequired && missingRequired.length > 0) {
+      addToast(`Please select required options: ${missingRequired.map(o => o.label).join(', ')}`, 'error');
+      return;
+    }
+
+    // Use promo price if available
+    const basePrice = (selectedService.promoPrice && selectedService.promoPrice < selectedService.price) 
+        ? selectedService.promoPrice 
+        : selectedService.price;
+
+    const optionsTotal = selectedOptions.reduce((acc, curr) => acc + curr.priceModifier, 0);
+    const finalPrice = basePrice + optionsTotal;
+
+    const newItem: CartItem = {
+      id: crypto.randomUUID(),
+      service: selectedService,
+      selectedOptions: [...selectedOptions],
+      basePrice,
+      optionsTotal,
+      finalPrice
+    };
+
+    setCart([...cart, newItem]);
+    addToast(lang === 'fr' ? 'Ajouté au panier' : lang === 'ar' ? 'تمت الإضافة إلى السلة' : 'Added to cart', 'success');
+    setSelectedService(null);
+    setSelectedOptions([]);
+  };
+
+  const handleCheckoutViaWhatsApp = async () => {
+    if (cart.length === 0) return;
     
     if (!termsAccepted) {
         addToast("Please accept the Terms & Conditions to proceed.", 'error');
@@ -419,42 +525,55 @@ const App: React.FC = () => {
       return;
     }
 
-    const customerInfoString = `Email: ${orderForm.email}\nPhone: ${orderForm.phone}\nDetails: ${orderForm.details}`;
-    
-    // Use promo price if available
-    const finalPrice = (selectedService.promoPrice && selectedService.promoPrice < selectedService.price) 
-        ? selectedService.promoPrice 
-        : selectedService.price;
-
-    // Generate ID first to use in both DB and WhatsApp
-    const newOrderId = crypto.randomUUID();
     const date = new Date().toLocaleDateString();
+    const grandTotal = cart.reduce((acc, item) => acc + item.finalPrice, 0);
+    const currency = cart[0]?.service.currency || 'TND';
 
-    await addOrder({
-      id: newOrderId,
-      userId: currentUser?.id,
-      serviceId: selectedService.id,
-      serviceName: selectedService.name,
-      category: selectedService.category,
-      subcategory: selectedService.subcategory,
-      price: finalPrice,
-      currency: selectedService.currency,
-      customerInfo: customerInfoString,
-      customerEmail: orderForm.email,
-      customerPhone: orderForm.phone,
-      status: 'pending_whatsapp',
-      createdAt: Date.now()
+    // Generate IDs and save orders
+    for (const item of cart) {
+      const newOrderId = crypto.randomUUID();
+
+      const optionsString = item.selectedOptions.map(so => 
+        `• ${so.optionLabel}: ${so.valueLabel || so.textValue || 'N/A'}${so.priceModifier !== 0 ? ` (${so.priceModifier > 0 ? '+' : ''}${so.priceModifier} TND)` : ''}`
+      ).join('\n');
+
+      const customerInfoString = `Email: ${orderForm.email}\nPhone: ${orderForm.phone}\nDetails: ${orderForm.details}${optionsString ? `\n\nOptions:\n${optionsString}` : ''}`;
+
+      await addOrder({
+        id: newOrderId,
+        userId: currentUser?.id,
+        serviceId: item.service.id,
+        serviceName: item.service.name,
+        category: item.service.category,
+        subcategory: item.service.subcategory,
+        price: item.basePrice,
+        currency: item.service.currency,
+        customerInfo: customerInfoString,
+        customerEmail: orderForm.email,
+        customerPhone: orderForm.phone,
+        status: 'pending_whatsapp',
+        createdAt: Date.now(),
+        selectedOptions: item.selectedOptions,
+        totalPrice: item.finalPrice
+      });
+    }
+
+    // WhatsApp Message
+    let itemsSection = '';
+    cart.forEach((item, index) => {
+      itemsSection += `\n*${index + 1}. ${item.service.name}* - ${item.finalPrice.toFixed(2)} ${item.service.currency}\n`;
+      if (item.selectedOptions.length > 0) {
+        itemsSection += item.selectedOptions.map(so => `  ├─ ${so.optionLabel}: ${so.valueLabel || so.textValue || 'N/A'}`).join('\n') + '\n';
+      }
     });
 
-    // Modern, Clean, "Ticket" Style Message
     const message = `*ATLASVAULT // ORDER TICKET* 💎\n` +
       `────────────────────\n` +
-      `*ID:* \`#${newOrderId.substring(0, 8).toUpperCase()}\`\n` +
-      `*DATE:* ${date}\n\n` +
-      `*✦ SERVICE SELECTION*\n` +
-      `├─ *Item:* ${selectedService.name}\n` +
-      `├─ *Category:* ${selectedService.category}\n` +
-      `└─ *Total:* ${selectedService.currency} ${finalPrice.toFixed(2)}${selectedService.promoPrice ? ' (PROMO)' : ''}\n\n` +
+      `*DATE:* ${date}\n` +
+      `*ITEMS:* ${cart.length}\n\n` +
+      `*✦ CART SELECTION*\n` +
+      itemsSection +
+      `\n*GRAND TOTAL:* ${grandTotal.toFixed(2)} ${currency}\n\n` +
       `*✦ CLIENT DATA*\n` +
       `├─ *Email:* ${orderForm.email}\n` +
       `├─ *Phone:* ${orderForm.phone}\n` +
@@ -465,13 +584,15 @@ const App: React.FC = () => {
       `_Secure Transmission via AtlasVault_`;
 
     const encodedMessage = encodeURIComponent(message);
-    // Use dynamic WhatsApp number from settings
     const whatsappNumber = globalSettings.whatsappNumber || '21629292395'; 
     const url = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
 
     addToast('Order initiated! All payment modes are available via WhatsApp.', 'success');
     window.open(url, '_blank');
-    setSelectedService(null);
+    setCart([]);
+    setOrderForm({ email: '', phone: '', details: '' });
+    setTermsAccepted(false);
+    setIsCartOpen(false);
   };
 
   const handleSearchHistory = async () => {
@@ -554,259 +675,398 @@ const App: React.FC = () => {
     <div className="flex h-screen bg-slate-50 dark:bg-nexus-900 text-slate-900 dark:text-slate-200 selection:bg-indigo-500 selection:text-white transition-colors duration-300">
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
 
-      {/* Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-      
-      <aside className={`fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-r rtl:border-r-0 rtl:border-l bg-white dark:bg-[#0B1120] border-slate-200 dark:border-slate-800 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : (lang === 'ar' ? 'translate-x-full' : '-translate-x-full')}`}>
-        {/* Sidebar Header */}
-        <div className="flex h-16 items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800/50">
-           <div className="flex h-8 w-8 items-center justify-center">
-              <Logo className="h-8 w-8" />
-           </div>
-           <div>
-             <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none">ATLASVAULT</h1>
-             <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5">
-                {isAdminMode ? t('adminConsole') : t('serviceCatalog')}
-             </p>
-           </div>
-           <button 
-             onClick={() => setIsSidebarOpen(false)}
-             className="ms-auto lg:hidden text-slate-400 hover:text-slate-900 dark:hover:text-white"
-           >
-             <X className="h-5 w-5" />
-           </button>
-        </div>
+      {/* Sidebar Overlay & Panel */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <>
+            {/* Backdrop Overlay */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSidebarOpen(false)}
+              className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-md lg:hidden"
+            />
 
-        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
-          {/* Menu Items */}
-          {isAdminMode ? (
-            <>
-              {/* Admin Menu */}
-              <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{t('management')}</p>
-              <button
-                onClick={() => setActiveAdminTab('dashboard')}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeAdminTab === 'dashboard' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                <BarChart3 className="h-4 w-4" /> {t('dashboard')}
-              </button>
-              <button
-                onClick={() => setActiveAdminTab('categories')}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeAdminTab === 'categories' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                <FolderTree className="h-4 w-4" /> {t('categories')}
-              </button>
-              <button
-                onClick={() => setActiveAdminTab('subcategories')}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeAdminTab === 'subcategories' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                <FolderTree className="h-4 w-4" /> Subcategories (L1)
-              </button>
-              <button
-                onClick={() => setActiveAdminTab('level3_subcategories')}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeAdminTab === 'level3_subcategories' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                <FolderTree className="h-4 w-4 ml-2" /> Subcategories (L2)
-              </button>
-              <button
-                onClick={() => setActiveAdminTab('services')}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeAdminTab === 'services' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                <List className="h-4 w-4" /> {t('catalogServices')}
-              </button>
-              <button
-                onClick={() => setActiveAdminTab('orders')}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeAdminTab === 'orders' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                <ShoppingCart className="h-4 w-4" /> {t('orders')}
-              </button>
-              <button
-                onClick={() => setActiveAdminTab('users')}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeAdminTab === 'users' ? 'bg-indigo-50 dark:bg-indigo-600/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                <Users className="h-4 w-4" /> {t('userDirectory')}
-              </button>
-              
-              <div className="mt-6"></div>
-              <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{t('main')}</p>
-              <button
-                onClick={() => {
-                  setIsAdminMode(false); 
-                  setActiveCategory('HOME');
-                }}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors`}
-              >
-                <ArrowLeft className="h-4 w-4" />
-                {t('exitAdmin')}
-              </button>
-            </>
-          ) : (
-            <>
-              {/* User Menu */}
-              <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-2">{t('main')}</p>
-              <button
-                onClick={() => {
-                  setActiveCategory('HOME');
-                  setActiveSubCategoryPath([]);
-                  setSearchQuery('');
-                  setShowFavoritesOnly(false);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${activeCategory === 'HOME' && !showFavoritesOnly ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                <Home className={`h-4 w-4 ${activeCategory === 'HOME' && !showFavoritesOnly ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-                {t('home')}
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveCategory('ALL_CATEGORIES');
-                  setActiveSubCategoryPath([]);
-                  setSearchQuery('');
-                  setShowFavoritesOnly(false);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${activeCategory === 'ALL_CATEGORIES' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                <Icons.LayoutGrid className={`h-4 w-4 ${activeCategory === 'ALL_CATEGORIES' ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-                {t('categories')}
-              </button>
-
-              <div className="mt-8 mb-4 px-3">
-                 <div className="h-px bg-slate-200 dark:bg-slate-800" />
+            {/* Sliding Sidebar Panel */}
+            <motion.aside 
+              initial={{ x: lang === 'ar' ? '100%' : '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: lang === 'ar' ? '100%' : '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 180 }}
+              className={`fixed inset-y-0 start-0 z-50 flex w-72 flex-col ${glassmorphism ? 'bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-xl' : 'bg-white dark:bg-[#0B1120]'} border-r border-slate-200/60 dark:border-slate-800/40 shadow-[0_0_40px_rgba(0,0,0,0.1)] dark:shadow-none lg:shadow-none`}
+            >
+              {/* Sidebar Header */}
+              <div className="flex h-24 shrink-0 items-center gap-4 px-6 border-b border-slate-100 dark:border-slate-800/30">
+                <motion.div 
+                  whileHover={{ rotate: 5, scale: 1.05 }}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-lg shadow-indigo-500/30"
+                >
+                  <Logo className="h-7 w-7 text-white" />
+                </motion.div>
+                <div className="flex flex-col min-w-0">
+                  <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white leading-none">AtlasVault</h1>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <div className="h-1 w-1 rounded-full bg-indigo-500 animate-pulse" />
+                    <span className="text-[10px] font-black text-indigo-500/80 uppercase tracking-[0.2em]">
+                      {isAdminMode ? t('adminConsole') : t('serviceCatalog')}
+                    </span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="ms-auto p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all lg:hidden"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
 
-              <button
-                onClick={() => {
-                  setShowFavoritesOnly(true);
-                  setActiveCategory('HOME');
-                  setActiveSubCategoryPath([]);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 mb-1 ${showFavoritesOnly ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                <Heart className={`h-4 w-4 ${showFavoritesOnly ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-                {t('myFavorites')}
-              </button>
-              
-              <button
-                onClick={() => {
-                  setIsHistoryOpen(true);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-all duration-200"
-              >
-                <History className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                {t('myOrders')}
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveCategory('SETTINGS');
-                  setActiveSubCategoryPath([]);
-                  setShowFavoritesOnly(false);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${activeCategory === 'SETTINGS' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                <Settings className={`h-4 w-4 ${activeCategory === 'SETTINGS' ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-                {t('settings')}
-              </button>
-            </>
-          )}
-        </nav>
-
-        <div className="border-t border-slate-200 dark:border-slate-800 p-4">
-           {currentUser ? (
-              <div className="space-y-3">
-                  <div className="flex items-center gap-3 px-1">
-                      <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs">
-                          {currentUser.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 overflow-hidden">
-                          <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{currentUser.name}</p>
-                          <p className="text-xs text-slate-500 truncate">{currentUser.email}</p>
-                      </div>
-                  </div>
-                  
-                  {currentUser.role === 'admin' && (
-                      <button
-                          onClick={() => setIsAdminMode(true)}
-                          className="w-full flex items-center justify-center gap-2 rounded-lg bg-slate-900 dark:bg-white px-3 py-2 text-xs font-medium text-white dark:text-slate-900 shadow-sm hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors mb-1"
+              <nav className="flex-1 overflow-y-auto px-4 py-8 space-y-1 custom-scrollbar">
+                {isAdminMode ? (
+                  <>
+                    <div className="px-4 mb-4 mt-2">
+                      <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em]">{t('management')}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <SidebarLink 
+                        active={activeAdminTab === 'dashboard'} 
+                        onClick={() => setActiveAdminTab('dashboard')} 
+                        icon={BarChart3} 
+                        label={t('dashboard')} 
+                      />
+                      <SidebarLink 
+                        active={activeAdminTab === 'categories'} 
+                        onClick={() => setActiveAdminTab('categories')} 
+                        icon={FolderTree} 
+                        label={t('categories')} 
+                      />
+                      <SidebarLink 
+                        active={activeAdminTab === 'subcategories'} 
+                        onClick={() => setActiveAdminTab('subcategories')} 
+                        icon={Icons.Layers} 
+                        label={t('subcategories')} 
+                      />
+                      <SidebarLink 
+                        active={activeAdminTab === 'level3_subcategories'} 
+                        onClick={() => setActiveAdminTab('level3_subcategories')} 
+                        icon={Icons.Network} 
+                        label={t('secondSubcategory')} 
+                      />
+                      <SidebarLink 
+                        active={activeAdminTab === 'orders'} 
+                        onClick={() => setActiveAdminTab('orders')} 
+                        icon={ShoppingCart} 
+                        label={t('orders')} 
+                      />
+                      <SidebarLink 
+                        active={activeAdminTab === 'services'} 
+                        onClick={() => setActiveAdminTab('services')} 
+                        icon={List} 
+                        label={t('catalogServices')} 
+                      />
+                      <SidebarLink 
+                        active={activeAdminTab === 'users'} 
+                        onClick={() => setActiveAdminTab('users')} 
+                        icon={Users} 
+                        label={t('userDirectory')} 
+                      />
+                    </div>
+                    
+                    <div className="pt-6 px-4">
+                      <div className="h-px bg-slate-100 dark:bg-slate-800/30 mb-6" />
+                      <motion.button
+                        whileHover={{ x: -4 }}
+                        onClick={() => {
+                          setIsAdminMode(false); 
+                          setActiveCategory('HOME');
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/5 transition-all"
                       >
-                          <Shield className="h-3.5 w-3.5" />
-                          Admin Panel
-                      </button>
-                  )}
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                     <button
+                        <ArrowLeft className="h-4 w-4 shrink-0" />
+                        <span>{t('exitAdmin')}</span>
+                      </motion.button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="px-4 mb-4 mt-2">
+                      <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em]">{t('main')}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <SidebarLink 
+                        active={activeCategory === 'HOME' && !showFavoritesOnly} 
+                        onClick={() => {
+                          setActiveCategory('HOME');
+                          setActiveSubCategoryPath([]);
+                          setSearchQuery('');
+                          setShowFavoritesOnly(false);
+                          if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                        }} 
+                        icon={Home} 
+                        label={t('home')} 
+                      />
+                      <SidebarLink 
+                        active={activeCategory === 'ALL_CATEGORIES'} 
+                        onClick={() => {
+                          setActiveCategory('ALL_CATEGORIES');
+                          setActiveSubCategoryPath([]);
+                          setSearchQuery('');
+                          setShowFavoritesOnly(false);
+                          if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                        }} 
+                        icon={Icons.LayoutGrid} 
+                        label={t('categories')} 
+                      />
+                    </div>
+
+                    <div className="my-8 px-4">
+                      <div className="h-px bg-slate-100 dark:bg-slate-800/30" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <SidebarLink 
+                        active={showFavoritesOnly} 
+                        onClick={() => {
+                          setShowFavoritesOnly(true);
+                          setActiveCategory('HOME');
+                          setActiveSubCategoryPath([]);
+                          if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                        }} 
+                        icon={Heart} 
+                        label={t('myFavorites')} 
+                      />
+                      <SidebarLink 
+                        active={isHistoryOpen} 
+                        onClick={() => {
+                          setIsHistoryOpen(true);
+                          if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                        }} 
+                        icon={History} 
+                        label={t('myOrders')} 
+                      />
+                      <SidebarLink 
+                        active={isCartOpen} 
+                        onClick={() => {
+                          setIsCartOpen(true);
+                          if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                        }} 
+                        icon={ShoppingCart} 
+                        label={lang === 'fr' ? 'Mon Panier' : lang === 'ar' ? 'سلة التسوق' : 'My Cart'} 
+                      />
+                      <SidebarLink 
+                        active={activeCategory === 'SETTINGS'} 
+                        onClick={() => {
+                          setActiveCategory('SETTINGS');
+                          setActiveSubCategoryPath([]);
+                          setShowFavoritesOnly(false);
+                          if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                        }} 
+                        icon={Settings} 
+                        label={t('settings')} 
+                      />
+                    </div>
+                  </>
+                )}
+              </nav>
+
+              <div className="p-6 border-t border-slate-100 dark:border-slate-800/30 bg-slate-50/50 dark:bg-slate-900/40">
+                {currentUser ? (
+                  <div className="space-y-5">
+                    <motion.div 
+                      whileHover={{ scale: 1.02 }}
+                      onClick={() => setIsProfileOpen(true)}
+                      className="flex items-center gap-4 p-3 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 shadow-sm cursor-pointer hover:border-indigo-500/50 transition-all group"
+                    >
+                      <div className="h-11 w-11 shrink-0 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-indigo-500/20">
+                        {currentUser.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <p className="text-sm font-black text-slate-900 dark:text-white truncate leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{currentUser.name}</p>
+                        <p className="text-[10px] font-bold text-slate-400 truncate mt-1 uppercase tracking-wider">{currentUser.role}</p>
+                      </div>
+                      <ChevronRight className="ms-auto h-4 w-4 text-slate-300 group-hover:text-indigo-500 transition-all group-hover:translate-x-1" />
+                    </motion.div>
+                    
+                    {currentUser.role === 'admin' && !isAdminMode && !isHomeView && (
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          setIsAdminMode(true);
+                          if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                        }}
+                        className="w-full flex items-center justify-center gap-3 rounded-xl bg-slate-900 dark:bg-white py-3.5 text-[10px] font-black uppercase tracking-[0.2em] text-white dark:text-slate-900 shadow-xl shadow-slate-900/20 dark:shadow-white/10 hover:bg-slate-800 dark:hover:bg-slate-100 transition-all"
+                      >
+                        <Shield className="h-4 w-4 text-indigo-500" />
+                        <span>{t('adminConsole')}</span>
+                      </motion.button>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <motion.button
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => setIsProfileOpen(true)}
-                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                     >
+                        className="flex items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800/30 p-3 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50 hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
+                      >
                         <UserIcon className="h-3.5 w-3.5" />
-                        {t('profile')}
-                     </button>
-                     <button
+                        <span>{t('profile')}</span>
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={handleLogout}
-                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-200 dark:hover:border-rose-900/30 transition-colors"
-                     >
+                        className="flex items-center justify-center gap-2 rounded-xl bg-rose-50/50 dark:bg-rose-900/10 p-3 text-[10px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/20 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                      >
                         <LogOut className="h-3.5 w-3.5" />
-                        {t('logOut')}
-                     </button>
+                        <span>{t('logOut')}</span>
+                      </motion.button>
+                    </div>
                   </div>
+                ) : (
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setIsAuthOpen(true)}
+                    className="w-full flex items-center justify-center gap-3 rounded-2xl bg-indigo-600 py-4.5 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-indigo-500/30 hover:bg-indigo-500 transition-all"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    <span>{t('login')}</span>
+                  </motion.button>
+                )}
               </div>
-           ) : (
-              <button
-                onClick={() => setIsAuthOpen(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 transition-all hover:scale-[1.02]"
-              >
-                <LogIn className="h-4 w-4" />
-                {t('login')}
-              </button>
-           )}
-        </div>
-      </aside>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
+      {/* Admin Quick Access Floating Button */}
+      <AnimatePresence>
+        {currentUser?.role === 'admin' && !isAdminMode && !isHomeView && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.5, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.5, y: 50 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsAdminMode(true)}
+            className={`fixed bottom-8 z-50 flex items-center gap-3 rounded-2xl bg-slate-900 dark:bg-white px-6 py-4 text-xs font-black uppercase tracking-[0.2em] text-white dark:text-slate-900 shadow-2xl shadow-slate-900/20 dark:shadow-white/10 border border-slate-800 dark:border-slate-200 ${lang === 'ar' ? 'left-8' : 'right-8'}`}
+          >
+            <ShieldCheck className="h-5 w-5 text-indigo-500" />
+            {t('adminConsole')}
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar Toggle Button (Hamburger) - Positioned at top-left */}
+      
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <main className={`flex-1 flex flex-col h-screen overflow-hidden relative transition-all duration-500 ${isSidebarOpen ? 'lg:ms-72' : 'ms-0'}`}>
           {/* Header */}
-          <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 z-30 flex-shrink-0">
-              <button 
-                onClick={() => setIsSidebarOpen(true)}
-                className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
+          <header className={`h-16 border-b border-slate-200/60 dark:border-slate-800/40 ${glassmorphism ? 'bg-white/80 dark:bg-nexus-900/80 backdrop-blur-md' : 'bg-white dark:bg-nexus-900'} flex items-center justify-between px-4 sm:px-6 z-30 flex-shrink-0`}>
+              <div className="flex items-center gap-4">
+                <motion.button 
+                  whileHover={{ scale: 1.05, backgroundColor: 'rgba(79, 70, 229, 0.1)' }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className={`group relative p-2.5 rounded-xl transition-all duration-300 border flex items-center justify-center ${
+                    isSidebarOpen 
+                      ? 'text-indigo-600 border-indigo-200 bg-indigo-50/50 dark:text-indigo-400 dark:border-indigo-500/20 dark:bg-indigo-500/10' 
+                      : 'text-slate-500 border-transparent hover:border-slate-200 dark:hover:border-slate-700'
+                  }`}
+                  aria-label="Toggle Sidebar"
+                >
+                  <div className="relative h-6 w-6">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={isSidebarOpen ? 'open' : 'closed'}
+                        initial={{ opacity: 0, rotate: isSidebarOpen ? -90 : 90, scale: 0.5 }}
+                        animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                        exit={{ opacity: 0, rotate: isSidebarOpen ? 90 : -90, scale: 0.5 }}
+                        transition={{ duration: 0.2, ease: "backOut" }}
+                        className="absolute inset-0 flex items-center justify-center"
+                      >
+                        {isSidebarOpen ? <PanelLeftClose className="h-5.5 w-5.5" /> : <Menu className="h-5.5 w-5.5" />}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                  
+                  {/* Sleek Tooltip */}
+                  <div className={`absolute top-full mt-3 px-2.5 py-1.5 bg-slate-900 dark:bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 shadow-2xl z-50 border border-slate-800 dark:border-slate-700 ${lang === 'ar' ? 'right-0' : 'left-0'}`}>
+                    {isSidebarOpen ? t('collapse') : t('expand')}
+                    <div className={`absolute -top-1 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45 border-l border-t border-slate-800 dark:border-slate-700 ${lang === 'ar' ? 'right-4' : 'left-4'}`} />
+                  </div>
+                </motion.button>
 
-              <div className="flex items-center gap-2 ml-auto">
+                {/* Mobile Logo (only visible when sidebar is closed) */}
+                {!isSidebarOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center gap-2 lg:hidden"
+                  >
+                    <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                      <Logo className="h-5 w-5 text-white" />
+                    </div>
+                    <span className="font-black text-sm tracking-tight dark:text-white">AtlasVault</span>
+                  </motion.div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 ml-auto">
+                 {/* Cart Button */}
+                 <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIsCartOpen(true)}
+                    className="relative p-2.5 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/5 rounded-xl transition-all"
+                 >
+                    <ShoppingCart className="h-5 w-5" />
+                    {cart.length > 0 && (
+                        <motion.span 
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute top-1.5 right-1.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white shadow-lg shadow-rose-500/30 border-2 border-white dark:border-nexus-900"
+                        >
+                            {cart.length}
+                        </motion.span>
+                    )}
+                 </motion.button>
+
                  {/* Language Selector */}
                  <div className="relative">
-                    <button 
+                    <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-medium transition-colors"
+                        className="flex items-center gap-2 px-3.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/50 text-sm font-bold transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
                     >
-                        <span className="text-lg">{currentLangObj.flag}</span>
-                        <span className="hidden sm:inline">{currentLangObj.code.toUpperCase()}</span>
-                        <ChevronDown className="h-3 w-3 opacity-50" />
-                    </button>
-                    {isLangMenuOpen && (
-                        <div className="absolute top-full right-0 mt-2 w-32 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 overflow-hidden">
-                            {languages.map(l => (
-                                <button
-                                    key={l.code}
-                                    onClick={() => { setLang(l.code as any); setIsLangMenuOpen(false); }}
-                                    className={`flex w-full items-center gap-3 px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 ${lang === l.code ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20' : ''}`}
-                                >
-                                    <span>{l.flag}</span> {l.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                        <span className="text-lg leading-none">{currentLangObj.flag}</span>
+                        <span className="hidden sm:inline uppercase tracking-wider text-xs">{currentLangObj.code}</span>
+                        <ChevronDown className={`h-3.5 w-3.5 opacity-50 transition-transform duration-300 ${isLangMenuOpen ? 'rotate-180' : ''}`} />
+                    </motion.button>
+                    <AnimatePresence>
+                      {isLangMenuOpen && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute top-full right-0 mt-2 w-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/60 dark:border-slate-700/60 py-2 overflow-hidden z-50"
+                          >
+                              {languages.map(l => (
+                                  <button
+                                      key={l.code}
+                                      onClick={() => { setLang(l.code as any); setIsLangMenuOpen(false); }}
+                                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm font-bold transition-colors ${lang === l.code ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'}`}
+                                  >
+                                      <span className="text-lg leading-none">{l.flag}</span>
+                                      <span className="flex-1 text-start">{l.label}</span>
+                                      {lang === l.code && <Check className="h-4 w-4" />}
+                                  </button>
+                              ))}
+                          </motion.div>
+                      )}
+                    </AnimatePresence>
                  </div>
 
                  <button 
@@ -850,7 +1110,7 @@ const App: React.FC = () => {
                 )}
               </AnimatePresence>
 
-              <div className="flex-1 p-4 sm:p-6 lg:p-8 relative z-10">
+              <div className={`flex-1 ${compactMode ? 'p-3 sm:p-4 lg:p-6' : 'p-4 sm:p-6 lg:p-8'} relative z-10`}>
               {isAdminMode ? (
                   <AdminPanel 
                     services={services}
@@ -867,6 +1127,10 @@ const App: React.FC = () => {
                     user={currentUser}
                     onOpenProfile={() => setIsProfileOpen(true)}
                     onLogin={() => setIsAuthOpen(true)}
+                    glassmorphism={glassmorphism}
+                    setGlassmorphism={setGlassmorphism}
+                    compactMode={compactMode}
+                    setCompactMode={setCompactMode}
                   />
               ) : (
                   <div className="max-w-7xl mx-auto space-y-8">
@@ -1364,7 +1628,7 @@ const App: React.FC = () => {
                           )}
 
                           {/* Services Grid - Only show if subcategory is selected OR category has no subcategories OR searching/favorites */}
-                          {activeCategory !== 'ALL_CATEGORIES' && (activeSubCategoryPath.length > 0 || !CurrentCategoryMeta?.subcategories?.length || searchQuery || showFavoritesOnly || activeCategory === 'HOME') && (
+                          {activeCategory !== 'ALL_CATEGORIES' && (activeSubCategoryPath.length > 0 || (CurrentCategoryMeta && !CurrentCategoryMeta.subcategories?.length) || searchQuery || showFavoritesOnly) && (
                               <>
                                   {showFavoritesOnly && (
                                       <div className="mb-6">
@@ -1384,11 +1648,12 @@ const App: React.FC = () => {
                                                     onClick={handleServiceClick}
                                                     isFavorite={favorites.includes(service.id)}
                                                     onToggleFavorite={handleToggleFavorite}
+                                                    lang={lang}
                                                   />
                                               </div>
                                           ))}
                                       </div>
-                                  ) : (activeSubCategoryPath.length === 2 || !CurrentCategoryMeta?.subcategories?.length || searchQuery || showFavoritesOnly || activeCategory === 'HOME') ? (
+                                  ) : (activeSubCategoryPath.length === 2 || (CurrentCategoryMeta && !CurrentCategoryMeta.subcategories?.length) || searchQuery || showFavoritesOnly) ? (
                                       <div className="flex flex-col items-center justify-center py-16 text-center">
                                           <div className="rounded-full bg-slate-100 dark:bg-slate-800 p-6 mb-4">
                                               <Search className="h-8 w-8 text-slate-400" />
@@ -1406,6 +1671,23 @@ const App: React.FC = () => {
                               </>
                           )}
                       </div>
+                      
+                      {/* Trending & Features (Home View Only) */}
+                      {isHomeView && !showFavoritesOnly && (
+                          <div className="mt-16 space-y-16">
+                              <TrendingSection 
+                                  services={services}
+                                  lang={lang}
+                                  t={t}
+                                  onSelectService={handleServiceClick}
+                                  favorites={favorites}
+                                  onToggleFavorite={handleToggleFavorite}
+                              />
+                              <TrustSection lang={lang} />
+                              <FeaturesSection lang={lang} />
+                              <NewsletterSection lang={lang} />
+                          </div>
+                      )}
                   </div>
               )}
               </div>
@@ -1440,121 +1722,243 @@ const App: React.FC = () => {
          isOpen={!!selectedService} 
          onClose={() => setSelectedService(null)}
          title={selectedService?.name || 'Service Details'}
+         maxWidth="max-w-4xl"
       >
          {selectedService && (
              <div className="space-y-6">
                  {/* Service Modal Content ... */}
                  <div className="flex flex-col md:flex-row gap-6">
-                     <div className="flex-1 space-y-4">
+                     <div className="flex-1 space-y-6">
                          <div>
-                             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{selectedService.name}</h3>
-                             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{selectedService.description}</p>
+                             <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4 leading-tight">{selectedService.name}</h3>
+                             <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[15px]">{selectedService.description}</p>
                          </div>
                          
                          <div className="flex flex-wrap gap-2">
-                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300">
+                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
                                  {selectedService.category}
                              </span>
                              {selectedService.badgeLabel && (
-                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300">
+                                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300">
                                      {selectedService.badgeLabel}
                                  </span>
                              )}
                          </div>
 
-                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 space-y-3 border border-slate-200 dark:border-slate-700">
-                             <div className="flex items-start gap-3">
-                                 <Info className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" />
-                                 <div>
-                                     <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('conditions')}</p>
-                                     <p className="text-sm text-slate-500 dark:text-slate-400">{selectedService.conditions}</p>
-                                 </div>
-                             </div>
-                             <div className="flex items-start gap-3">
-                                 <FileText className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" />
-                                 <div>
-                                     <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('requirements')}</p>
-                                     <p className="text-sm text-slate-500 dark:text-slate-400">{selectedService.requiredInfo}</p>
-                                 </div>
-                             </div>
-                         </div>
+                          <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-5 space-y-5 border border-slate-200 dark:border-slate-700">
+                              <div className="flex items-start gap-4">
+                                  <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0 mt-0.5">
+                                      <Info className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                  </div>
+                                  <div>
+                                      <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">{t('conditions')}</p>
+                                      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{selectedService.conditions}</p>
+                                  </div>
+                              </div>
+                              <div className="flex items-start gap-4">
+                                  <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0 mt-0.5">
+                                      <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                  </div>
+                                  <div>
+                                      <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">{t('requirements')}</p>
+                                      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{selectedService.requiredInfo}</p>
+                                  </div>
+                              </div>
+                          </div>
+
+                          {/* Options Rendering */}
+                          {selectedService.options && selectedService.options.length > 0 && (
+                            <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                    <SlidersHorizontal className="h-4 w-4 text-indigo-500" />
+                                    {lang === 'fr' ? 'Options de Service' : lang === 'ar' ? 'خيارات الخدمة' : 'Service Options'}
+                                </h4>
+                                <div className="space-y-4">
+                                    {selectedService.options.map(option => (
+                                        <div key={option.id} className="space-y-2">
+                                            <label className="block text-xs font-black text-slate-500 uppercase tracking-widest">
+                                                {lang === 'fr' ? (option.label_fr || option.label) : lang === 'ar' ? (option.label_ar || option.label) : option.label}
+                                                {option.required && <span className="text-rose-500 ml-1">*</span>}
+                                            </label>
+                                            
+                                            {option.type === 'select' && (
+                                                <select 
+                                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
+                                                    value={selectedOptions.find(so => so.optionId === option.id)?.valueId || ''}
+                                                    onChange={(e) => {
+                                                        const val = option.values?.find(v => v.id === e.target.value);
+                                                        handleOptionChange(
+                                                            option.id, 
+                                                            lang === 'fr' ? (option.label_fr || option.label) : lang === 'ar' ? (option.label_ar || option.label) : option.label,
+                                                            val?.id,
+                                                            val ? (lang === 'fr' ? (val.label_fr || val.label) : lang === 'ar' ? (val.label_ar || val.label) : val.label) : '',
+                                                            undefined,
+                                                            val?.priceModifier || 0
+                                                        );
+                                                    }}
+                                                >
+                                                    <option value="">{lang === 'fr' ? 'Choisir une option...' : lang === 'ar' ? 'اختر خياراً...' : 'Select an option...'}</option>
+                                                    {option.values?.map(val => (
+                                                        <option key={val.id} value={val.id}>
+                                                            {lang === 'fr' ? (val.label_fr || val.label) : lang === 'ar' ? (val.label_ar || val.label) : val.label} 
+                                                            {val.priceModifier !== 0 && ` (${val.priceModifier > 0 ? '+' : ''}${val.priceModifier} TND)`}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            )}
+
+                                            {option.type === 'checkbox' && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    {option.values?.map(val => {
+                                                        const isSelected = selectedOptions.some(so => so.optionId === option.id && so.valueId === val.id);
+                                                        return (
+                                                            <button
+                                                                key={val.id}
+                                                                type="button"
+                                                                onClick={() => handleOptionChange(
+                                                                    option.id,
+                                                                    lang === 'fr' ? (option.label_fr || option.label) : lang === 'ar' ? (option.label_ar || option.label) : option.label,
+                                                                    val.id,
+                                                                    lang === 'fr' ? (val.label_fr || val.label) : lang === 'ar' ? (val.label_ar || val.label) : val.label,
+                                                                    undefined,
+                                                                    val.priceModifier,
+                                                                    true
+                                                                )}
+                                                                className={`flex items-center justify-between px-4 py-2.5 rounded-xl border-2 transition-all text-left ${
+                                                                    isSelected 
+                                                                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' 
+                                                                    : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700'
+                                                                }`}
+                                                            >
+                                                                <span className="text-xs font-bold">{lang === 'fr' ? (val.label_fr || val.label) : lang === 'ar' ? (val.label_ar || val.label) : val.label}</span>
+                                                                {val.priceModifier !== 0 && (
+                                                                    <span className="text-[10px] font-black opacity-60">
+                                                                        {val.priceModifier > 0 ? '+' : ''}{val.priceModifier}
+                                                                    </span>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {option.type === 'pricing-table' && (
+                                                <div className="grid grid-cols-1 gap-3">
+                                                    {option.values?.map((val, idx) => {
+                                                        const isSelected = selectedOptions.some(so => so.optionId === option.id && so.valueId === val.id);
+                                                        const basePrice = (selectedService.promoPrice && selectedService.promoPrice < selectedService.price) 
+                                                            ? selectedService.promoPrice 
+                                                            : selectedService.price;
+                                                        const totalPrice = basePrice + val.priceModifier;
+                                                        
+                                                        return (
+                                                            <motion.button
+                                                                key={val.id}
+                                                                whileHover={{ scale: 1.01 }}
+                                                                whileTap={{ scale: 0.99 }}
+                                                                onClick={() => handleOptionChange(
+                                                                    option.id,
+                                                                    lang === 'fr' ? (option.label_fr || option.label) : lang === 'ar' ? (option.label_ar || option.label) : option.label,
+                                                                    val.id,
+                                                                    lang === 'fr' ? (val.label_fr || val.label) : lang === 'ar' ? (val.label_ar || val.label) : val.label,
+                                                                    undefined,
+                                                                    val.priceModifier
+                                                                )}
+                                                                className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left group ${
+                                                                    isSelected 
+                                                                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 shadow-lg shadow-indigo-500/10' 
+                                                                    : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-200 dark:hover:border-slate-700'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                                                        isSelected 
+                                                                        ? 'border-indigo-600 bg-indigo-600' 
+                                                                        : 'border-slate-200 dark:border-slate-700'
+                                                                    }`}>
+                                                                        {isSelected && <Check className="h-3 w-3 text-white" />}
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className={`block text-sm font-black transition-colors ${isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-900 dark:text-white'}`}>
+                                                                            {lang === 'fr' ? (val.label_fr || val.label) : lang === 'ar' ? (val.label_ar || val.label) : val.label}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className={`block text-lg font-black ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>
+                                                                        {totalPrice.toFixed(0)} {selectedService.currency}
+                                                                    </span>
+                                                                </div>
+                                                            </motion.button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {option.type === 'text' && (
+                                                <input 
+                                                    type="text"
+                                                    placeholder={lang === 'fr' ? 'Saisir ici...' : lang === 'ar' ? 'اكتب هنا...' : 'Type here...'}
+                                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                                    value={selectedOptions.find(so => so.optionId === option.id)?.textValue || ''}
+                                                    onChange={(e) => handleOptionChange(
+                                                        option.id,
+                                                        lang === 'fr' ? (option.label_fr || option.label) : lang === 'ar' ? (option.label_ar || option.label) : option.label,
+                                                        undefined,
+                                                        undefined,
+                                                        e.target.value,
+                                                        0
+                                                    )}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                          )}
                      </div>
 
-                     <div className="md:w-72 space-y-6">
-                         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
-                             <p className="text-sm text-slate-500 mb-1">{t('price')}</p>
-                             <div className="flex items-baseline gap-2 mb-4">
-                                 <span className="text-3xl font-bold text-slate-900 dark:text-white">
-                                     {selectedService.currency}{(selectedService.promoPrice || selectedService.price).toFixed(2)}
+                     <div className="md:w-80 shrink-0">
+                         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm sticky top-6">
+                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-2 font-medium">{t('price')}</p>
+                             <div className="flex items-baseline gap-2 mb-6">
+                                 <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+                                     {selectedService.currency}{(
+                                          (() => {
+                                              const base = (selectedService.promoPrice && selectedService.promoPrice < selectedService.price) 
+                                                ? selectedService.promoPrice 
+                                                : selectedService.price;
+                                              return base + selectedOptions.reduce((acc, curr) => acc + curr.priceModifier, 0);
+                                          })()
+                                       ).toFixed(2)}
                                  </span>
-                                 {selectedService.promoPrice && (
-                                     <span className="text-sm text-slate-400 line-through">
+                                 {selectedService.promoPrice && selectedService.promoPrice < selectedService.price && (
+                                     <span className="text-sm font-medium text-slate-400 line-through">
                                          {selectedService.currency}{selectedService.price.toFixed(2)}
                                      </span>
                                  )}
                              </div>
 
-                             <div className="space-y-3">
-                                 <div>
-                                     <label className="block text-xs font-medium text-slate-500 mb-1">{t('email')}</label>
-                                     <input 
-                                         type="email"
-                                         name="email" 
-                                         value={orderForm.email}
-                                         onChange={handleInputChange}
-                                         className={`w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-slate-900 dark:text-white ${formErrors.email ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'}`}
-                                     />
-                                     {formErrors.email && <p className="text-xs text-rose-500 mt-1">{formErrors.email}</p>}
+                             {selectedOptions.length > 0 && (
+                                 <div className="mb-6 space-y-2 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{lang === 'fr' ? 'Options sélectionnées' : lang === 'ar' ? 'الخيارات المختارة' : 'Selected Options'}</p>
+                                     <div className="space-y-1.5">
+                                         {selectedOptions.map((so, idx) => (
+                                             <div key={idx} className="flex justify-between items-start gap-2 text-xs">
+                                                 <span className="text-slate-500 dark:text-slate-400 font-medium">{so.optionLabel}:</span>
+                                                 <span className="text-slate-900 dark:text-white font-bold text-right">{so.valueLabel || so.textValue}</span>
+                                             </div>
+                                         ))}
+                                     </div>
                                  </div>
-                                 <div>
-                                     <label className="block text-xs font-medium text-slate-500 mb-1">{t('phone')}</label>
-                                     <input 
-                                         type="tel" 
-                                         name="phone"
-                                         value={orderForm.phone}
-                                         onChange={handleInputChange}
-                                         className={`w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-slate-900 dark:text-white ${formErrors.phone ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'}`}
-                                     />
-                                     {formErrors.phone && <p className="text-xs text-rose-500 mt-1">{formErrors.phone}</p>}
-                                 </div>
-                                 <div>
-                                     <label className="block text-xs font-medium text-slate-500 mb-1">{t('details')}</label>
-                                     <textarea 
-                                         name="details"
-                                         value={orderForm.details}
-                                         onChange={handleInputChange}
-                                         rows={2}
-                                         className={`w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-slate-900 dark:text-white ${formErrors.details ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'}`}
-                                     />
-                                     {formErrors.details && <p className="text-xs text-rose-500 mt-1">{formErrors.details}</p>}
-                                 </div>
-                             </div>
-
-                             <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-                                <label className="flex items-start gap-2 cursor-pointer group">
-                                    <input 
-                                        type="checkbox" 
-                                        className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                        checked={termsAccepted}
-                                        onChange={(e) => setTermsAccepted(e.target.checked)}
-                                    />
-                                    <span className="text-xs text-slate-500 dark:text-slate-400 leading-tight">
-                                        I agree to the <button type="button" onClick={(e) => { e.preventDefault(); setActiveLegalDoc('terms'); }} className="underline hover:text-indigo-600 dark:hover:text-indigo-400">Terms</button> & <button type="button" onClick={(e) => { e.preventDefault(); setActiveLegalDoc('privacy'); }} className="underline hover:text-indigo-600 dark:hover:text-indigo-400">Privacy Policy</button>
-                                    </span>
-                                </label>
-                             </div>
+                             )}
 
                              <button 
-                                 onClick={handleOrderViaWhatsApp}
-                                 disabled={!termsAccepted}
-                                 className={`w-full mt-4 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold text-white transition-all shadow-lg ${
-                                     termsAccepted 
-                                     ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 cursor-pointer' 
-                                     : 'bg-slate-400 dark:bg-slate-700 cursor-not-allowed opacity-70'
-                                 }`}
+                                 onClick={handleAddToCart}
+                                 className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-bold text-white transition-all shadow-lg bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20 cursor-pointer"
                              >
-                                 <MessageCircle className="h-4 w-4" />
-                                 {t('orderWhatsApp')}
+                                 <ShoppingCart className="h-5 w-5" />
+                                 {lang === 'fr' ? 'Ajouter au panier' : lang === 'ar' ? 'أضف إلى السلة' : 'Add to Cart'}
                              </button>
                          </div>
                      </div>
@@ -1612,6 +2016,11 @@ const App: React.FC = () => {
                user={currentUser}
                onUpdate={handleProfileUpdate}
                onCancel={() => setIsProfileOpen(false)}
+                onAdminClick={() => {
+                   setIsAdminMode(true);
+                   setIsProfileOpen(false);
+                   if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                }}
                lang={lang}
             />
          )}
@@ -1655,7 +2064,7 @@ const App: React.FC = () => {
                                  </span>
                              </div>
                              <div className="flex justify-between items-center text-sm">
-                                 <span className="font-mono">{order.currency}{order.price.toFixed(2)}</span>
+                                 <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{order.currency}{(order.totalPrice || order.price).toFixed(2)}</span>
                                  <div className="flex gap-2">
                                      {order.status === 'pending_whatsapp' && (
                                          <button 
@@ -1673,6 +2082,15 @@ const App: React.FC = () => {
                                      </button>
                                  </div>
                              </div>
+                             {order.selectedOptions && order.selectedOptions.length > 0 && (
+                                 <div className="mt-2 flex flex-wrap gap-1">
+                                     {order.selectedOptions.map((opt, idx) => (
+                                         <span key={idx} className="text-[10px] bg-white/50 dark:bg-slate-900/50 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400">
+                                             {opt.optionLabel}: {opt.valueLabel || opt.textValue}
+                                         </span>
+                                     ))}
+                                 </div>
+                             )}
                          </div>
                      ))
                  ) : userOrders ? (
@@ -1685,6 +2103,135 @@ const App: React.FC = () => {
                      </div>
                  )}
               </div>
+          </div>
+      </Modal>
+
+      {/* Cart Modal */}
+      <Modal
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          title={lang === 'fr' ? 'Votre Panier' : lang === 'ar' ? 'سلة التسوق' : 'Your Cart'}
+      >
+          <div className="space-y-6">
+              {cart.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500 flex flex-col items-center gap-3">
+                      <ShoppingCart className="h-12 w-12 text-slate-300 dark:text-slate-600" />
+                      <p>{lang === 'fr' ? 'Votre panier est vide' : lang === 'ar' ? 'سلة التسوق فارغة' : 'Your cart is empty'}</p>
+                  </div>
+              ) : (
+                  <>
+                      <div className="space-y-4 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">
+                          {cart.map((item, index) => (
+                              <div key={index} className="flex gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 relative group">
+                                  <button 
+                                      onClick={() => setCart(cart.filter((_, i) => i !== index))}
+                                      className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                  >
+                                      <X className="h-4 w-4" />
+                                  </button>
+                                  <div className="w-16 h-16 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center flex-shrink-0 text-3xl shadow-sm">
+                                      {item.service.icon}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                      <h4 className="font-bold text-slate-900 dark:text-white truncate pr-6">{item.service.title}</h4>
+                                      <div className="flex items-baseline gap-2 mt-1">
+                                          <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                              {item.service.currency}{item.finalPrice.toFixed(2)}
+                                          </span>
+                                      </div>
+                                      {item.selectedOptions.length > 0 && (
+                                          <div className="mt-2 space-y-1">
+                                              {item.selectedOptions.map((opt, idx) => (
+                                                  <div key={idx} className="text-[10px] flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                                                      <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                                                      <span className="font-medium">{opt.optionLabel}:</span>
+                                                      <span className="text-slate-700 dark:text-slate-300">{opt.valueLabel || opt.textValue}</span>
+                                                  </div>
+                                              ))}
+                                          </div>
+                                      )}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+
+                      <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                          <div className="flex justify-between items-center mb-6">
+                              <span className="text-slate-500 font-medium">{lang === 'fr' ? 'Total' : lang === 'ar' ? 'المجموع' : 'Total'}</span>
+                              <span className="text-2xl font-black text-slate-900 dark:text-white">
+                                  {cart[0]?.service.currency || 'TND'}
+                                  {cart.reduce((sum, item) => sum + item.finalPrice, 0).toFixed(2)}
+                              </span>
+                          </div>
+
+                          <div className="space-y-3 mb-6">
+                              <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-2">
+                                  {lang === 'fr' ? 'Vos coordonnées' : lang === 'ar' ? 'معلوماتك' : 'Your Details'}
+                              </h4>
+                              <div>
+                                  <input 
+                                      type="email"
+                                      name="email" 
+                                      placeholder={t('email')}
+                                      value={orderForm.email}
+                                      onChange={handleInputChange}
+                                      className={`w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-slate-900 dark:text-white ${formErrors.email ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'}`}
+                                  />
+                                  {formErrors.email && <p className="text-xs text-rose-500 mt-1">{formErrors.email}</p>}
+                              </div>
+                              <div>
+                                  <input 
+                                      type="tel" 
+                                      name="phone"
+                                      placeholder={t('phone')}
+                                      value={orderForm.phone}
+                                      onChange={handleInputChange}
+                                      className={`w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-slate-900 dark:text-white ${formErrors.phone ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'}`}
+                                  />
+                                  {formErrors.phone && <p className="text-xs text-rose-500 mt-1">{formErrors.phone}</p>}
+                              </div>
+                              <div>
+                                  <textarea 
+                                      name="details"
+                                      placeholder={t('details')}
+                                      value={orderForm.details}
+                                      onChange={handleInputChange}
+                                      rows={2}
+                                      className={`w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-slate-900 dark:text-white ${formErrors.details ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'}`}
+                                  />
+                                  {formErrors.details && <p className="text-xs text-rose-500 mt-1">{formErrors.details}</p>}
+                              </div>
+                          </div>
+
+                          <div className="mb-6">
+                              <label className="flex items-start gap-2 cursor-pointer group">
+                                  <input 
+                                      type="checkbox" 
+                                      className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                      checked={termsAccepted}
+                                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                                  />
+                                  <span className="text-xs text-slate-500 dark:text-slate-400 leading-tight">
+                                      I agree to the <button type="button" onClick={(e) => { e.preventDefault(); setActiveLegalDoc('terms'); }} className="underline hover:text-indigo-600 dark:hover:text-indigo-400">Terms</button> & <button type="button" onClick={(e) => { e.preventDefault(); setActiveLegalDoc('privacy'); }} className="underline hover:text-indigo-600 dark:hover:text-indigo-400">Privacy Policy</button>
+                                  </span>
+                              </label>
+                          </div>
+
+                          <button 
+                              onClick={handleCheckoutViaWhatsApp}
+                              disabled={!termsAccepted}
+                              className={`w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold text-white transition-all shadow-lg ${
+                                  termsAccepted 
+                                  ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 cursor-pointer' 
+                                  : 'bg-slate-400 dark:bg-slate-700 cursor-not-allowed opacity-70'
+                              }`}
+                          >
+                              <MessageCircle className="h-5 w-5" />
+                              {lang === 'fr' ? 'Commander via WhatsApp' : lang === 'ar' ? 'اطلب عبر واتساب' : 'Checkout via WhatsApp'}
+                          </button>
+                      </div>
+                  </>
+              )}
           </div>
       </Modal>
 
