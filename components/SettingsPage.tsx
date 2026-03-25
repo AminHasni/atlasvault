@@ -208,7 +208,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-sm mx-auto font-medium">{t('loginToAccess')}</p>
                     <button
                         onClick={onLogin}
-                        className="inline-flex items-center gap-3 px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all shadow-xl shadow-indigo-500/20 active:scale-95"
+                        className="inline-flex items-center gap-3 px-10 py-3.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-indigo-500/30 active:scale-95 border border-indigo-400/20"
                     >
                         <LogIn className="h-5 w-5" />
                         {t('login')}

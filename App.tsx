@@ -873,9 +873,9 @@ const App: React.FC = () => {
                 {currentUser ? (
                   <div className="space-y-5">
                     <motion.div 
-                      whileHover={{ scale: 1.02 }}
+                      whileHover={{ scale: 1.01 }}
                       onClick={() => setIsProfileOpen(true)}
-                      className="flex items-center gap-4 p-3 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 shadow-sm cursor-pointer hover:border-indigo-500/50 transition-all group"
+                      className="flex items-center gap-4 p-3 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 shadow-sm cursor-pointer hover:border-indigo-500/30 transition-all group"
                     >
                       <div className="h-11 w-11 shrink-0 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-indigo-500/20">
                         {currentUser.name.charAt(0).toUpperCase()}
@@ -884,7 +884,19 @@ const App: React.FC = () => {
                         <p className="text-sm font-black text-slate-900 dark:text-white truncate leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{currentUser.name}</p>
                         <p className="text-[10px] font-bold text-slate-400 truncate mt-1 uppercase tracking-wider">{currentUser.role}</p>
                       </div>
-                      <ChevronRight className="ms-auto h-4 w-4 text-slate-300 group-hover:text-indigo-500 transition-all group-hover:translate-x-1" />
+                      
+                      <motion.button
+                        whileHover={{ scale: 1.1, color: '#f43f5e' }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLogout();
+                        }}
+                        className="ms-auto p-2 rounded-xl text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
+                        title={t('logOut')}
+                      >
+                        <LogOut className="h-5 w-5" />
+                      </motion.button>
                     </motion.div>
                     
                     {currentUser.role === 'admin' && !isAdminMode && !isHomeView && (
@@ -901,36 +913,15 @@ const App: React.FC = () => {
                         <span>{t('adminConsole')}</span>
                       </motion.button>
                     )}
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <motion.button
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setIsProfileOpen(true)}
-                        className="flex items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-800/30 p-3 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50 hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
-                      >
-                        <UserIcon className="h-3.5 w-3.5" />
-                        <span>{t('profile')}</span>
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleLogout}
-                        className="flex items-center justify-center gap-2 rounded-xl bg-rose-50/50 dark:bg-rose-900/10 p-3 text-[10px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/20 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                      >
-                        <LogOut className="h-3.5 w-3.5" />
-                        <span>{t('logOut')}</span>
-                      </motion.button>
-                    </div>
                   </div>
                 ) : (
                   <motion.button
-                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileHover={{ scale: 1.02, y: -2, boxShadow: '0 20px 25px -5px rgba(79, 70, 229, 0.4)' }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setIsAuthOpen(true)}
-                    className="w-full flex items-center justify-center gap-3 rounded-2xl bg-indigo-600 py-4.5 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-indigo-500/30 hover:bg-indigo-500 transition-all"
+                    className="w-full flex items-center justify-center gap-3 rounded-full bg-indigo-600 py-4 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-indigo-500/30 hover:bg-indigo-500 transition-all border border-indigo-400/20"
                   >
-                    <LogIn className="h-4 w-4" />
+                    <LogIn className="h-5 w-5" />
                     <span>{t('login')}</span>
                   </motion.button>
                 )}
