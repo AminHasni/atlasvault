@@ -149,6 +149,7 @@ export interface User {
   role: UserRole;
   createdAt: number;
   provider?: 'email' | 'google';
+  active?: boolean;
 }
 
 export interface AuthResponse {

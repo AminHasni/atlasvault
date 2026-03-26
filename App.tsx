@@ -13,6 +13,7 @@ import { AdminPanel, AdminTab } from './components/AdminPanel';
 import { Modal } from './components/Modal';
 import { AuthModal } from './components/AuthModal';
 import { ProfileModal } from './components/ProfileModal';
+import { ConfirmModal } from './components/ConfirmModal';
 import { ReviewSection } from './components/ReviewSection';
 import { SettingsPage } from './components/SettingsPage';
 import { ChatAssistant } from './components/ChatAssistant';
@@ -145,6 +146,21 @@ const App: React.FC = () => {
 
   // Legal Modal State
   const [activeLegalDoc, setActiveLegalDoc] = useState<keyof typeof LEGAL_CONTENT | null>(null);
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'danger'
+  });
 
   // Dynamic Background Color for Subcategories
   const activeSubCategoryColor = useMemo(() => {
@@ -608,16 +624,22 @@ const App: React.FC = () => {
   };
 
   const handleUserCancelOrder = async (orderId: string) => {
-      if (window.confirm(t('cancelOrderConfirm'))) {
-          try {
-              await cancelOrder(orderId);
-              // Refresh user orders list
-              await handleSearchHistory();
-              addToast(t('orderCancelled'), 'success');
-          } catch (e) {
-              addToast('Failed to cancel order', 'error');
+      setConfirmModal({
+          isOpen: true,
+          title: t('cancelOrder'),
+          message: t('cancelOrderConfirm'),
+          type: 'danger',
+          onConfirm: async () => {
+              try {
+                  await cancelOrder(orderId);
+                  // Refresh user orders list
+                  await handleSearchHistory();
+                  addToast(t('orderCancelled'), 'success');
+              } catch (e) {
+                  addToast('Failed to cancel order', 'error');
+              }
           }
-      }
+      });
   };
 
   useEffect(() => {
@@ -2236,6 +2258,16 @@ const App: React.FC = () => {
             {activeLegalDoc ? LEGAL_CONTENT[activeLegalDoc].content : ''}
         </div>
       </Modal>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
 
       {/* Chat Assistant */}
       {!isAdminMode && (

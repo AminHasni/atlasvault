@@ -352,7 +352,7 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
   const users = await getUsers();
   const index = users.findIndex(u => u.id === updatedUser.id);
   if (index !== -1) {
-    users[index] = updatedUser;
+    users[index] = { ...updatedUser, active: updatedUser.active ?? true };
     setLocal(USERS_KEY, users);
     
     const currentUser = getCurrentUser();
@@ -374,6 +374,15 @@ export const deleteUser = async (id: string): Promise<void> => {
   const users = await getUsers();
   const updated = users.filter(u => u.id !== id);
   setLocal(USERS_KEY, updated);
+};
+
+export const toggleUserStatus = async (id: string, active: boolean): Promise<User> => {
+    const users = await getUsers();
+    const user = users.find(u => u.id === id);
+    if (!user) throw new Error('User not found');
+    
+    const updatedUser = { ...user, active };
+    return updateUser(updatedUser);
 };
 
 export const addUserByAdmin = async (user: User): Promise<User> => {
@@ -457,11 +466,11 @@ export const deleteService = async (id: string): Promise<ServiceItem[]> => {
   return updated;
 };
 
-export const toggleServiceStatus = async (id: string): Promise<ServiceItem[]> => {
+export const toggleServiceStatus = async (id: string, active?: boolean): Promise<ServiceItem[]> => {
   const current = await getServices();
   const service = current.find(s => s.id === id);
   if (service) {
-      const updatedService = { ...service, active: !service.active };
+      const updatedService = { ...service, active: active !== undefined ? active : !service.active };
       return updateService(updatedService);
   }
   return current;

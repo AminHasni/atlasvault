@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { ServiceItem, ServiceFormData, Order, OrderStatus, Category, User, GlobalSettings, Subcategory, SecondSubcategory } from '../types';
-import { addService, updateService, deleteService, toggleServiceStatus, getOrders, updateOrder, addCategory, updateCategory, deleteCategory, getUsers, deleteUser, addUserByAdmin, updateUser, getCurrentUser, updateGlobalSettings, addSubcategory, updateSubcategory, deleteSubcategory, addSecondSubcategory, updateSecondSubcategory, deleteSecondSubcategory } from '../services/storageService';
+import { addService, updateService, deleteService, toggleServiceStatus, getOrders, updateOrder, addCategory, updateCategory, deleteCategory, getUsers, deleteUser, addUserByAdmin, updateUser, getCurrentUser, updateGlobalSettings, addSubcategory, updateSubcategory, deleteSubcategory, addSecondSubcategory, updateSecondSubcategory, deleteSecondSubcategory, toggleUserStatus } from '../services/storageService';
 import { ServiceForm } from './ServiceForm';
 import { CategoryForm } from './CategoryForm';
 import { SubcategoryForm } from './SubcategoryForm';
 import { SecondSubcategoryForm } from './SecondSubcategoryForm';
 import { UserForm } from './UserForm';
 import { Modal } from './Modal';
+import { ConfirmModal } from './ConfirmModal';
 import { Plus, Edit2, Trash2, Power, Search, ShoppingCart, List, ExternalLink, FileText, Save, Clock, User as UserIcon, Banknote, Tag, CheckCircle2, AlertCircle, XCircle, Truck, PlayCircle, BarChart3, Users, TrendingUp, PieChart, ArrowUpRight, FolderTree, Smartphone, Settings, Filter, Calendar, ChevronDown, ShoppingBag, X } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
@@ -65,6 +66,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [catalogSearch, setCatalogSearch] = useState('');
 
+  // Bulk Actions State
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [isBulkActionMenuOpen, setIsBulkActionMenuOpen] = useState(false);
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'danger'
+  });
+
   // Advanced Service Filters
   const [serviceCategoryFilter, setServiceCategoryFilter] = useState<string>('all');
   const [serviceSubcategoryFilter, setServiceSubcategoryFilter] = useState<string>('all');
@@ -112,7 +133,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   };
 
   useEffect(() => {
-      if (activeTab === 'users') {
+      if (activeTab === 'users' || activeTab === 'dashboard') {
           loadUsers();
       }
   }, [activeTab]);
@@ -142,7 +163,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
     const categoryStats = Object.entries(categoryCounts)
        .sort(([, a], [, b]) => b - a);
 
-    return { totalRevenue, totalOrders, pendingOrders, activeServices, topServices, categoryStats };
+    const recentOrders = [...orders]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 5);
+
+    return { totalRevenue, totalOrders, pendingOrders, activeServices, topServices, categoryStats, recentOrders };
   }, [orders, services]);
 
   // --- Users Derivation ---
@@ -339,16 +364,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   };
 
   const handleDeleteClick = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this service?')) {
-      try {
-        await deleteService(id);
-        onUpdate();
-        notify('Service deleted successfully.', 'info');
-      } catch (e: any) {
-        console.error("Delete service error:", e);
-        notify(e.message || 'Failed to delete service. It might be linked to existing orders.', 'error');
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Service',
+      message: 'Are you sure you want to delete this service? This action cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteService(id);
+          onUpdate();
+          notify('Service deleted successfully.', 'info');
+        } catch (e: any) {
+          console.error("Delete service error:", e);
+          notify(e.message || 'Failed to delete service. It might be linked to existing orders.', 'error');
+        }
       }
-    }
+    });
   };
 
   const handleToggleClick = async (id: string) => {
@@ -440,13 +471,104 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
     setIsFormOpen(true);
   };
 
+  const handleDuplicateService = (service: ServiceItem) => {
+    const { id, createdAt, popularity, ...rest } = service;
+    setEditingService({
+      ...rest,
+      id: '',
+      name: `${service.name} (Copy)`,
+      name_fr: service.name_fr ? `${service.name_fr} (Copie)` : '',
+      name_ar: service.name_ar ? `${service.name_ar} (نسخة)` : '',
+      active: false,
+      createdAt: Date.now(),
+      popularity: 0
+    } as any);
+    setIsFormOpen(true);
+    notify('Service duplicated. Review and save to publish.', 'info');
+  };
+
+  const handleToggleBulkAction = (serviceId: string) => {
+    setSelectedServices(prev => 
+      prev.includes(serviceId) ? prev.filter(id => id !== serviceId) : [...prev, serviceId]
+    );
+  };
+
+  const handleBulkStatusUpdate = async (active: boolean) => {
+    if (selectedServices.length === 0) return;
+    try {
+      await Promise.all(selectedServices.map(id => toggleServiceStatus(id, active)));
+      setSelectedServices([]);
+      onUpdate();
+      notify(`${selectedServices.length} services ${active ? 'activated' : 'deactivated'}.`, 'success');
+    } catch (e) {
+      notify('Failed to update some services.', 'error');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedServices.length === 0) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Bulk Delete Services',
+      message: `Are you sure you want to delete ${selectedServices.length} services? This action cannot be undone.`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await Promise.all(selectedServices.map(id => deleteService(id)));
+          setSelectedServices([]);
+          onUpdate();
+          notify(`${selectedServices.length} services deleted.`, 'info');
+        } catch (e) {
+          notify('Failed to delete some services.', 'error');
+        }
+      }
+    });
+  };
+
+  const handleBulkUserStatusUpdate = async (active: boolean) => {
+    if (selectedUsers.length === 0) return;
+    try {
+      await Promise.all(selectedUsers.map(id => toggleUserStatus(id, active)));
+      setSelectedUsers([]);
+      onUpdate();
+      notify(`${selectedUsers.length} users ${active ? 'activated' : 'deactivated'}.`, 'success');
+    } catch (e) {
+      notify('Failed to update some users.', 'error');
+    }
+  };
+
+  const handleBulkUserDelete = async () => {
+    if (selectedUsers.length === 0) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Bulk Delete Users',
+      message: `Are you sure you want to delete ${selectedUsers.length} users? This action cannot be undone.`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await Promise.all(selectedUsers.map(id => deleteUser(id)));
+          setSelectedUsers([]);
+          onUpdate();
+          notify(`${selectedUsers.length} users deleted.`, 'info');
+        } catch (e) {
+          notify('Failed to delete some users.', 'error');
+        }
+      }
+    });
+  };
+
   const handleEditCategoryClick = (category: Category) => {
     setEditingCategory(category);
     setIsCategoryFormOpen(true);
   };
 
   const handleDeleteCategoryClick = async (id: string) => {
-    if (window.confirm('Are you sure? Deleting a category usually requires deleting associated services first.')) {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Category',
+      message: 'Are you sure? Deleting a category usually requires deleting associated services first.',
+      type: 'danger',
+      onConfirm: async () => {
         try {
             await deleteCategory(id);
             onUpdate();
@@ -454,7 +576,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
         } catch (e) {
             notify('Failed to delete category. Ensure no services are linked to it.', 'error');
         }
-    }
+      }
+    });
   };
 
   const handleCategorySubmit = async (data: Category) => {
@@ -486,7 +609,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   };
 
   const handleDeleteSubcategoryClick = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this subcategory?')) {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Subcategory',
+      message: 'Are you sure you want to delete this subcategory?',
+      type: 'danger',
+      onConfirm: async () => {
         try {
             await deleteSubcategory(id);
             onUpdate();
@@ -494,7 +622,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
         } catch (e) {
             notify('Failed to delete subcategory.', 'error');
         }
-    }
+      }
+    });
   };
 
   const handleSubcategorySubmit = async (data: Subcategory) => {
@@ -526,7 +655,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
   };
 
   const handleDeleteSecondSubcategoryClick = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this level 2 subcategory?')) {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Level 2 Subcategory',
+      message: 'Are you sure you want to delete this level 2 subcategory?',
+      type: 'danger',
+      onConfirm: async () => {
         try {
             await deleteSecondSubcategory(id);
             onUpdate();
@@ -534,7 +668,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
         } catch (e) {
             notify('Failed to delete level 2 subcategory.', 'error');
         }
-    }
+      }
+    });
   };
 
   const handleSecondSubcategorySubmit = async (data: SecondSubcategory) => {
@@ -565,6 +700,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
       setIsUserFormOpen(true);
   };
 
+  const handleDeleteService = async (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Service',
+      message: 'Are you sure you want to delete this service? This action cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteService(id);
+          onUpdate();
+          notify('Service deleted successfully.', 'info');
+        } catch (e) {
+          notify('Failed to delete service.', 'error');
+        }
+      }
+    });
+  };
+
   const handleDeleteUserClick = async (user: User) => {
       const currentUser = getCurrentUser();
       if (currentUser && currentUser.id === user.id) {
@@ -572,7 +725,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
           return;
       }
 
-      if (window.confirm(`Are you sure you want to delete user ${user.name}? This action cannot be undone.`)) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Delete User',
+        message: `Are you sure you want to delete user ${user.name}? This action cannot be undone.`,
+        type: 'danger',
+        onConfirm: async () => {
           try {
               await deleteUser(user.id);
               await loadUsers();
@@ -581,7 +739,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
               console.error(e);
               notify('Failed to delete user.', 'error');
           }
-      }
+        }
+      });
+  };
+
+  const handleToggleUserStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      await toggleUserStatus(id, !currentStatus);
+      await loadUsers();
+      notify(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully.`, 'success');
+    } catch (e) {
+      notify('Failed to update user status.', 'error');
+    }
   };
 
   const handleUserSubmit = async (data: User) => {
@@ -646,6 +815,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
       {/* --- DASHBOARD TAB --- */}
       {activeTab === 'dashboard' && (
         <div className="animate-in fade-in duration-500 space-y-10">
+            {/* Quick Actions Section */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                    { label: 'Add Service', icon: Icons.Plus, onClick: () => { setEditingService(null); setIsFormOpen(true); }, color: 'bg-indigo-600' },
+                    { label: 'Add Category', icon: Icons.FolderTree, onClick: handleAddCategoryClick, color: 'bg-emerald-600' },
+                    { label: 'Add User', icon: Icons.UserPlus, onClick: handleAddUserClick, color: 'bg-purple-600' },
+                    { label: 'View Orders', icon: Icons.ShoppingBag, onClick: () => {}, color: 'bg-amber-600', isLink: true, tab: 'orders' }
+                ].map((action, i) => (
+                    <button
+                        key={i}
+                        onClick={() => action.isLink ? (window as any).setAdminTab?.(action.tab) : action.onClick()}
+                        className="group relative flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-xl hover:border-indigo-500 transition-all active:scale-95"
+                    >
+                        <div className={`h-12 w-12 rounded-2xl ${action.color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}>
+                            <action.icon className="h-6 w-6" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">{action.label}</span>
+                    </button>
+                ))}
+            </div>
+
             {/* Global Config Section */}
             <div className="rounded-3xl border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-900/10 p-8">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -789,12 +979,124 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                     </div>
                 </div>
             </div>
+
+            {/* Recent Orders Section */}
+            <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-xl">
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+                            <Icons.Clock className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Recent Orders</h4>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Latest 5 transactions</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => (window as any).setAdminTab?.('orders')}
+                        className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
+                    >
+                        View All Orders
+                    </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="text-[10px] uppercase tracking-widest font-black text-slate-400 border-b border-slate-50 dark:border-slate-800">
+                            <tr>
+                                <th className="pb-4">Order ID</th>
+                                <th className="pb-4">Customer</th>
+                                <th className="pb-4">Service</th>
+                                <th className="pb-4">Price</th>
+                                <th className="pb-4">Status</th>
+                                <th className="pb-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                            {stats.recentOrders.map((order) => (
+                                <tr key={order.id} className="group">
+                                    <td className="py-4 font-mono text-[10px] text-slate-400">#{order.id.slice(0, 8)}</td>
+                                    <td className="py-4">
+                                        <div className="flex flex-col">
+                                            <span className="font-black text-slate-900 dark:text-white">{order.customerEmail?.split('@')[0]}</span>
+                                            <span className="text-[10px] text-slate-400">{new Date(order.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                    </td>
+                                    <td className="py-4 font-bold text-slate-600 dark:text-slate-400">{order.serviceName}</td>
+                                    <td className="py-4 font-black text-slate-900 dark:text-white">{order.price} {order.currency}</td>
+                                    <td className="py-4">
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(order.status)}`}>
+                                            {getStatusLabel(order.status)}
+                                        </span>
+                                    </td>
+                                    <td className="py-4 text-right">
+                                        <button 
+                                            onClick={() => handleViewOrder(order)}
+                                            className="h-8 w-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-indigo-600 hover:text-white transition-all"
+                                        >
+                                            <Icons.ExternalLink className="h-4 w-4" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {stats.recentOrders.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className="py-12 text-center text-slate-400 font-bold italic">No orders yet</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
       )}
 
       {/* --- SERVICES TAB --- */}
        {activeTab === 'services' && (
         <div className="animate-in fade-in duration-500 space-y-8">
+          {/* Bulk Actions Bar */}
+          {selectedServices.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="sticky top-4 z-30 flex items-center justify-between p-4 rounded-2xl bg-indigo-600 text-white shadow-2xl shadow-indigo-500/40"
+            >
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center font-black">
+                  {selectedServices.length}
+                </div>
+                <span className="text-sm font-black uppercase tracking-widest">Services Selected</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => handleBulkStatusUpdate(true)}
+                  className="h-10 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  Activate
+                </button>
+                <button 
+                  onClick={() => handleBulkStatusUpdate(false)}
+                  className="h-10 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  Deactivate
+                </button>
+                <button 
+                  onClick={handleBulkDelete}
+                  className="h-10 px-4 rounded-xl bg-rose-500 hover:bg-rose-400 text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  Delete
+                </button>
+                <div className="w-px h-6 bg-white/20 mx-2" />
+                <button 
+                  onClick={() => setSelectedServices([])}
+                  className="h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex flex-1 items-center gap-4 w-full md:w-auto">
               <div className="relative flex-1 group">
@@ -954,8 +1256,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredServices.map((service) => (
-              <div key={service.id} className="group relative bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1">
-                <div className="flex justify-between items-start mb-6">
+              <div 
+                key={service.id} 
+                className={`group relative bg-white dark:bg-slate-900 rounded-3xl border transition-all hover:-translate-y-1 ${
+                  selectedServices.includes(service.id) 
+                    ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-2xl' 
+                    : 'border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl'
+                } p-6`}
+              >
+                {/* Selection Checkbox */}
+                <button 
+                  onClick={() => handleToggleBulkAction(service.id)}
+                  className={`absolute top-4 left-4 z-10 h-6 w-6 rounded-lg border-2 transition-all flex items-center justify-center ${
+                    selectedServices.includes(service.id)
+                      ? 'bg-indigo-600 border-indigo-600 text-white'
+                      : 'bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100'
+                  }`}
+                >
+                  {selectedServices.includes(service.id) && <Icons.Check className="h-4 w-4" />}
+                </button>
+
+                <div className="flex justify-between items-start mb-6 pl-8">
                   <div className="flex items-center gap-3">
                     <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm ${service.active ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
                       <Tag className="h-6 w-6" />
@@ -993,14 +1314,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                   </div>
                   <div className="flex gap-2">
                     <button 
+                      onClick={() => handleDuplicateService(service)}
+                      className="h-10 w-10 rounded-xl flex items-center justify-center bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-600 hover:text-white transition-all"
+                      title="Duplicate Service"
+                    >
+                      <Icons.Copy className="h-4 w-4" />
+                    </button>
+                    <button 
                       onClick={() => handleEditClick(service)}
                       className="h-10 w-10 rounded-xl flex items-center justify-center bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all"
+                      title="Edit Service"
                     >
                       <Edit2 className="h-4 w-4" />
                     </button>
                     <button 
                       onClick={() => handleDeleteClick(service.id)}
                       className="h-10 w-10 rounded-xl flex items-center justify-center bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white transition-all"
+                      title="Delete Service"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -1492,6 +1822,68 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
       {/* --- USERS TAB --- */}
       {activeTab === 'users' && (
         <div className="animate-in fade-in duration-500 space-y-8">
+            {/* Bulk Actions Bar for Users */}
+            {selectedUsers.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="sticky top-4 z-30 flex items-center justify-between p-4 rounded-2xl bg-indigo-600 text-white shadow-2xl shadow-indigo-500/40"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center font-black">
+                    {selectedUsers.length}
+                  </div>
+                  <span className="text-sm font-black uppercase tracking-widest">Users Selected</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleBulkUserStatusUpdate(true)}
+                    className="h-10 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase tracking-widest transition-all"
+                  >
+                    Activate
+                  </button>
+                  <button 
+                    onClick={() => handleBulkUserStatusUpdate(false)}
+                    className="h-10 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase tracking-widest transition-all"
+                  >
+                    Ban
+                  </button>
+                  <button 
+                    onClick={handleBulkUserDelete}
+                    className="h-10 px-4 rounded-xl bg-rose-500 hover:bg-rose-400 text-[10px] font-black uppercase tracking-widest transition-all"
+                  >
+                    Delete
+                  </button>
+                  <div className="w-px h-6 bg-white/20 mx-2" />
+                  <button 
+                    onClick={() => setSelectedUsers([])}
+                    className="h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* User Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                    { label: 'Total Users', value: dbUsers.length, icon: Users, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+                    { label: 'Active Users', value: dbUsers.filter(u => u.active !== false).length, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                    { label: 'Admins', value: dbUsers.filter(u => u.role === 'admin').length, icon: Settings, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+                ].map((stat, i) => (
+                    <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none flex items-center gap-4">
+                        <div className={`h-14 w-14 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center`}>
+                            <stat.icon className="h-7 w-7" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                            <p className="text-2xl font-black text-slate-900 dark:text-white">{stat.value}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div>
                     <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">User Management</h3>
@@ -1533,14 +1925,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                     </thead>
                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                     {filteredUsers.map((user, idx) => (
-                        <tr key={idx} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <tr 
+                          key={idx} 
+                          className={`group transition-colors ${
+                            selectedUsers.includes(user.originalUser.id) 
+                              ? 'bg-indigo-50/50 dark:bg-indigo-900/10' 
+                              : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
+                          }`}
+                        >
                             <td className="px-8 py-6">
                                 <div className="flex items-center gap-4">
+                                    <button 
+                                      onClick={() => {
+                                        setSelectedUsers(prev => 
+                                          prev.includes(user.originalUser.id) 
+                                            ? prev.filter(id => id !== user.originalUser.id) 
+                                            : [...prev, user.originalUser.id]
+                                        );
+                                      }}
+                                      className={`h-6 w-6 rounded-lg border-2 transition-all flex items-center justify-center ${
+                                        selectedUsers.includes(user.originalUser.id)
+                                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                                          : 'bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100'
+                                      }`}
+                                    >
+                                      {selectedUsers.includes(user.originalUser.id) && <Icons.Check className="h-4 w-4" />}
+                                    </button>
                                     <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-indigo-500/20">
                                         {user.name ? user.name.charAt(0).toUpperCase() : <UserIcon className="h-6 w-6" />}
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-sm font-black text-slate-900 dark:text-white">{user.email}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-black text-slate-900 dark:text-white">{user.email}</span>
+                                            {user.originalUser.active === false && (
+                                                <span className="px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-600 text-[8px] font-black uppercase tracking-widest">Banned</span>
+                                            )}
+                                        </div>
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                                             {user.name || 'Anonymous User'} {user.phone && user.phone !== 'N/A' ? `• ${user.phone}` : ''}
                                         </span>
@@ -1579,6 +1999,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
                             <td className="px-8 py-6 text-right">
                                 {user.isRegistered && (
                                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                                        <button 
+                                            onClick={() => handleToggleUserStatus(user.originalUser.id, user.originalUser.active !== false)}
+                                            className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
+                                                user.originalUser.active !== false 
+                                                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
+                                                    : 'bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white'
+                                            }`}
+                                            title={user.originalUser.active !== false ? 'Deactivate User' : 'Activate User'}
+                                        >
+                                            <Power className="h-4 w-4" />
+                                        </button>
                                         <button 
                                             onClick={() => handleEditUserClick(user.originalUser)}
                                             className="h-10 w-10 rounded-xl flex items-center justify-center bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all"
@@ -1851,6 +2282,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ services, categories, on
           </div>
         )}
       </Modal>
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 };

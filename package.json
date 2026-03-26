@@ -4,19 +4,24 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "tsx server.ts",
     "build": "vite build",
+    "start": "node server.ts",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^1.41.0",
     "@supabase/supabase-js": "^2.39.0",
+    "@tailwindcss/vite": "^4.2.2",
+    "express": "^5.2.1",
     "framer-motion": "^12.34.3",
     "lucide-react": "^0.564.0",
     "motion": "^12.34.3",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.2.2",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
