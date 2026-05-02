@@ -54,6 +54,9 @@ import {
   MessageSquare,
   Bell,
   Check,
+  Filter,
+  SlidersHorizontal,
+  ArrowUpDown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AtlasLogo } from './components/Logo';
@@ -211,6 +214,9 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState('الكل');
   const [activeSubL1, setActiveSubL1] = useState<string | null>(null);
   const [activeSubL2, setActiveSubL2] = useState<string | null>(null);
+  const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
+  const [priceRange, setPriceRange] = useState<{ min: number | '', max: number | '' }>({ min: '', max: '' });
+  const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
   const [currentTab, setCurrentTab] = useState('home'); // home, shop, profile
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -608,14 +614,30 @@ export default function App() {
   ];
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+    let result = products.filter(p => {
       const matchesCategory = activeCategory === 'الكل' || p.category === activeCategory;
       const matchesSubL1 = !activeSubL1 || p.subCategoryL1 === activeSubL1;
       const matchesSubL2 = !activeSubL2 || p.subCategoryL2 === activeSubL2;
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSubL1 && matchesSubL2 && matchesSearch;
+      
+      const price = p.price;
+      const matchesMinPrice = priceRange.min === '' || price >= (Number(priceRange.min) || 0);
+      const matchesMaxPrice = priceRange.max === '' || price <= (Number(priceRange.max) || Infinity);
+
+      return matchesCategory && matchesSubL1 && matchesSubL2 && matchesSearch && matchesMinPrice && matchesMaxPrice;
     });
-  }, [activeCategory, activeSubL1, activeSubL2, searchQuery, products]);
+
+    // Sorting
+    if (sortBy === 'price-asc') {
+      result.sort((a, b) => a.price - b.price);
+    } else if (sortBy === 'price-desc') {
+      result.sort((a, b) => b.price - a.price);
+    } else if (sortBy === 'rating') {
+      result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+
+    return result;
+  }, [activeCategory, activeSubL1, activeSubL2, searchQuery, products, priceRange, sortBy]);
 
   const filteredUsers = useMemo(() => {
     return allUsers.filter(u => 
@@ -1571,6 +1593,125 @@ export default function App() {
                         ))}
                    </div>
                 )}
+              </section>
+
+              {/* Advanced Search & Filtering Section */}
+              <section className="max-w-7xl mx-auto px-4 mb-2">
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-fg/[0.02] border border-fg/5 rounded-[2rem] p-4">
+                   <div className="flex items-center gap-3 w-full md:w-auto">
+                      <div className="relative flex-1 md:w-80 group text-right">
+                         <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-fg/20 group-focus-within:text-amber-400 transition-colors" />
+                         <input 
+                           type="text" 
+                           placeholder="بحث متقدم..." 
+                           value={searchQuery}
+                           onChange={(e) => setSearchQuery(e.target.value)}
+                           className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl py-3 px-12 text-sm outline-none focus:border-amber-400/50 focus:bg-fg/[0.07] transition-all placeholder:text-fg/20 text-right" 
+                         />
+                      </div>
+                      <button 
+                        onClick={() => setIsAdvancedFiltersOpen(!isAdvancedFiltersOpen)}
+                        className={`p-3 rounded-2xl border transition-all flex items-center gap-2 ${
+                          isAdvancedFiltersOpen ? 'bg-amber-400 border-amber-400 text-black shadow-lg shadow-amber-400/20' : 'bg-fg/5 border-fg/10 text-fg hover:bg-fg/10'
+                        }`}
+                      >
+                        <SlidersHorizontal size={18} />
+                        <span className="hidden sm:block text-xs font-bold">تصفية متقدمة</span>
+                      </button>
+                   </div>
+
+                   <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+                      <div className="flex items-center gap-2 text-fg/40 text-xs font-bold whitespace-nowrap">
+                         <ArrowUpDown size={14} />
+                         <span>ترتيب بـ:</span>
+                      </div>
+                      <select 
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as any)}
+                        className="bg-fg/5 border border-fg/10 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-amber-400/50 transition-all cursor-pointer rtl"
+                        dir="rtl"
+                      >
+                        <option value="featured">الأبرز</option>
+                        <option value="price-asc">الأقل سعراً</option>
+                        <option value="price-desc">الأعلى سعراً</option>
+                        <option value="rating">الأعلى تقييماً</option>
+                      </select>
+                   </div>
+                </div>
+
+                <AnimatePresence>
+                  {isAdvancedFiltersOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 p-6 bg-fg/[0.01] border border-fg/5 rounded-[2.5rem]">
+                         {/* Price Range */}
+                         <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-fg/40 block text-right">النطاق السعري (DT)</label>
+                            <div className="flex items-center gap-3">
+                               <input 
+                                 type="number" 
+                                 placeholder="الأعلى"
+                                 value={priceRange.max}
+                                 onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value === '' ? '' : Number(e.target.value) }))}
+                                 className="w-full bg-fg/[0.03] border border-fg/10 rounded-xl py-2 px-4 text-xs outline-none focus:border-amber-400/50 text-center"
+                               />
+                               <span className="text-fg/20">-</span>
+                               <input 
+                                 type="number" 
+                                 placeholder="الأدنى"
+                                 value={priceRange.min}
+                                 onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value === '' ? '' : Number(e.target.value) }))}
+                                 className="w-full bg-fg/[0.03] border border-fg/10 rounded-xl py-2 px-4 text-xs outline-none focus:border-amber-400/50 text-center"
+                               />
+                            </div>
+                         </div>
+
+                         {/* Quick Price Filters */}
+                         <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-fg/40 block text-right">اختصار السعر</label>
+                            <div className="flex flex-wrap gap-2 justify-end">
+                               {[10, 50, 100, 200].map(price => (
+                                 <button 
+                                   key={price}
+                                   onClick={() => setPriceRange({ min: '', max: price })}
+                                   className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
+                                     priceRange.max === price ? 'bg-violet-600 border-violet-600 text-white' : 'bg-fg/5 border-fg/10 text-fg/40 hover:bg-fg/10'
+                                   }`}
+                                 >
+                                   تحت {price}
+                                 </button>
+                               ))}
+                            </div>
+                         </div>
+
+                         {/* Stats or other filters can go here */}
+                         <div className="lg:col-span-2 flex items-end justify-end gap-3">
+                            <button 
+                              onClick={() => {
+                                setPriceRange({ min: '', max: '' });
+                                setSortBy('featured');
+                                setSearchQuery('');
+                                setActiveCategory('الكل');
+                              }}
+                              className="px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-black transition-all flex items-center gap-2"
+                            >
+                              <Trash2 size={14} /> مسح الكل
+                            </button>
+                            <button 
+                              onClick={() => setIsAdvancedFiltersOpen(false)}
+                              className="px-8 py-3 bg-fg text-bg rounded-xl text-xs font-black transition-all"
+                            >
+                              تطبيق
+                            </button>
+                         </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </section>
 
               {/* Dynamic Products Grid */}
