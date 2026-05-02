@@ -1,0 +1,173 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // --- Helper Functions ---
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isAdmin() { 
+      return isSignedIn() && (
+        (request.auth.token.email == 'aminehasni20@gmail.com' && request.auth.token.email_verified == true) || 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      ); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // --- Validation Blueprints ---
+    function isValidUser(data) {
+      return data.keys().hasAll(['userId', 'email', 'balance', 'createdAt', 'updatedAt'])
+        && data.userId == request.auth.uid
+        && data.email is string
+        && data.balance is number;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['userId', 'items', 'total', 'status', 'createdAt', 'updatedAt', 'userEmail'])
+        && (data.userId == request.auth.uid || isAdmin())
+        && data.items is list
+        && data.total is number
+        && data.status in ['pending', 'paid', 'completed', 'cancelled']
+        && (!('unreadMessagesAdmin' in data) || data.unreadMessagesAdmin is number)
+        && (!('unreadMessagesUser' in data) || data.unreadMessagesUser is number);
+    }
+
+    function isValidMessage(data) {
+       return data.keys().hasAll(['text', 'senderId', 'isAdmin', 'createdAt'])
+         && data.text is string && data.text.size() > 0 && data.text.size() <= 1000
+         && data.senderId == request.auth.uid
+         && data.isAdmin is bool;
+    }
+
+    function isValidWishlist(data) {
+      return data.keys().hasAll(['userId', 'productIds'])
+        && data.userId == request.auth.uid
+        && data.productIds is list;
+    }
+
+    function isValidProduct(data) {
+       return data.keys().hasAll(['id', 'name', 'price', 'category', 'image', 'rating'])
+       && data.name is string && data.name.size() > 0
+       && data.price is number && data.price >= 0;
+    }
+
+    function isOrderOwner(orderId) {
+      let orderDoc = get(/databases/$(database)/documents/orders/$(orderId));
+      return orderDoc != null && orderDoc.data.userId == request.auth.uid;
+    }
+
+    // --- Collection Matches ---
+
+    match /admins/{userId} {
+      allow get: if isSignedIn();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidProduct(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /accountCategories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /giftCodes/{code} {
+      allow read, write: if isAdmin();
+      allow get: if isSignedIn(); // Allow fetching specific gift codes to redeem
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /transactions/{id} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    function isValidServiceRequest(data) {
+      return data.keys().hasAll(['userId', 'title', 'description', 'status']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             (!('userEmail' in data) || (data.userEmail is string && data.userEmail.size() <= 256)) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 2000 &&
+             data.status in ['pending', 'in-progress', 'completed', 'rejected'] &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('unreadMessagesAdmin' in data) || data.unreadMessagesAdmin is number) &&
+             (!('unreadMessagesUser' in data) || data.unreadMessagesUser is number);
+    }
+
+    function isServiceRequestOwner(requestId) {
+      let reqDoc = get(/databases/$(database)/documents/serviceRequests/$(requestId));
+      return reqDoc != null && reqDoc.data.userId == request.auth.uid;
+    }
+
+    match /serviceRequests/{requestId} {
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidServiceRequest(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'description', 'unreadMessagesAdmin', 'unreadMessagesUser']));
+      allow delete: if isAdmin();
+      
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && (isServiceRequestOwner(requestId) || isAdmin());
+        allow create: if isSignedIn() && isValidMessage(incoming()) && (isServiceRequestOwner(requestId) || isAdmin());
+      }
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'title', 'message', 'isRead']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.message is string && data.message.size() <= 500 &&
+             data.isRead is bool &&
+             (!('link' in data) || (data.link is string && data.link.size() <= 200)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    match /notifications/{notificationId} {
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidNotification(incoming());
+      allow update: if (isAdmin() || (isSignedIn() && existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['isRead'])));
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt', 'balance']))
+                  || (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'updatedAt']));
+    }
+
+    match /orders/{orderId} {
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && isValidOrder(incoming());
+      allow update: if (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'unreadMessagesAdmin', 'unreadMessagesUser']))
+                    || (isOwner(existing().userId) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'unreadMessagesAdmin', 'unreadMessagesUser']));
+      allow delete: if isAdmin();
+      
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && (isOrderOwner(orderId) || isAdmin());
+        allow create: if isSignedIn() && isValidMessage(incoming()) && (isOrderOwner(orderId) || isAdmin());
+      }
+    }
+
+    match /wishlists/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidWishlist(incoming());
+      allow update: if isOwner(userId) && isValidWishlist(incoming());
+    }
+
+    // fallback deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

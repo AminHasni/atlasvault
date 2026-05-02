@@ -1,0 +1,203 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile with balance and settings",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "balance": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "balance", "createdAt", "updatedAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "User purchase orders",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string" },
+        "userId": { "type": "string" },
+        "items": { "type": "array" },
+        "total": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "completed", "cancelled"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "unreadMessagesAdmin": { "type": "number" },
+        "unreadMessagesUser": { "type": "number" }
+      },
+      "required": [
+        "orderId",
+        "userId",
+        "items",
+        "total",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Wishlist": {
+      "title": "Wishlist",
+      "description": "User saved products",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "productIds": { "type": "array" }
+      },
+      "required": ["userId", "productIds"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Hierarchical category system",
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string" },
+        "name": { "type": "string" },
+        "icon": { "type": "string" },
+        "color": { "type": "string" },
+        "parentId": { "type": "string" },
+        "level": { "type": "number" }
+      },
+      "required": ["slug", "name", "level"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Shop products",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "subCategoryL1": { "type": "string" },
+        "subCategoryL2": { "type": "string" },
+        "image": { "type": "string" },
+        "rating": { "type": "number" },
+        "description": { "type": "string" },
+        "features": { "type": "array" },
+        "duration": { "type": "string" },
+        "badge": { "type": "string" }
+      },
+      "required": ["id", "name", "price", "category", "image", "rating"]
+    },
+    "AccountCategory": {
+      "title": "Account Category",
+      "description": "Category for accounts to be sold",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "icon": { "type": "string" },
+        "color": { "type": "string" },
+        "bg": { "type": "string" },
+        "count": { "type": "number" },
+        "desc": { "type": "string" }
+      },
+      "required": ["title", "icon", "count"]
+    },
+    "GiftCode": {
+      "title": "Gift Code",
+      "description": "Discount or credit codes",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "value": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "used", "expired"] }
+      },
+      "required": ["code", "value", "status"]
+    },
+    "ServiceRequest": {
+      "title": "Service Request",
+      "description": "User requests for services not currently on the platform",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in-progress", "completed", "rejected"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "unreadMessagesAdmin": { "type": "number" },
+        "unreadMessagesUser": { "type": "number" }
+      },
+      "required": ["userId", "title", "description", "status"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Chat messages between user and admin",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "isAdmin": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "senderId", "isAdmin"]
+    },
+    "AppNotification": {
+      "title": "Notification",
+      "description": "System notifications for users and admins",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "link": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "isRead"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Private user profiles"
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Order records"
+    },
+    "wishlists/{userId}": {
+      "schema": "Wishlist",
+      "description": "User wishlists"
+    },
+    "categories/{slug}": {
+      "schema": "Category",
+      "description": "Product categories"
+    },
+    "accountCategories/{categoryId}": {
+      "schema": "AccountCategory",
+      "description": "Categories for accounts"
+    },
+    "giftCodes/{code}": {
+      "schema": "GiftCode",
+      "description": "Available gift codes"
+    },
+    "serviceRequests/{requestId}": {
+      "schema": "ServiceRequest",
+      "description": "User requests for new services"
+    },
+    "serviceRequests/{requestId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Chat messages for a service request"
+    },
+    "notifications/{notificationId}": {
+      "schema": "AppNotification",
+      "description": "User and admin notifications"
+    },
+    "products/{id}": {
+      "schema": "Product",
+      "description": "Available products"
+    }
+  }
+}
