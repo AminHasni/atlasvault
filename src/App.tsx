@@ -659,7 +659,6 @@ export default function App() {
     { id: 'gift', label: 'كادو', icon: Gift },
     { id: 'contact', label: 'تواصل', icon: Mail },
     { id: 'faq', label: 'الأسئلة', icon: HelpCircle },
-    { id: 'profile', label: 'حسابي', icon: UserIcon },
   ];
 
   const navItems = profile?.isAdmin 
