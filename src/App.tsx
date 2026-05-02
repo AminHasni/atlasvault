@@ -804,29 +804,30 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Header / App Bar */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-fg/5 bg-panel/70 backdrop-blur-2xl transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3 group cursor-pointer tour-logo" onClick={() => setCurrentTab('home')}>
-            <AtlasLogo className="w-10 h-10" />
-            <div className="flex flex-col leading-none hidden md:block">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-fg/5 bg-panel/80 backdrop-blur-3xl transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between gap-4">
+          {/* Logo Section */}
+          <div className="flex items-center gap-3 group cursor-pointer tour-logo shrink-0" onClick={() => setCurrentTab('home')}>
+            <AtlasLogo className="w-9 h-9 sm:w-10 sm:h-10 transition-transform group-hover:rotate-12" />
+            <div className="flex flex-col leading-none hidden xl:block">
               <span className="text-xl font-black tracking-tighter text-fg">ATLASVAULT</span>
             </div>
           </div>
 
-          <nav className="hidden lg:flex items-center gap-1 ml-12 h-full">
+          {/* Navigation Section */}
+          <div className="hidden lg:flex items-center gap-1 h-full px-4 border-l border-r border-fg/5">
             {navItems.map(item => (
               <button
                 key={item.id}
                 onClick={() => setCurrentTab(item.id)}
-                className={`tour-nav-${item.id} desktop-nav flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all relative ${
-                  currentTab === item.id ? 'text-amber-400' : 'text-fg/60 hover:text-fg'
+                className={`tour-nav-${item.id} desktop-nav flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold transition-all relative ${
+                  currentTab === item.id ? 'text-amber-400 bg-fg/5' : 'text-fg/60 hover:text-fg hover:bg-fg/5'
                 }`}
               >
-                <item.icon size={18} />
-                {item.label}
+                <item.icon size={16} />
+                <span className="whitespace-nowrap">{item.label}</span>
                 {item.badge && (
-                  <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-red-500 text-[8px] text-white font-black rounded-md animate-pulse">
+                  <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-red-500 text-[8px] text-white font-black rounded-md shadow-lg">
                     {item.badge}
                   </span>
                 )}
@@ -835,160 +836,168 @@ export default function App() {
                 )}
               </button>
             ))}
-          </nav>
+          </div>
           
-          <div className="hidden md:flex items-center flex-1 max-w-sm mx-auto">
+          {/* Search Section */}
+          <div className="hidden sm:flex items-center justify-center flex-1 max-w-sm px-2">
             <div className="relative w-full group text-right tour-search">
-              <Search size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-fg/20 group-focus-within:text-amber-400 transition-colors" />
+              <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-fg/20 group-focus-within:text-amber-400 transition-colors" />
               <input 
                 type="text" 
                 placeholder="على شنوا تلوج؟" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl py-2.5 pr-14 pl-6 text-sm outline-none focus:border-amber-400/50 focus:bg-fg/[0.07] transition-all placeholder:text-fg/20 text-right" 
+                className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl py-2 px-10 text-xs outline-none focus:border-amber-400/50 focus:bg-fg/[0.07] transition-all placeholder:text-fg/20 text-right" 
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          {/* Actions Section */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {!user ? (
               <button 
                 onClick={handleLogin}
-                className="tour-login flex items-center gap-2 px-3 py-2 md:px-6 md:py-2.5 bg-fg/5 border border-fg/10 text-fg text-xs font-bold rounded-xl hover:bg-fg/10 transition-all active:scale-95"
+                className="tour-login flex items-center gap-2 px-4 py-2 bg-fg/5 border border-fg/10 text-fg text-xs font-bold rounded-xl hover:bg-fg/10 transition-all active:scale-95"
               >
                 <LogIn size={16} />
-                <span className="hidden md:block">دخول</span>
+                <span className="hidden sm:block">دخول</span>
               </button>
             ) : (
               <button
                 onClick={() => setCurrentTab('profile')}
-                className="tour-login w-10 h-10 md:w-auto md:px-4 md:py-2 flex items-center gap-2 bg-fg/5 border border-fg/10 text-fg text-xs font-bold rounded-xl hover:bg-fg/10 transition-all active:scale-95"
+                className="tour-login flex items-center gap-2 px-3 py-2 bg-fg/5 border border-fg/10 text-fg text-xs font-bold rounded-xl hover:bg-fg/10 transition-all active:scale-95 shrink-0"
               >
                 {user.photoURL ? (
-                  <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full" />
+                  <img src={user.photoURL} alt="" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full" />
                 ) : (
-                  <UserCircle size={20} />
+                  <UserCircle size={18} />
                 )}
-                <span className="hidden md:block whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">
+                <span className="hidden md:block whitespace-nowrap overflow-hidden text-ellipsis max-w-[80px]">
                   {profile?.displayName || 'حسابي'}
                 </span>
               </button>
             )}
-            <button 
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="hidden md:flex p-3 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all group tour-theme"
-              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {isDarkMode ? (
-                <Sun size={20} className="text-amber-400 group-hover:scale-110 transition-transform" />
-              ) : (
-                <Moon size={20} className="text-indigo-600 group-hover:scale-110 transition-transform" />
-              )}
-            </button>
-            {user && (
-              <div className="relative isolate">
-                <button 
-                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                  className="p-3 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all relative group"
-                >
-                  <Bell size={20} className="text-fg group-hover:scale-110 transition-transform" />
-                  {notifications.filter(n => !n.isRead).length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-bg shadow-lg">
-                      {notifications.filter(n => !n.isRead).length}
-                    </span>
-                  )}
-                </button>
+            
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button 
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="hidden sm:flex p-2.5 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all group tour-theme"
+                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {isDarkMode ? (
+                  <Sun size={18} className="text-amber-400 group-hover:scale-110 transition-transform" />
+                ) : (
+                  <Moon size={18} className="text-indigo-600 group-hover:scale-110 transition-transform" />
+                )}
+              </button>
 
-                <AnimatePresence>
-                  {isNotificationsOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute left-0 lg:right-0 lg:left-auto top-full mt-2 w-80 bg-panel border-fg/10 border rounded-3xl shadow-2xl overflow-hidden z-50 text-right"
-                      dir="rtl"
-                    >
-                      <div className="p-4 border-b border-fg/10 flex items-center justify-between bg-fg/[0.02]">
-                        <h3 className="font-bold">الإشعارات</h3>
-                        {notifications.filter(n => !n.isRead).length > 0 && (
-                          <button 
-                            onClick={async () => {
-                              try {
-                                const unread = notifications.filter(n => !n.isRead);
-                                for (const notif of unread) {
-                                  await updateDoc(doc(db, 'notifications', notif.id!), { isRead: true });
-                                }
-                              } catch (err) {
-                                console.error(err);
-                              }
-                            }}
-                            className="text-[10px] text-amber-500 hover:bg-amber-500/10 px-2 py-1 rounded-lg font-bold transition-colors flex items-center gap-1"
-                          >
-                            <Check size={12} /> تحديد الكل كمقروء
-                          </button>
-                        )}
-                      </div>
-                      <div className="max-h-80 overflow-y-auto no-scrollbar">
-                        {notifications.length === 0 ? (
-                          <div className="p-8 text-center text-fg/40 text-sm">
-                            لا توجد إشعارات حاليا
-                          </div>
-                        ) : (
-                          notifications.map((notif) => (
-                            <div 
-                              key={notif.id}
+              {user && (
+                <div className="relative isolate">
+                  <button 
+                    onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                    className="p-2.5 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all relative group"
+                  >
+                    <Bell size={18} className="text-fg group-hover:scale-110 transition-transform" />
+                    {notifications.filter(n => !n.isRead).length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border-2 border-bg shadow-lg">
+                        {notifications.filter(n => !n.isRead).length}
+                      </span>
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {isNotificationsOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute left-0 top-full mt-3 w-80 bg-panel border-fg/10 border rounded-3xl shadow-2xl overflow-hidden z-50 text-right"
+                        dir="rtl"
+                      >
+                        <div className="p-4 border-b border-fg/10 flex items-center justify-between bg-fg/[0.02]">
+                          <h3 className="font-bold">الإشعارات</h3>
+                          {notifications.filter(n => !n.isRead).length > 0 && (
+                            <button 
                               onClick={async () => {
-                                if (!notif.isRead) {
-                                  try {
+                                try {
+                                  const unread = notifications.filter(n => !n.isRead);
+                                  for (const notif of unread) {
                                     await updateDoc(doc(db, 'notifications', notif.id!), { isRead: true });
-                                  } catch (err) {}
-                                }
-                                setIsNotificationsOpen(false);
-                                if (notif.link) {
-                                  if (notif.link.startsWith('admin-')) {
-                                    setCurrentTab('admin');
-                                    setAdminTab(notif.link.replace('admin-', ''));
-                                  } else {
-                                    setCurrentTab(notif.link);
                                   }
+                                } catch (err) {
+                                  console.error(err);
                                 }
                               }}
-                              className={`p-4 border-b border-fg/5 hover:bg-fg/5 transition-colors cursor-pointer flex gap-3 ${!notif.isRead ? 'bg-amber-500/[0.02]' : ''}`}
+                              className="text-[10px] text-amber-500 hover:bg-amber-500/10 px-2 py-1 rounded-lg font-bold transition-colors flex items-center gap-1"
                             >
-                              <div className={`w-2 h-2 mt-1.5 shrink-0 rounded-full ${!notif.isRead ? 'bg-amber-500' : 'bg-transparent'}`} />
-                              <div>
-                                <h4 className={`text-sm ${!notif.isRead ? 'font-bold' : 'font-medium text-fg/80'}`}>{notif.title}</h4>
-                                <p className="text-xs text-fg/60 mt-1 line-clamp-2">{notif.message}</p>
-                                <span className="text-[10px] text-fg/40 mt-2 block font-mono">
-                                  {notif.createdAt?.seconds ? new Date(notif.createdAt.seconds * 1000).toLocaleDateString('ar-TN', { hour: 'numeric', minute: 'numeric' }) : 'الآن'}
-                                </span>
-                              </div>
+                              <Check size={12} /> تحديد الكل كمقروء
+                            </button>
+                          )}
+                        </div>
+                        <div className="max-h-80 overflow-y-auto no-scrollbar">
+                          {notifications.length === 0 ? (
+                            <div className="p-8 text-center text-fg/40 text-sm">
+                              لا توجد إشعارات حاليا
                             </div>
-                          ))
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-            <button 
-              onClick={() => setIsCartOpen(true)}
-              className="p-3 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all relative group tour-cart"
-            >
-              <ShoppingBag size={20} className="text-fg group-hover:scale-110 transition-transform" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 text-black text-[10px] font-black rounded-full flex items-center justify-center border-2 border-bg shadow-lg">
-                  {cartCount}
-                </span>
+                          ) : (
+                            notifications.map((notif) => (
+                              <div 
+                                key={notif.id}
+                                onClick={async () => {
+                                  if (!notif.isRead) {
+                                    try {
+                                      await updateDoc(doc(db, 'notifications', notif.id!), { isRead: true });
+                                    } catch (err) {}
+                                  }
+                                  setIsNotificationsOpen(false);
+                                  if (notif.link) {
+                                    if (notif.link.startsWith('admin-')) {
+                                      setCurrentTab('admin');
+                                      setAdminTab(notif.link.replace('admin-', ''));
+                                    } else {
+                                      setCurrentTab(notif.link);
+                                    }
+                                  }
+                                }}
+                                className={`p-4 border-b border-fg/5 hover:bg-fg/5 transition-colors cursor-pointer flex gap-3 ${!notif.isRead ? 'bg-amber-500/[0.02]' : ''}`}
+                              >
+                                <div className={`w-2 h-2 mt-1.5 shrink-0 rounded-full ${!notif.isRead ? 'bg-amber-500' : 'bg-transparent'}`} />
+                                <div>
+                                  <h4 className={`text-sm ${!notif.isRead ? 'font-bold' : 'font-medium text-fg/80'}`}>{notif.title}</h4>
+                                  <p className="text-xs text-fg/60 mt-1 line-clamp-2">{notif.message}</p>
+                                  <span className="text-[10px] text-fg/40 mt-2 block font-mono">
+                                    {notif.createdAt?.seconds ? new Date(notif.createdAt.seconds * 1000).toLocaleDateString('ar-TN', { hour: 'numeric', minute: 'numeric' }) : 'الآن'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               )}
-            </button>
-            <button 
-              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-              className="p-3 lg:hidden hover:bg-fg/5 rounded-2xl transition-colors mobile-tour-search"
-            >
-              {isMobileSearchOpen ? <X size={22} className="text-fg/80" /> : <Search size={22} className="text-fg/80" />}
-            </button>
+
+              <button 
+                onClick={() => setIsCartOpen(true)}
+                className="p-2.5 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all relative group tour-cart"
+              >
+                <ShoppingBag size={18} className="text-fg group-hover:scale-110 transition-transform" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 text-black text-[8px] font-black rounded-full flex items-center justify-center border-2 border-bg shadow-lg">
+                    {cartCount}
+                  </span>
+                )}
+              </button>
+
+              <button 
+                onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                className="p-2.5 lg:hidden hover:bg-fg/5 rounded-2xl transition-colors mobile-tour-search"
+              >
+                {isMobileSearchOpen ? <X size={20} className="text-fg/80" /> : <Search size={20} className="text-fg/80" />}
+              </button>
+            </div>
           </div>
         </div>
         
@@ -1038,7 +1047,7 @@ export default function App() {
         ))}
       </nav>
 
-      <main className="pt-28">
+      <main className="pt-28 lg:pt-32 pb-20">
         <AnimatePresence mode="wait">
           {currentTab === 'home' && (
             <motion.div
@@ -1046,7 +1055,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.02 }}
-              className="max-w-7xl mx-auto px-4 py-12"
+              className="max-w-7xl mx-auto px-4 py-8 md:py-12"
             >
               {/* Hero Section */}
               <div className="relative overflow-hidden bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 border border-fg/10 rounded-[3rem] p-12 mb-16 text-center">
@@ -1196,6 +1205,7 @@ export default function App() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
+              className="max-w-7xl mx-auto"
             >
               {/* Modern SaaS Hero Section - Carousel Version */}
               <section className="relative pt-20 pb-32 px-4 overflow-hidden min-h-[75vh] flex items-center justify-center mb-16">
@@ -2338,7 +2348,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.02 }}
-              className="max-w-4xl mx-auto px-4 py-8 mb-20 space-y-6"
+              className="max-w-7xl mx-auto px-4 py-8 mb-20 space-y-6"
             >
               <div className="flex justify-between items-center mb-10">
                  <div>
@@ -2405,7 +2415,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.02 }}
-              className="max-w-4xl mx-auto px-4 py-8 mb-20"
+              className="max-w-7xl mx-auto px-4 py-8 mb-20"
             >
                <div className="flex items-center gap-4 mb-10">
                  <button onClick={() => setCurrentTab('profile')} className="w-12 h-12 bg-fg/5 hover:bg-fg/10 rounded-2xl flex items-center justify-center transition-all">
@@ -2621,7 +2631,7 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="max-w-4xl mx-auto px-4 py-8 mb-20"
+              className="max-w-5xl mx-auto px-4 py-8 mb-20"
             >
               <div className="text-center mb-16">
                  <h2 className="text-4xl md:text-5xl font-black mb-4"><span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500">تواصل</span> معنا</h2>
@@ -2731,7 +2741,7 @@ export default function App() {
               key="profile"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="max-w-xl mx-auto px-4 py-12"
+              className="max-w-7xl mx-auto px-4 py-12 mb-20"
             >
               {!user ? (
                 <div className="py-20 text-center bg-fg/[0.02] border border-fg/5 rounded-[3rem]">
