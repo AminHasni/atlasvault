@@ -805,198 +805,204 @@ export default function App() {
       </AnimatePresence>
 
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-fg/5 bg-panel/80 backdrop-blur-3xl transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between gap-4">
-          {/* Logo Section */}
-          <div className="flex items-center gap-3 group cursor-pointer tour-logo shrink-0" onClick={() => setCurrentTab('home')}>
-            <AtlasLogo className="w-9 h-9 sm:w-10 sm:h-10 transition-transform group-hover:rotate-12" />
-            <div className="flex flex-col leading-none hidden xl:block">
-              <span className="text-xl font-black tracking-tighter text-fg">ATLASVAULT</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center">
+          {/* Right Section: Logo */}
+          <div className="flex-1 flex items-center justify-start overflow-hidden">
+            <div className="flex items-center gap-3 group cursor-pointer tour-logo shrink-0" onClick={() => setCurrentTab('home')}>
+              <AtlasLogo className="w-9 h-9 sm:w-10 sm:h-10 transition-transform group-hover:rotate-12" />
+              <div className="flex flex-col leading-none hidden xl:block">
+                <span className="text-xl font-black tracking-tighter text-fg">ATLASVAULT</span>
+              </div>
             </div>
           </div>
 
-          {/* Navigation Section */}
-          <div className="hidden lg:flex items-center gap-1 h-full px-4 border-l border-r border-fg/5">
-            {navItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setCurrentTab(item.id)}
-                className={`tour-nav-${item.id} desktop-nav flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold transition-all relative ${
-                  currentTab === item.id ? 'text-amber-400 bg-fg/5' : 'text-fg/60 hover:text-fg hover:bg-fg/5'
-                }`}
-              >
-                <item.icon size={16} />
-                <span className="whitespace-nowrap">{item.label}</span>
-                {item.badge && (
-                  <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-red-500 text-[8px] text-white font-black rounded-md shadow-lg">
-                    {item.badge}
-                  </span>
-                )}
-                {currentTab === item.id && (
-                  <motion.div layoutId="nav-line" className="absolute bottom-[-10px] left-2 right-2 h-0.5 bg-amber-400 rounded-full" />
-                )}
-              </button>
-            ))}
+          {/* Center Section: Navigation */}
+          <div className="hidden lg:flex items-center justify-center flex-none px-4">
+            <div className="flex items-center gap-1 h-full">
+              {navItems.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentTab(item.id)}
+                  className={`tour-nav-${item.id} desktop-nav flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold transition-all relative ${
+                    currentTab === item.id ? 'text-amber-400 bg-fg/5' : 'text-fg/60 hover:text-fg hover:bg-fg/5'
+                  }`}
+                >
+                  <item.icon size={16} />
+                  <span className="whitespace-nowrap">{item.label}</span>
+                  {item.badge && (
+                    <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-red-500 text-[8px] text-white font-black rounded-md shadow-lg">
+                      {item.badge}
+                    </span>
+                  )}
+                  {currentTab === item.id && (
+                    <motion.div layoutId="nav-line" className="absolute bottom-[-10px] left-2 right-2 h-0.5 bg-amber-400 rounded-full" />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
           
-          {/* Search Section */}
-          <div className="hidden sm:flex items-center justify-center flex-1 max-w-sm px-2">
-            <div className="relative w-full group text-right tour-search">
-              <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-fg/20 group-focus-within:text-amber-400 transition-colors" />
-              <input 
-                type="text" 
-                placeholder="على شنوا تلوج؟" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl py-2 px-10 text-xs outline-none focus:border-amber-400/50 focus:bg-fg/[0.07] transition-all placeholder:text-fg/20 text-right" 
-              />
+          {/* Left Section: Search & Actions */}
+          <div className="flex-1 flex items-center justify-end gap-2 sm:gap-4 overflow-hidden">
+            {/* Search - only visible on wide screens in this spot */}
+            <div className="hidden sm:flex items-center flex-1 max-w-[200px] xl:max-w-xs px-2">
+              <div className="relative w-full group text-right tour-search">
+                <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-fg/20 group-focus-within:text-amber-400 transition-colors" />
+                <input 
+                  type="text" 
+                  placeholder="بحث..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl py-2 px-10 text-[10px] xl:text-xs outline-none focus:border-amber-400/50 focus:bg-fg/[0.07] transition-all placeholder:text-fg/20 text-right" 
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Actions Section */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {!user ? (
-              <button 
-                onClick={handleLogin}
-                className="tour-login flex items-center gap-2 px-4 py-2 bg-fg/5 border border-fg/10 text-fg text-xs font-bold rounded-xl hover:bg-fg/10 transition-all active:scale-95"
-              >
-                <LogIn size={16} />
-                <span className="hidden sm:block">دخول</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setCurrentTab('profile')}
-                className="tour-login flex items-center gap-2 px-3 py-2 bg-fg/5 border border-fg/10 text-fg text-xs font-bold rounded-xl hover:bg-fg/10 transition-all active:scale-95 shrink-0"
-              >
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt="" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full" />
-                ) : (
-                  <UserCircle size={18} />
-                )}
-                <span className="hidden md:block whitespace-nowrap overflow-hidden text-ellipsis max-w-[80px]">
-                  {profile?.displayName || 'حسابي'}
-                </span>
-              </button>
-            )}
-            
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button 
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className="hidden sm:flex p-2.5 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all group tour-theme"
-                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {isDarkMode ? (
-                  <Sun size={18} className="text-amber-400 group-hover:scale-110 transition-transform" />
-                ) : (
-                  <Moon size={18} className="text-indigo-600 group-hover:scale-110 transition-transform" />
-                )}
-              </button>
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              {!user ? (
+                <button 
+                  onClick={handleLogin}
+                  className="tour-login flex items-center gap-2 px-4 py-2 bg-fg/5 border border-fg/10 text-fg text-xs font-bold rounded-xl hover:bg-fg/10 transition-all active:scale-95"
+                >
+                  <LogIn size={16} />
+                  <span className="hidden sm:block">دخول</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setCurrentTab('profile')}
+                  className="tour-login flex items-center gap-2 px-3 py-2 bg-fg/5 border border-fg/10 text-fg text-xs font-bold rounded-xl hover:bg-fg/10 transition-all active:scale-95 shrink-0"
+                >
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full" />
+                  ) : (
+                    <UserCircle size={18} />
+                  )}
+                  <span className="hidden md:block whitespace-nowrap overflow-hidden text-ellipsis max-w-[80px]">
+                    {profile?.displayName || 'حسابي'}
+                  </span>
+                </button>
+              )}
+              
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <button 
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  className="hidden sm:flex p-2.5 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all group tour-theme"
+                  title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                >
+                  {isDarkMode ? (
+                    <Sun size={18} className="text-amber-400 group-hover:scale-110 transition-transform" />
+                  ) : (
+                    <Moon size={18} className="text-indigo-600 group-hover:scale-110 transition-transform" />
+                  )}
+                </button>
 
-              {user && (
-                <div className="relative isolate">
-                  <button 
-                    onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                    className="p-2.5 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all relative group"
-                  >
-                    <Bell size={18} className="text-fg group-hover:scale-110 transition-transform" />
-                    {notifications.filter(n => !n.isRead).length > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border-2 border-bg shadow-lg">
-                        {notifications.filter(n => !n.isRead).length}
-                      </span>
-                    )}
-                  </button>
+                {user && (
+                  <div className="relative isolate">
+                    <button 
+                      onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                      className="p-2.5 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all relative group"
+                    >
+                      <Bell size={18} className="text-fg group-hover:scale-110 transition-transform" />
+                      {notifications.filter(n => !n.isRead).length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border-2 border-bg shadow-lg">
+                          {notifications.filter(n => !n.isRead).length}
+                        </span>
+                      )}
+                    </button>
 
-                  <AnimatePresence>
-                    {isNotificationsOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute left-0 top-full mt-3 w-80 bg-panel border-fg/10 border rounded-3xl shadow-2xl overflow-hidden z-50 text-right"
-                        dir="rtl"
-                      >
-                        <div className="p-4 border-b border-fg/10 flex items-center justify-between bg-fg/[0.02]">
-                          <h3 className="font-bold">الإشعارات</h3>
-                          {notifications.filter(n => !n.isRead).length > 0 && (
-                            <button 
-                              onClick={async () => {
-                                try {
-                                  const unread = notifications.filter(n => !n.isRead);
-                                  for (const notif of unread) {
-                                    await updateDoc(doc(db, 'notifications', notif.id!), { isRead: true });
-                                  }
-                                } catch (err) {
-                                  console.error(err);
-                                }
-                              }}
-                              className="text-[10px] text-amber-500 hover:bg-amber-500/10 px-2 py-1 rounded-lg font-bold transition-colors flex items-center gap-1"
-                            >
-                              <Check size={12} /> تحديد الكل كمقروء
-                            </button>
-                          )}
-                        </div>
-                        <div className="max-h-80 overflow-y-auto no-scrollbar">
-                          {notifications.length === 0 ? (
-                            <div className="p-8 text-center text-fg/40 text-sm">
-                              لا توجد إشعارات حاليا
-                            </div>
-                          ) : (
-                            notifications.map((notif) => (
-                              <div 
-                                key={notif.id}
+                    <AnimatePresence>
+                      {isNotificationsOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute left-0 top-full mt-3 w-80 bg-panel border-fg/10 border rounded-3xl shadow-2xl overflow-hidden z-50 text-right"
+                          dir="rtl"
+                        >
+                          <div className="p-4 border-b border-fg/10 flex items-center justify-between bg-fg/[0.02]">
+                            <h3 className="font-bold">الإشعارات</h3>
+                            {notifications.filter(n => !n.isRead).length > 0 && (
+                              <button 
                                 onClick={async () => {
-                                  if (!notif.isRead) {
-                                    try {
+                                  try {
+                                    const unread = notifications.filter(n => !n.isRead);
+                                    for (const notif of unread) {
                                       await updateDoc(doc(db, 'notifications', notif.id!), { isRead: true });
-                                    } catch (err) {}
-                                  }
-                                  setIsNotificationsOpen(false);
-                                  if (notif.link) {
-                                    if (notif.link.startsWith('admin-')) {
-                                      setCurrentTab('admin');
-                                      setAdminTab(notif.link.replace('admin-', ''));
-                                    } else {
-                                      setCurrentTab(notif.link);
                                     }
+                                  } catch (err) {
+                                    console.error(err);
                                   }
                                 }}
-                                className={`p-4 border-b border-fg/5 hover:bg-fg/5 transition-colors cursor-pointer flex gap-3 ${!notif.isRead ? 'bg-amber-500/[0.02]' : ''}`}
+                                className="text-[10px] text-amber-500 hover:bg-amber-500/10 px-2 py-1 rounded-lg font-bold transition-colors flex items-center gap-1"
                               >
-                                <div className={`w-2 h-2 mt-1.5 shrink-0 rounded-full ${!notif.isRead ? 'bg-amber-500' : 'bg-transparent'}`} />
-                                <div>
-                                  <h4 className={`text-sm ${!notif.isRead ? 'font-bold' : 'font-medium text-fg/80'}`}>{notif.title}</h4>
-                                  <p className="text-xs text-fg/60 mt-1 line-clamp-2">{notif.message}</p>
-                                  <span className="text-[10px] text-fg/40 mt-2 block font-mono">
-                                    {notif.createdAt?.seconds ? new Date(notif.createdAt.seconds * 1000).toLocaleDateString('ar-TN', { hour: 'numeric', minute: 'numeric' }) : 'الآن'}
-                                  </span>
-                                </div>
+                                <Check size={12} /> تحديد الكل كمقروء
+                              </button>
+                            )}
+                          </div>
+                          <div className="max-h-80 overflow-y-auto no-scrollbar">
+                            {notifications.length === 0 ? (
+                              <div className="p-8 text-center text-fg/40 text-sm">
+                                لا توجد إشعارات حاليا
                               </div>
-                            ))
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
-
-              <button 
-                onClick={() => setIsCartOpen(true)}
-                className="p-2.5 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all relative group tour-cart"
-              >
-                <ShoppingBag size={18} className="text-fg group-hover:scale-110 transition-transform" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 text-black text-[8px] font-black rounded-full flex items-center justify-center border-2 border-bg shadow-lg">
-                    {cartCount}
-                  </span>
+                            ) : (
+                              notifications.map((notif) => (
+                                <div 
+                                  key={notif.id}
+                                  onClick={async () => {
+                                    if (!notif.isRead) {
+                                      try {
+                                        await updateDoc(doc(db, 'notifications', notif.id!), { isRead: true });
+                                      } catch (err) {}
+                                    }
+                                    setIsNotificationsOpen(false);
+                                    if (notif.link) {
+                                      if (notif.link.startsWith('admin-')) {
+                                        setCurrentTab('admin');
+                                        setAdminTab(notif.link.replace('admin-', ''));
+                                      } else {
+                                        setCurrentTab(notif.link);
+                                      }
+                                    }
+                                  }}
+                                  className={`p-4 border-b border-fg/5 hover:bg-fg/5 transition-colors cursor-pointer flex gap-3 ${!notif.isRead ? 'bg-amber-500/[0.02]' : ''}`}
+                                >
+                                  <div className={`w-2 h-2 mt-1.5 shrink-0 rounded-full ${!notif.isRead ? 'bg-amber-500' : 'bg-transparent'}`} />
+                                  <div>
+                                    <h4 className={`text-sm ${!notif.isRead ? 'font-bold' : 'font-medium text-fg/80'}`}>{notif.title}</h4>
+                                    <p className="text-xs text-fg/60 mt-1 line-clamp-2">{notif.message}</p>
+                                    <span className="text-[10px] text-fg/40 mt-2 block font-mono">
+                                      {notif.createdAt?.seconds ? new Date(notif.createdAt.seconds * 1000).toLocaleDateString('ar-TN', { hour: 'numeric', minute: 'numeric' }) : 'الآن'}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 )}
-              </button>
 
-              <button 
-                onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-                className="p-2.5 lg:hidden hover:bg-fg/5 rounded-2xl transition-colors mobile-tour-search"
-              >
-                {isMobileSearchOpen ? <X size={20} className="text-fg/80" /> : <Search size={20} className="text-fg/80" />}
-              </button>
+                <button 
+                  onClick={() => setIsCartOpen(true)}
+                  className="p-2.5 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all relative group tour-cart"
+                >
+                  <ShoppingBag size={18} className="text-fg group-hover:scale-110 transition-transform" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 text-black text-[8px] font-black rounded-full flex items-center justify-center border-2 border-bg shadow-lg">
+                      {cartCount}
+                    </span>
+                  )}
+                </button>
+
+                <button 
+                  onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                  className="p-2.5 lg:hidden hover:bg-fg/5 rounded-2xl transition-colors mobile-tour-search"
+                >
+                  {isMobileSearchOpen ? <X size={20} className="text-fg/80" /> : <Search size={20} className="text-fg/80" />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
