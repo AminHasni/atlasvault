@@ -807,7 +807,7 @@ export default function App() {
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-fg/5 bg-panel/80 backdrop-blur-3xl transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center">
           {/* Right Section: Logo */}
-          <div className="flex-1 flex items-center justify-start overflow-hidden">
+          <div className="flex-1 flex items-center justify-start">
             <div className="flex items-center gap-3 group cursor-pointer tour-logo shrink-0" onClick={() => setCurrentTab('home')}>
               <AtlasLogo className="w-9 h-9 sm:w-10 sm:h-10 transition-transform group-hover:rotate-12" />
               <div className="flex flex-col leading-none hidden xl:block">
@@ -817,7 +817,7 @@ export default function App() {
           </div>
 
           {/* Center Section: Navigation */}
-          <div className="hidden lg:flex items-center justify-center flex-none px-4">
+          <div className="hidden lg:flex items-center justify-center flex-none px-4 h-full">
             <div className="flex items-center gap-1 h-full">
               {navItems.map(item => (
                 <button
@@ -843,7 +843,7 @@ export default function App() {
           </div>
           
           {/* Left Section: Search & Actions */}
-          <div className="flex-1 flex items-center justify-end gap-2 sm:gap-4 overflow-hidden">
+          <div className="flex-1 flex items-center justify-end gap-2 sm:gap-4">
             {/* Search - only visible on wide screens in this spot */}
             <div className="hidden sm:flex items-center flex-1 max-w-[200px] xl:max-w-xs px-2">
               <div className="relative w-full group text-right tour-search">
@@ -897,14 +897,17 @@ export default function App() {
                 </button>
 
                 {user && (
-                  <div className="relative isolate">
+                  <div className="relative">
                     <button 
-                      onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                      className="p-2.5 bg-fg/5 border border-fg/10 rounded-xl hover:bg-fg/10 transition-all relative group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsNotificationsOpen(!isNotificationsOpen);
+                      }}
+                      className={`p-2.5 border border-fg/10 rounded-xl transition-all relative group ${isNotificationsOpen ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20 border-amber-400' : 'bg-fg/5 text-fg hover:bg-fg/10'}`}
                     >
-                      <Bell size={18} className="text-fg group-hover:scale-110 transition-transform" />
+                      <Bell size={18} className="group-hover:scale-110 transition-transform" />
                       {notifications.filter(n => !n.isRead).length > 0 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border-2 border-bg shadow-lg">
+                        <span className={`absolute -top-1 -right-1 w-4 h-4 text-[8px] font-black rounded-full flex items-center justify-center border-2 border-bg shadow-lg ${isNotificationsOpen ? 'bg-black text-amber-400 border-amber-400' : 'bg-red-500 text-white border-bg'}`}>
                           {notifications.filter(n => !n.isRead).length}
                         </span>
                       )}
@@ -912,13 +915,19 @@ export default function App() {
 
                     <AnimatePresence>
                       {isNotificationsOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute left-0 top-full mt-3 w-80 bg-panel border-fg/10 border rounded-3xl shadow-2xl overflow-hidden z-50 text-right"
-                          dir="rtl"
-                        >
+                        <>
+                          {/* Close backdrop */}
+                          <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={() => setIsNotificationsOpen(false)}
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute left-0 top-full mt-3 w-80 bg-panel border-fg/10 border rounded-3xl shadow-2xl overflow-hidden z-50 text-right"
+                            dir="rtl"
+                          >
                           <div className="p-4 border-b border-fg/10 flex items-center justify-between bg-fg/[0.02]">
                             <h3 className="font-bold">الإشعارات</h3>
                             {notifications.filter(n => !n.isRead).length > 0 && (
@@ -979,10 +988,11 @@ export default function App() {
                             )}
                           </div>
                         </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
 
                 <button 
                   onClick={() => setIsCartOpen(true)}
