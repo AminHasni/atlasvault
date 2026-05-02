@@ -6,6 +6,7 @@ import {
   MessageCircle, 
    
   
+  UserCircle,
   CreditCard,
   Gamepad2,
   Tv,
