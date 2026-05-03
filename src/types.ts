@@ -120,3 +120,18 @@ export interface Wishlist {
   userId: string;
   productIds: number[];
 }
+
+export interface Attachment {
+  url: string;
+  name: string;
+  type: string;
+}
+
+export interface Message {
+  id: string;
+  text: string;
+  senderId: string;
+  isAdmin: boolean;
+  createdAt: any;
+  attachment?: Attachment;
+}

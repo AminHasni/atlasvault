@@ -10,19 +10,34 @@ export const AtlasLogo: React.FC<{ className?: string }> = ({ className = "w-10 
         className="w-full h-full filter drop-shadow-[0_0_8px_rgba(139,92,246,0.3)] transition-transform group-hover:scale-110"
       >
         <path
-          d="M50 5L93.3013 30V80L50 105L6.69873 80V30L50 5Z"
+          d="M50 5L93.3 30V80L50 105L6.7 80V30L50 5Z"
           stroke="url(#gradient)"
-          strokeWidth="4"
+          strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
+          className="opacity-50"
         />
+        {/* Styled A from the reference image */}
         <path
-          d="M30 75L50 35L70 75M40 55H60"
+          d="M30 80L50 25L70 80"
           stroke="url(#gradient)"
           strokeWidth="6"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="animate-pulse"
+        />
+        <path
+          d="M38 60H62"
+          stroke="url(#gradient)"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M50 25V105"
+          stroke="url(#gradient)"
+          strokeWidth="1"
+          strokeLinecap="round"
+          className="opacity-20"
         />
         <defs>
           <linearGradient id="gradient" x1="0" y1="0" x2="100" y2="115" gradientUnits="userSpaceOnUse">

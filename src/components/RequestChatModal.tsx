@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, User as UserIcon, Shield, AlertCircle, CheckCircle2, Clock, Info } from 'lucide-react';
-import { ServiceRequest, UserProfile } from '../types';
-import { db, addDoc, collection, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, increment } from '../lib/firebase';
+import { X, Send, User as UserIcon, Shield, AlertCircle, CheckCircle2, Clock, Info, Paperclip, FileText, Download, Loader2 } from 'lucide-react';
+import { ServiceRequest, UserProfile, Message as MessageType } from '../types';
+import { storage, db, addDoc, collection, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, increment } from '../lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { User } from 'firebase/auth';
 
 interface Message {
@@ -20,14 +21,17 @@ interface RequestChatModalProps {
 }
 
 export function RequestChatModal({ request, currentUser, profile, onClose }: RequestChatModalProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<MessageType[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'serviceRequests', request.id!, 'messages'), orderBy('createdAt', 'asc'));
     const unsub = onSnapshot(q, (snapshot) => {
-      const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
+      const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MessageType));
       setMessages(fetched);
     }, (err) => console.error("Chat snapshot error:", err));
     return () => unsub();
@@ -50,6 +54,68 @@ export function RequestChatModal({ request, currentUser, profile, onClose }: Req
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !request.id) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('الملف كبير جداً (الأقصى 5MB)');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    try {
+      const storagePath = `serviceRequests/${request.id}/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, storagePath);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(Math.round(progress));
+          console.log('Upload is ' + progress + '% done');
+        },
+        (error) => {
+          console.error("Upload error:", error);
+          alert('فشل رفع الملف: ' + (error.code === 'storage/unauthorized' ? 'ليس لديك صلاحية (تأكد من إعدادات Storage في Console)' : error.message));
+          setIsUploading(false);
+          setUploadProgress(0);
+        },
+        async () => {
+          const url = await getDownloadURL(uploadTask.snapshot.ref);
+          const isSenderAdmin = profile?.isAdmin || false;
+          
+          await addDoc(collection(db, 'serviceRequests', request.id!, 'messages'), {
+            text: `أرسل ملفاً: ${file.name}`,
+            senderId: currentUser.uid,
+            isAdmin: isSenderAdmin,
+            createdAt: serverTimestamp(),
+            attachment: {
+              url,
+              name: file.name,
+              type: file.type
+            }
+          });
+
+          const unreadField = isSenderAdmin ? 'unreadMessagesUser' : 'unreadMessagesAdmin';
+          await updateDoc(doc(db, 'serviceRequests', request.id!), {
+            [unreadField]: increment(1)
+          });
+
+          setIsUploading(false);
+          setUploadProgress(0);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      );
+    } catch (err: any) {
+      console.error("Upload error", err);
+      alert('خطأ غير متوقع: ' + err.message);
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,9 +269,32 @@ export function RequestChatModal({ request, currentUser, profile, onClose }: Req
                  const isMe = msg.senderId === currentUser.uid;
                  return (
                    <div key={msg.id} className={`flex flex-col ${isMe ? 'items-start' : 'items-end'}`}>
-                      <div className={`max-w-[85%] p-4 rounded-3xl ${isMe ? 'bg-violet-600 text-white rounded-tr-sm shadow-md' : 'bg-fg/10 text-fg rounded-tl-sm border border-fg/5'}`}>
-                         <p className="text-sm font-medium leading-relaxed">{msg.text}</p>
-                      </div>
+                       <div className={`max-w-[85%] p-4 rounded-3xl ${isMe ? 'bg-violet-600 text-white rounded-tr-sm shadow-md' : 'bg-fg/10 text-fg rounded-tl-sm border border-fg/5'}`}>
+                          <p className="text-sm font-medium leading-relaxed">{msg.text}</p>
+
+                          {msg.attachment && (
+                            <div className="mt-3 p-3 bg-black/20 rounded-2xl border border-white/10 flex items-center gap-3 group/file">
+                               <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
+                                  {msg.attachment.type.startsWith('image/') ? (
+                                    <img src={msg.attachment.url} alt="" className="w-full h-full object-cover rounded-lg" />
+                                  ) : (
+                                    <FileText size={20} />
+                                  )}
+                               </div>
+                               <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold truncate">{msg.attachment.name}</p>
+                                  <a 
+                                    href={msg.attachment.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-white/60 hover:text-white flex items-center gap-1 mt-1 transition-colors underline decoration-white/20"
+                                  >
+                                    <Download size={10} /> تحميل الملف
+                                  </a>
+                               </div>
+                            </div>
+                          )}
+                       </div>
                       <div className="flex items-center gap-1 mt-1.5 px-2 text-[10px] text-fg/40 font-bold">
                          {msg.isAdmin ? <Shield size={10} className="text-violet-400" /> : <UserIcon size={10} />}
                          <span>{msg.isAdmin ? 'الدعم الفني' : 'الحريف'}</span>
@@ -220,6 +309,27 @@ export function RequestChatModal({ request, currentUser, profile, onClose }: Req
            {/* Chat Input */}
            <form onSubmit={handleSend} className="p-4 bg-fg/[0.02] border-t border-fg/10 shrink-0">
               <div className="flex items-center gap-2">
+                 <input 
+                   type="file" 
+                   ref={fileInputRef}
+                   onChange={handleFileUpload}
+                   className="hidden"
+                   accept="image/*,.pdf,.doc,.docx"
+                 />
+                 <button 
+                   type="button"
+                   onClick={() => fileInputRef.current?.click()}
+                   disabled={isUploading}
+                   className="w-14 h-14 bg-fg/5 hover:bg-fg/10 text-fg rounded-2xl flex items-center justify-center transition-all disabled:opacity-50 shrink-0 relative overflow-hidden"
+                 >
+                   {isUploading ? (
+                     <>
+                       <Loader2 size={20} className="animate-spin z-10" />
+                       <div className="absolute inset-x-0 bottom-0 bg-violet-500/20 transition-all duration-300" style={{ height: `${uploadProgress}%` }} />
+                       <span className="absolute bottom-1 text-[8px] font-bold z-10">{uploadProgress}%</span>
+                     </>
+                   ) : <Paperclip size={20} />}
+                 </button>
                  <input 
                    type="text" 
                    value={newMessage}

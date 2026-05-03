@@ -832,7 +832,7 @@ export default function App() {
             <div className="flex items-center gap-3 group cursor-pointer tour-logo shrink-0" onClick={() => setCurrentTab('home')}>
               <AtlasLogo className="w-9 h-9 sm:w-10 sm:h-10 transition-transform group-hover:rotate-12" />
               <div className="flex flex-col leading-none hidden xl:block">
-                <span className="text-xl font-black tracking-tighter text-fg">ATLASVAULT</span>
+                <span className="text-xl font-black tracking-tighter text-fg">AtlasVault</span>
               </div>
             </div>
           </div>
@@ -1109,14 +1109,14 @@ export default function App() {
                 >
                   <AtlasLogo className="w-24 h-24 mb-8" />
                   <span className="inline-block px-4 py-1.5 rounded-full bg-amber-400/20 border border-amber-400/30 text-amber-300 text-xs font-black uppercase mb-6 tracking-widest">
-                    مرحباً بك في ATLASVAULT
+                    مرحباً بك في AtlasVault
                   </span>
                   <h1 className="text-5xl md:text-7xl font-black mb-8 leading-tight">
                     وجهتك الأولى لجميع <br />
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">الإشتراكات الرقمية</span>
                   </h1>
                   <p className="text-xl text-fg/50 mb-12 max-w-2xl mx-auto leading-relaxed">
-                    استمتع بأفضل الأسعار وأسرع خدمة في تونس مع ATLASVAULT. نوفر لك جميع بطاقات الهدايا، اشتراكات البث، وألعاب الفيديو بجودة عالية وضمان كامل.
+                    استمتع بأفضل الأسعار وأسرع خدمة في تونس مع AtlasVault. نوفر لك جميع بطاقات الهدايا، اشتراكات البث، وألعاب الفيديو بجودة عالية وضمان كامل.
                   </p>
                   
                   <div className="flex flex-wrap items-center justify-center gap-6">
@@ -2794,52 +2794,17 @@ export default function App() {
                  <p className="text-fg/40 text-lg">نحن هنا للإجابة على جميع استفساراتك وتقديم الدعم اللازم</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {/* WhatsApp */}
-                 <a href="https://wa.me/21655123456" target="_blank" rel="noopener noreferrer" className="bg-fg/[0.02] border border-fg/5 rounded-[2rem] p-8 flex items-center gap-6 hover:bg-emerald-500/10 hover:border-emerald-500/20 transition-all group">
-                    <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-12 transition-transform">
-                       <MessageCircle size={32} />
+              <div className="flex justify-center max-w-2xl mx-auto">
+                 {/* WhatsApp Only */}
+                 <a href="https://wa.me/21655123456" target="_blank" rel="noopener noreferrer" className="w-full bg-fg/[0.02] border border-fg/5 rounded-[3rem] p-10 flex flex-col md:flex-row items-center text-center md:text-right gap-8 hover:bg-emerald-500/10 hover:border-emerald-500/20 transition-all group shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]" />
+                    <div className="w-24 h-24 bg-emerald-500/10 text-emerald-500 rounded-[2rem] flex items-center justify-center group-hover:scale-110 group-hover:rotate-12 transition-transform shrink-0 shadow-inner">
+                       <MessageCircle size={48} />
                     </div>
-                    <div>
-                       <h3 className="text-xl font-bold mb-1">واتساب</h3>
-                       <p className="text-fg/40 text-sm mb-2">تواصل معنا مباشرة عبر واتساب</p>
-                       <p className="font-mono font-bold text-lg text-emerald-400" dir="ltr">+216 55 123 456</p>
-                    </div>
-                 </a>
-
-                 {/* Phone */}
-                 <a href="tel:+21655123456" className="bg-fg/[0.02] border border-fg/5 rounded-[2rem] p-8 flex items-center gap-6 hover:bg-amber-500/10 hover:border-amber-500/20 transition-all group">
-                    <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-3xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-12 transition-transform">
-                       <Phone size={32} />
-                    </div>
-                    <div>
-                       <h3 className="text-xl font-bold mb-1">الهاتف</h3>
-                       <p className="text-fg/40 text-sm mb-2">اتصل بنا لأي مساعدة عاجلة</p>
-                       <p className="font-mono font-bold text-lg text-amber-400" dir="ltr">+216 55 123 456</p>
-                    </div>
-                 </a>
-
-                 {/* Facebook */}
-                 <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="bg-fg/[0.02] border border-fg/5 rounded-[2rem] p-8 flex items-center gap-6 hover:bg-blue-500/10 hover:border-blue-500/20 transition-all group">
-                    <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-3xl flex items-center justify-center group-hover:scale-110 group-hover:-rotate-12 transition-transform">
-                       <Facebook size={32} />
-                    </div>
-                    <div>
-                       <h3 className="text-xl font-bold mb-1">فيسبوك</h3>
-                       <p className="text-fg/40 text-sm mb-2">تابع آخر العروض على صفحتنا</p>
-                       <p className="font-bold text-blue-400">@StoreName</p>
-                    </div>
-                 </a>
-
-                 {/* Instagram */}
-                 <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="bg-fg/[0.02] border border-fg/5 rounded-[2rem] p-8 flex items-center gap-6 hover:bg-pink-500/10 hover:border-pink-500/20 transition-all group">
-                    <div className="w-16 h-16 bg-pink-500/10 text-pink-500 rounded-3xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-12 transition-transform">
-                       <Instagram size={32} />
-                    </div>
-                    <div>
-                       <h3 className="text-xl font-bold mb-1">انستغرام</h3>
-                       <p className="text-fg/40 text-sm mb-2">صور وفيديوهات لخدماتنا</p>
-                       <p className="font-bold text-pink-400">@StoreName</p>
+                    <div className="flex-1">
+                       <h3 className="text-3xl font-black mb-2">تواصل معانا على واتساب</h3>
+                       <p className="text-fg/40 text-lg mb-4">نحن هنا للإجابة على جميع استفساراتك وتقديم الدعم اللازم في أسرع وقت.</p>
+                       <p className="font-mono font-bold text-3xl text-emerald-400 group-hover:scale-105 transition-transform" dir="ltr">+216 55 123 456</p>
                     </div>
                  </a>
               </div>
@@ -3235,7 +3200,7 @@ export default function App() {
           <div className="space-y-6">
             <div className="flex items-center gap-3 justify-start md:justify-end">
               <AtlasLogo className="w-10 h-10" />
-              <span className="text-2xl font-black tracking-tighter text-fg">ATLASVAULT</span>
+              <span className="text-2xl font-black tracking-tighter text-fg">AtlasVault</span>
             </div>
             <p className="text-fg/30 text-sm leading-relaxed">أقوى ماركت الرقمية في تونس. صنعناها للتوانسة الي يحبو يطيرو في العالم الرقمي.</p>
           </div>
