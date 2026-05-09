@@ -154,12 +154,41 @@ export function RequestChatModal({ request, currentUser, profile, onClose }: Req
 
   const updateRequestStatus = async (newStatus: 'pending' | 'in-progress' | 'completed' | 'rejected') => {
     try {
+      const isSenderAdmin = profile?.isAdmin || false;
+      const unreadField = isSenderAdmin ? 'unreadMessagesUser' : 'unreadMessagesAdmin';
+
       await updateDoc(doc(db, 'serviceRequests', request.id!), {
         status: newStatus,
+        [unreadField]: increment(1)
       });
-    } catch (err) {
+
+      let statusMessage = '';
+      if (newStatus === 'in-progress') statusMessage = 'تمت الموافقة على الطلب وجاري التنفيذ ⏳';
+      if (newStatus === 'completed') statusMessage = 'تم تنفيذ وإكمال الطلب بنجاح ✅';
+      if (newStatus === 'rejected') statusMessage = 'عذراً، تم رفض الطلب ❌';
+      if (newStatus === 'pending') statusMessage = 'الطلب قيد الانتظار 🕒';
+
+      if (statusMessage) {
+        await addDoc(collection(db, 'serviceRequests', request.id!, 'messages'), {
+          text: `[تحديث حالة الطلب] ${statusMessage}`,
+          senderId: currentUser.uid,
+          isAdmin: isSenderAdmin,
+          createdAt: serverTimestamp(),
+        });
+
+        // Notify the other party
+        await addDoc(collection(db, 'notifications'), {
+          userId: isSenderAdmin ? request.userId : 'admin',
+          title: 'تحديث في طلب الخدمة',
+          message: statusMessage + ` (${request.title})`,
+          isRead: false,
+          link: isSenderAdmin ? 'requests' : 'admin-requests',
+          createdAt: serverTimestamp(),
+        });
+      }
+    } catch (err: any) {
       console.error("Error updating status", err);
-      alert('حدث خطأ أثناء تحديث حالة الطلب');
+      alert('حدث خطأ أثناء تحديث حالة الطلب: ' + err.message);
     }
   };
 

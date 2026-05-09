@@ -182,13 +182,41 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
 
   const updateOrderStatus = async (newStatus: 'pending' | 'paid' | 'completed' | 'cancelled') => {
     try {
+      const isSenderAdmin = profile?.isAdmin || false;
+      const unreadField = isSenderAdmin ? 'unreadMessagesUser' : 'unreadMessagesAdmin';
+
       await updateDoc(doc(db, 'orders', order.orderId), {
         status: newStatus,
+        [unreadField]: increment(1),
         updatedAt: serverTimestamp()
       });
-    } catch (err) {
+
+      let statusMessage = '';
+      if (newStatus === 'paid') statusMessage = 'قام الحريف بتأكيد الدفع 💰';
+      if (newStatus === 'completed') statusMessage = 'تم تنفيذ وتسليم الطلب بنجاح ✅';
+      if (newStatus === 'cancelled') statusMessage = 'تم إلغاء الطلب ❌';
+      
+      if (statusMessage) {
+        await addDoc(collection(db, 'orders', order.orderId, 'messages'), {
+          text: statusMessage,
+          senderId: currentUser.uid,
+          isAdmin: isSenderAdmin,
+          createdAt: serverTimestamp(),
+        });
+
+        // Notify the other party
+        await addDoc(collection(db, 'notifications'), {
+          userId: isSenderAdmin ? order.userId : 'admin',
+          title: 'تحديث في الطلب',
+          message: statusMessage + ` (طلب #${order.orderId.substring(0,6)})`,
+          isRead: false,
+          link: isSenderAdmin ? 'orders' : 'admin-orders',
+          createdAt: serverTimestamp(),
+        });
+      }
+    } catch (err: any) {
       console.error("Error updating status", err);
-      alert('حدث خطأ أثناء تحديث حالة الطلب');
+      alert('حدث خطأ أثناء تحديث حالة الطلب: ' + err.message);
     }
   };
 

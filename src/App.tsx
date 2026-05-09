@@ -67,6 +67,7 @@ import { AccountAdminModal } from './components/AccountAdminModal';
 import { ServiceRequestModal } from './components/ServiceRequestModal';
 import { OrderChatModal } from './components/OrderChatModal';
 import { RequestChatModal } from './components/RequestChatModal';
+import { P2PModal } from './components/P2PModal';
 import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User, db, setDoc, getDoc, updateDoc, deleteDoc, doc, collection, query, where, onSnapshot, addDoc, serverTimestamp, increment, OperationType, handleFirestoreError, getDocs } from './lib/firebase';
 import { Product, UserProfile, Order, Category, Transaction, GiftCode, AccountCategory, ServiceRequest, AppNotification } from './types';
 import { Joyride, Step, STATUS } from 'react-joyride';
@@ -199,6 +200,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [isP2PModalOpen, setIsP2PModalOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState(0);
@@ -2701,9 +2703,9 @@ export default function App() {
                     <h3 className="text-3xl font-black">تحب تبيع حسابك؟</h3>
                     <p className="text-white/70 leading-relaxed text-sm">إذا كان عندك حساب تحب تبيعو (ألعاب، نتفليكس الخ...)، تنجم تتواصل معانا ونحنا نتكفلو بالباقي مقابل نسبة بسيطة مالمبيعات.</p>
                  </div>
-                 <button onClick={() => setCurrentTab('contact')} className="relative z-10 px-8 py-4 bg-white text-blue-900 rounded-2xl font-black hover:bg-white/90 transition-all flex items-center gap-2 shrink-0">
-                    <Mail size={20} />
-                    تواصل معنا للبيع
+                 <button onClick={() => { if (!user) handleLogin(); else setIsP2PModalOpen(true); }} className="relative z-10 px-8 py-4 bg-white text-blue-900 rounded-2xl font-black hover:bg-white/90 transition-all flex items-center gap-2 shrink-0">
+                    <ShieldCheck size={20} />
+                    وثق وتعهد ببيع الحساب
                  </button>
               </div>
             </motion.div>
@@ -2988,6 +2990,14 @@ export default function App() {
            onClose={() => setIsRequestModalOpen(false)}
            userId={user.uid}
            userEmail={user.email || undefined}
+         />
+      )}
+
+      {isP2PModalOpen && user && (
+         <P2PModal
+           isOpen={isP2PModalOpen}
+           onClose={() => setIsP2PModalOpen(false)}
+           user={user}
          />
       )}
 
