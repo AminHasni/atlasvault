@@ -59,56 +59,43 @@ export function RequestChatModal({ request, currentUser, profile, onClose }: Req
     const file = e.target.files?.[0];
     if (!file || !request.id) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('الملف كبير جداً (الأقصى 5MB)');
+    if (file.size > 800 * 1024) {
+      alert('حجم الملف كبير جداً (الأقصى 800KB لضمان التخزين المحلي)');
       return;
     }
 
     setIsUploading(true);
     setUploadProgress(0);
     try {
-      const storagePath = `serviceRequests/${request.id}/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, storagePath);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+      });
 
-      uploadTask.on('state_changed', 
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(Math.round(progress));
-          console.log('Upload is ' + progress + '% done');
-        },
-        (error) => {
-          console.error("Upload error:", error);
-          alert('فشل رفع الملف: ' + (error.code === 'storage/unauthorized' ? 'ليس لديك صلاحية (تأكد من إعدادات Storage في Console)' : error.message));
-          setIsUploading(false);
-          setUploadProgress(0);
-        },
-        async () => {
-          const url = await getDownloadURL(uploadTask.snapshot.ref);
-          const isSenderAdmin = profile?.isAdmin || false;
-          
-          await addDoc(collection(db, 'serviceRequests', request.id!, 'messages'), {
-            text: `أرسل ملفاً: ${file.name}`,
-            senderId: currentUser.uid,
-            isAdmin: isSenderAdmin,
-            createdAt: serverTimestamp(),
-            attachment: {
-              url,
-              name: file.name,
-              type: file.type
-            }
-          });
-
-          const unreadField = isSenderAdmin ? 'unreadMessagesUser' : 'unreadMessagesAdmin';
-          await updateDoc(doc(db, 'serviceRequests', request.id!), {
-            [unreadField]: increment(1)
-          });
-
-          setIsUploading(false);
-          setUploadProgress(0);
-          if (fileInputRef.current) fileInputRef.current.value = '';
+      const isSenderAdmin = profile?.isAdmin || false;
+      
+      await addDoc(collection(db, 'serviceRequests', request.id!, 'messages'), {
+        text: `أرسل ملفاً: ${file.name}`,
+        senderId: currentUser.uid,
+        isAdmin: isSenderAdmin,
+        createdAt: serverTimestamp(),
+        attachment: {
+          url: dataUrl,
+          name: file.name,
+          type: file.type
         }
-      );
+      });
+
+      const unreadField = isSenderAdmin ? 'unreadMessagesUser' : 'unreadMessagesAdmin';
+      await updateDoc(doc(db, 'serviceRequests', request.id!), {
+        [unreadField]: increment(1)
+      });
+
+      setIsUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err: any) {
       console.error("Upload error", err);
       alert('خطأ غير متوقع: ' + err.message);
@@ -245,14 +232,14 @@ export function RequestChatModal({ request, currentUser, profile, onClose }: Req
               {!isBuyer && (
                 <>
                   <div className="grid grid-cols-2 gap-2">
-                     <button onClick={() => { if(confirm('الموافقة على الطلب والبدء في تنفيذه؟')) updateRequestStatus('in-progress'); }} className="py-3 bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white font-bold rounded-xl transition-all">
+                     <button onClick={() => updateRequestStatus('in-progress')} className="py-3 bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white font-bold rounded-xl transition-all">
                        قيد التنفيذ
                      </button>
-                     <button onClick={() => { if(confirm('تنفيذ وتأكيد إكمال الطلب؟')) updateRequestStatus('completed'); }} className="py-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white font-bold rounded-xl transition-all">
+                     <button onClick={() => updateRequestStatus('completed')} className="py-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white font-bold rounded-xl transition-all">
                        مكتمل
                      </button>
                   </div>
-                  <button onClick={() => { if(confirm('رفض الطلب وإغلاقه؟')) updateRequestStatus('rejected'); }} className="w-full py-3 bg-fg/5 hover:bg-red-500/10 text-fg/60 hover:text-red-500 font-bold rounded-xl transition-all">
+                  <button onClick={() => updateRequestStatus('rejected')} className="w-full py-3 bg-fg/5 hover:bg-red-500/10 text-fg/60 hover:text-red-500 font-bold rounded-xl transition-all">
                     رفض الطلب
                   </button>
                 </>

@@ -30,13 +30,21 @@ export const P2PModal: React.FC<P2PModalProps> = ({ isOpen, onClose, user }) => 
     }
     
     setIsUploading(true);
-    let proofUrl = '';
+    let proofDataUrl = '';
     
     try {
       if (proofImage) {
-        const storageRef = ref(storage, `p2p_proofs/${user.uid}/${Date.now()}_${proofImage.name}`);
-        const uploadTask = await uploadBytesResumable(storageRef, proofImage);
-        proofUrl = await getDownloadURL(uploadTask.ref);
+        if (proofImage.size > 800 * 1024) {
+          alert('حجم الصورة كبير جداً (الأقصى 800KB لضمان التخزين المحلي)');
+          setIsUploading(false);
+          return;
+        }
+        proofDataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = (e) => reject(e);
+          reader.readAsDataURL(proofImage);
+        });
       }
 
       await addDoc(collection(db, 'p2pRequests'), {
@@ -46,7 +54,7 @@ export const P2PModal: React.FC<P2PModalProps> = ({ isOpen, onClose, user }) => 
         description,
         price: Number(price),
         phone,
-        proofUrl,
+        proofUrl: proofDataUrl,
         status: 'pending',
         createdAt: serverTimestamp(),
       });

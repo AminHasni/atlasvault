@@ -87,56 +87,43 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
     const file = e.target.files?.[0];
     if (!file || !order.orderId) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('الملف كبير جداً (الأقصى 5MB)');
+    if (file.size > 800 * 1024) {
+      alert('حجم الملف كبير جداً (الأقصى 800KB لضمان التخزين المحلي)');
       return;
     }
 
     setIsUploading(true);
     setUploadProgress(0);
     try {
-      const storagePath = `orders/${order.orderId}/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, storagePath);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+      });
 
-      uploadTask.on('state_changed', 
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(Math.round(progress));
-          console.log('Upload is ' + progress + '% done');
-        },
-        (error) => {
-          console.error("Upload error:", error);
-          alert('فشل رفع الملف: ' + (error.code === 'storage/unauthorized' ? 'ليس لديك صلاحية (تأكد من إعدادات Storage في Console)' : error.message));
-          setIsUploading(false);
-          setUploadProgress(0);
-        },
-        async () => {
-          const url = await getDownloadURL(uploadTask.snapshot.ref);
-          const isSenderAdmin = profile?.isAdmin || false;
-          
-          await addDoc(collection(db, 'orders', order.orderId, 'messages'), {
-            text: `أرسل ملفاً: ${file.name}`,
-            senderId: currentUser.uid,
-            isAdmin: isSenderAdmin,
-            createdAt: serverTimestamp(),
-            attachment: {
-              url,
-              name: file.name,
-              type: file.type
-            }
-          });
-
-          const unreadField = isSenderAdmin ? 'unreadMessagesUser' : 'unreadMessagesAdmin';
-          await updateDoc(doc(db, 'orders', order.orderId), {
-            [unreadField]: increment(1)
-          });
-
-          setIsUploading(false);
-          setUploadProgress(0);
-          if (fileInputRef.current) fileInputRef.current.value = '';
+      const isSenderAdmin = profile?.isAdmin || false;
+      
+      await addDoc(collection(db, 'orders', order.orderId, 'messages'), {
+        text: `أرسل ملفاً: ${file.name}`,
+        senderId: currentUser.uid,
+        isAdmin: isSenderAdmin,
+        createdAt: serverTimestamp(),
+        attachment: {
+          url: dataUrl,
+          name: file.name,
+          type: file.type
         }
-      );
+      });
+
+      const unreadField = isSenderAdmin ? 'unreadMessagesUser' : 'unreadMessagesAdmin';
+      await updateDoc(doc(db, 'orders', order.orderId), {
+        [unreadField]: increment(1)
+      });
+
+      setIsUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err: any) {
       console.error("Upload error", err);
       alert('خطأ غير متوقع: ' + err.message);
@@ -329,12 +316,12 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
               {isBuyer ? (
                 <>
                   {order.status === 'pending' && (
-                    <button onClick={() => { if(confirm('هل أنت متأكد أنك قمت بالتحويل فعلاً؟')) updateOrderStatus('paid'); }} className="w-full py-4 bg-violet-600 hover:bg-violet-500 text-white font-black rounded-xl transition-all shadow-lg shadow-violet-500/20">
+                    <button onClick={() => updateOrderStatus('paid')} className="w-full py-4 bg-violet-600 hover:bg-violet-500 text-white font-black rounded-xl transition-all shadow-lg shadow-violet-500/20">
                       تم الدفع، أخبر البائع
                     </button>
                   )}
                   {(order.status === 'pending' || order.status === 'paid') && (
-                    <button onClick={() => { if(confirm('هل تريد فعلاً إلغاء هذا الطلب؟')) updateOrderStatus('cancelled'); }} className="w-full py-3 bg-fg/5 hover:bg-red-500/10 text-fg/60 hover:text-red-500 font-bold rounded-xl transition-all">
+                    <button onClick={() => updateOrderStatus('cancelled')} className="w-full py-3 bg-fg/5 hover:bg-red-500/10 text-fg/60 hover:text-red-500 font-bold rounded-xl transition-all">
                       إلغاء الطلب
                     </button>
                   )}
@@ -342,12 +329,12 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
               ) : (
                 <>
                   {(order.status === 'pending' || order.status === 'paid') && (
-                    <button onClick={() => { if(confirm('تأكيد استلامك للأموال وتسليم الطلب للحريف؟')) updateOrderStatus('completed'); }} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all shadow-lg shadow-emerald-500/20">
+                    <button onClick={() => updateOrderStatus('completed')} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all shadow-lg shadow-emerald-500/20">
                       تأكيد استلام الأموال
                     </button>
                   )}
                   {(order.status === 'pending' || order.status === 'paid') && (
-                    <button onClick={() => { if(confirm('إلغاء الطلب بشكل نهائي؟')) updateOrderStatus('cancelled'); }} className="w-full py-3 bg-fg/5 hover:bg-red-500/10 text-fg/60 hover:text-red-500 font-bold rounded-xl transition-all">
+                    <button onClick={() => updateOrderStatus('cancelled')} className="w-full py-3 bg-fg/5 hover:bg-red-500/10 text-fg/60 hover:text-red-500 font-bold rounded-xl transition-all">
                       إلغاء الطلب
                     </button>
                   )}
