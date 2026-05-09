@@ -289,26 +289,32 @@ export function RequestChatModal({ request, currentUser, profile, onClose }: Req
                           <p className="text-sm font-medium leading-relaxed">{msg.text}</p>
 
                           {msg.attachment && (
-                            <div className="mt-3 p-3 bg-black/20 rounded-2xl border border-white/10 flex items-center gap-3 group/file">
-                               <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
-                                  {msg.attachment.type.startsWith('image/') ? (
-                                    <img src={msg.attachment.url} alt="" className="w-full h-full object-cover rounded-lg" />
-                                  ) : (
-                                    <FileText size={20} />
-                                  )}
-                               </div>
-                               <div className="flex-1 min-w-0">
+                            msg.attachment.type.startsWith('image/') ? (
+                              <div className="mt-3 overflow-hidden rounded-2xl border border-black/10 shadow-lg group relative">
+                                 <img src={msg.attachment.url} alt={msg.attachment.name} className="max-w-full h-auto max-h-64 object-contain" />
+                                 <a href={msg.attachment.url} download={msg.attachment.name} className="absolute bottom-2 left-2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
+                                   <Download size={16} />
+                                 </a>
+                              </div>
+                            ) : (
+                              <div className="mt-3 p-3 bg-black/5 rounded-2xl border border-black/10 flex items-center gap-3 group/file">
+                                <div className="w-10 h-10 bg-black/5 rounded-xl flex items-center justify-center shrink-0">
+                                  <FileText size={20} />
+                                </div>
+                                <div className="flex-1 min-w-0">
                                   <p className="text-xs font-bold truncate">{msg.attachment.name}</p>
                                   <a 
                                     href={msg.attachment.url} 
+                                    download={msg.attachment.name}
                                     target="_blank" 
                                     rel="noopener noreferrer"
-                                    className="text-[10px] text-white/60 hover:text-white flex items-center gap-1 mt-1 transition-colors underline decoration-white/20"
+                                    className="text-[10px] text-fg/60 hover:text-fg flex items-center gap-1 mt-1 transition-colors underline decoration-black/20"
                                   >
                                     <Download size={10} /> تحميل الملف
                                   </a>
-                               </div>
-                            </div>
+                                </div>
+                              </div>
+                            )
                           )}
                        </div>
                       <div className="flex items-center gap-1 mt-1.5 px-2 text-[10px] text-fg/40 font-bold">
