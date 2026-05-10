@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   ShoppingBag, 
   Zap, 
@@ -20,6 +20,7 @@ import {
   Layout,
   Palette,
   Laptop,
+  ArrowLeft,
   ArrowRight,
   Heart,
   LogOut,
@@ -74,6 +75,93 @@ import { Joyride, Step, STATUS } from 'react-joyride';
 import type { EventData } from 'react-joyride';
 
 // Types and Interfaces moved to types.ts or defined below if local
+
+const ProductCardItem: React.FC<{
+  product: Product;
+  onClick: () => void;
+  onAddCart: (e: React.MouseEvent) => void;
+}> = ({ product, onClick, onAddCart }) => (
+  <motion.div
+    layout
+    initial={{ opacity: 0, y: 30 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, scale: 0.9 }}
+    onClick={onClick}
+    className="group relative flex flex-col bg-bg/50 backdrop-blur-xl border border-white/5 rounded-2xl p-3 cursor-pointer hover:border-violet-500/30 transition-all duration-500 overflow-hidden"
+  >
+    {/* Glow Effect */}
+    <div className="absolute inset-0 bg-gradient-to-br from-violet-500/0 via-fuchsia-500/0 to-purple-500/0 group-hover:from-violet-500/10 group-hover:via-fuchsia-500/5 group-hover:to-purple-500/10 transition-colors duration-500" />
+    
+    {/* Image Section */}
+    <div className="relative aspect-[16/10] rounded-xl overflow-hidden mb-3 bg-fg/5 border border-white/5">
+      {product.badge && (
+        <div className="absolute top-2 left-2 z-20 px-2 py-0.5 bg-violet-500 text-white text-[9px] font-bold tracking-wide rounded-full shadow-lg backdrop-blur-md">
+          {product.badge}
+        </div>
+      )}
+      <div className="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+         <Zap size={12} className="text-violet-400" />
+      </div>
+      {product.imageUrl ? (
+        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-5xl group-hover:scale-110 transition-transform duration-500">
+          {product.image}
+        </div>
+      )}
+    </div>
+
+    {/* Content Section */}
+    <div className="flex flex-col flex-1 relative z-10 px-1 text-right">
+      <div className="flex items-center justify-between mb-2">
+         <span className="px-1.5 py-0.5 bg-fg/5 rounded-md border border-white/5 text-[9px] font-medium text-fg/60">{product.category}</span>
+         <div className="flex items-center gap-1 bg-yellow-500/10 px-1.5 py-0.5 rounded-md border border-yellow-500/20">
+           <Star size={9} className="text-yellow-500" fill="currentColor" />
+           <span className="text-[9px] font-bold text-yellow-500">{product.rating}</span>
+         </div>
+      </div>
+      
+      <h3 className="font-bold text-base text-fg group-hover:text-violet-400 transition-colors mb-1.5 leading-tight line-clamp-1">{product.name}</h3>
+      
+      <p className="text-[11px] text-fg/50 line-clamp-2 mb-3 leading-relaxed group-hover:text-fg/70 transition-colors">
+         {product.description || 'احصل على هذه الخدمة الآن بأفضل الأسعار'}
+      </p>
+      
+      <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between">
+        <button 
+          onClick={onAddCart}
+          className="w-8 h-8 rounded-lg bg-fg/5 hover:bg-violet-600 text-fg hover:text-white flex items-center justify-center transition-all duration-300 group-hover:shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+        >
+          <Plus size={16} strokeWidth={2.5} />
+        </button>
+        <div className="flex flex-col items-end">
+          <span className="text-[9px] text-fg/40 uppercase tracking-widest font-medium">السعر</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-lg font-bold text-fg">{product.price.toFixed(3)}</span>
+            <span className="text-[10px] font-medium text-violet-400">DT</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </motion.div>
+);
+
+const CustomRequestCard: React.FC<{ categoryName: string, onClick: () => void }> = ({ categoryName, onClick }) => (
+  <motion.div
+    layout
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    exit={{ opacity: 0, scale: 0.9 }}
+    onClick={onClick}
+    className="group relative flex flex-col items-center justify-center bg-bg/50 backdrop-blur-xl border border-dashed border-white/10 rounded-2xl p-5 cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 transition-all duration-500 overflow-hidden h-full min-h-[200px]"
+  >
+    <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 mb-3 group-hover:scale-110 transition-transform duration-500">
+      <MessageSquare size={24} />
+    </div>
+    <h3 className="font-bold text-base text-fg group-hover:text-amber-500 transition-colors mb-2 text-center flex items-center gap-2">طلبية خاصة <ArrowLeft size={14} className="opacity-0 group-hover:opacity-100 group-hover:-translate-x-1 transition-all" /></h3>
+    <p className="text-[11px] text-fg/50 text-center leading-relaxed">مالقيتش الخدمة اللي تفركس عليها في <span className="font-bold text-fg/80">{categoryName}</span>؟ اطلبها توة واحنا نوفروهالك.</p>
+  </motion.div>
+);
 
 const FAQItem: React.FC<{ question: string, answer: string }> = ({ question, answer }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -220,8 +308,16 @@ export default function App() {
   const [priceRange, setPriceRange] = useState<{ min: number | '', max: number | '' }>({ min: '', max: '' });
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
   const [currentTab, setCurrentTab] = useState('home'); // home, shop, profile
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
+  );
+  const initialNotifsLoaded = useRef(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [giftCodeInput, setGiftCodeInput] = useState('');
+  const [giftAmount, setGiftAmount] = useState<number>(10);
+  const [giftProcessing, setGiftProcessing] = useState(false);
   const [cart, setCart] = useState<{product: Product, quantity: number, selectedOption?: {name: string, price: number}}[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -386,6 +482,17 @@ export default function App() {
                 const userIdsToListen = isAdminUser ? ['admin', currentUser.uid] : [currentUser.uid];
                 const notifQuery = query(collection(db, 'notifications'), where('userId', 'in', userIdsToListen));
                 const unsubNotifs = onSnapshot(notifQuery, (snapshot) => {
+                  if (initialNotifsLoaded.current && 'Notification' in window && Notification.permission === 'granted') {
+                    snapshot.docChanges().forEach((change) => {
+                      if (change.type === 'added') {
+                        const notif = change.doc.data() as AppNotification;
+                        if (!notif.isRead) {
+                           new Notification(notif.title, { body: notif.message, icon: '/favicon.ico' });
+                        }
+                      }
+                    });
+                  }
+                  initialNotifsLoaded.current = true;
                   const fetchedNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
                   fetchedNotifications.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
                   setNotifications(fetchedNotifications);
@@ -517,6 +624,101 @@ export default function App() {
     } catch (error) {
       console.error("Logout failed:", error);
     }
+  };
+
+  const handleRedeemGiftCode = async () => {
+    if (!user || !profile || !giftCodeInput.trim() || giftProcessing) return;
+    setGiftProcessing(true);
+    try {
+      const q = query(collection(db, 'giftCodes'), where('code', '==', giftCodeInput.trim().toUpperCase()));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        alert('كود غير صالح أو غير موجود.');
+        setGiftProcessing(false);
+        return;
+      }
+      const codeDoc = snap.docs[0];
+      const codeData = codeDoc.data() as GiftCode;
+      if (codeData.status !== 'active') {
+        alert('هذا الكود تم استخدامه من قبل أو انتهت صلوحيته.');
+        setGiftProcessing(false);
+        return;
+      }
+      
+      const val = codeData.value;
+      const type = codeData.type || 'credit';
+
+      if (type === 'credit') {
+        await updateDoc(doc(db, 'users', user.uid), {
+          balance: increment(val),
+          updatedAt: serverTimestamp()
+        });
+        await addDoc(collection(db, 'transactions'), {
+          userId: user.uid,
+          amount: val,
+          type: 'deposit',
+          description: `استخدام كود هدية: ${codeData.code}`,
+          createdAt: serverTimestamp()
+        });
+        alert(`مبروك! تم إضافة ${val} د.ت إلى حسابك.`);
+      }
+
+      await updateDoc(doc(db, 'giftCodes', codeDoc.id), {
+        status: 'used',
+        usedBy: user.uid
+      });
+      
+      setGiftCodeInput('');
+      
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, 'giftCodes');
+    }
+    setGiftProcessing(false);
+  };
+
+  const handleBuyGiftCard = async () => {
+    if (!user || !profile) {
+       handleLogin();
+       return;
+    }
+    if (giftProcessing) return;
+    if (profile.balance < giftAmount) {
+      alert('رصيدك غير كافٍ. الرجاء شحن حسابك أولاً.');
+      return;
+    }
+    setGiftProcessing(true);
+    try {
+      const newCodeStr = Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + 
+                         Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + 
+                         Math.random().toString(36).substring(2, 6).toUpperCase();
+
+      await addDoc(collection(db, 'giftCodes'), {
+        code: newCodeStr,
+        type: 'credit',
+        value: giftAmount,
+        status: 'active',
+        createdAt: serverTimestamp()
+      });
+
+      await updateDoc(doc(db, 'users', user.uid), {
+        balance: increment(-giftAmount),
+        updatedAt: serverTimestamp()
+      });
+
+      await addDoc(collection(db, 'transactions'), {
+        userId: user.uid,
+        amount: -giftAmount,
+        type: 'purchase',
+        description: `شراء بطاقة هدية بقيمة ${giftAmount} د.ت`,
+        createdAt: serverTimestamp()
+      });
+
+      alert(`تم شراء بطاقة الهدية بنجاح! احتفظ بالكود:\n\n${newCodeStr}`);
+
+    } catch(e) {
+      handleFirestoreError(e, OperationType.WRITE, 'giftCodes');
+    }
+    setGiftProcessing(false);
   };
 
   const handlePlaceOrder = async () => {
@@ -951,24 +1153,44 @@ export default function App() {
                             className="absolute left-0 top-full mt-3 w-80 bg-panel border-fg/10 border rounded-3xl shadow-2xl overflow-hidden z-50 text-right"
                             dir="rtl"
                           >
-                          <div className="p-4 border-b border-fg/10 flex items-center justify-between bg-fg/[0.02]">
-                            <h3 className="font-bold">الإشعارات</h3>
-                            {notifications.filter(n => !n.isRead).length > 0 && (
-                              <button 
-                                onClick={async () => {
-                                  try {
-                                    const unread = notifications.filter(n => !n.isRead);
-                                    for (const notif of unread) {
-                                      await updateDoc(doc(db, 'notifications', notif.id!), { isRead: true });
+                          <div className="p-4 border-b border-fg/10 flex flex-col gap-3 bg-fg/[0.02]">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-bold">الإشعارات</h3>
+                              {notifications.filter(n => !n.isRead).length > 0 && (
+                                <button 
+                                  onClick={async () => {
+                                    try {
+                                      const unread = notifications.filter(n => !n.isRead);
+                                      for (const notif of unread) {
+                                        await updateDoc(doc(db, 'notifications', notif.id!), { isRead: true });
+                                      }
+                                    } catch (err) {
+                                      console.error(err);
                                     }
-                                  } catch (err) {
-                                    console.error(err);
-                                  }
-                                }}
-                                className="text-[10px] text-amber-500 hover:bg-amber-500/10 px-2 py-1 rounded-lg font-bold transition-colors flex items-center gap-1"
-                              >
-                                <Check size={12} /> تحديد الكل كمقروء
-                              </button>
+                                  }}
+                                  className="text-[10px] text-amber-500 hover:bg-amber-500/10 px-2 py-1 rounded-lg font-bold transition-colors flex items-center gap-1"
+                                >
+                                  <Check size={12} /> تحديد الكل كمقروء
+                                </button>
+                              )}
+                            </div>
+                            {pushPermission === 'default' && (
+                               <button 
+                                 onClick={() => {
+                                   if ('Notification' in window) {
+                                     Notification.requestPermission().then(perm => {
+                                       setPushPermission(perm);
+                                       if (perm === 'granted') {
+                                         new Notification('تم التفعيل بنجاح', { body: 'ستتوصل بإشعارات عند وجود أي تحديث.' });
+                                       }
+                                     });
+                                   }
+                                 }}
+                                 className="w-full py-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2"
+                               >
+                                 <Bell size={14} />
+                                 تفعيل إشعارات المتصفح
+                               </button>
                             )}
                           </div>
                           <div className="max-h-80 overflow-y-auto no-scrollbar">
@@ -1461,57 +1683,57 @@ export default function App() {
                         setActiveSubL1(null);
                         setActiveSubL2(null);
                       }}
-                      className={`group relative px-8 py-6 rounded-[2.5rem] flex flex-col items-center gap-4 whitespace-nowrap transition-all border overflow-hidden min-w-[150px] ${
+                      className={`group relative px-6 py-4 rounded-2xl flex flex-col items-center gap-3 whitespace-nowrap transition-all border overflow-hidden min-w-[120px] shrink-0 ${
                         activeCategory === 'الكل' 
-                        ? 'bg-violet-600 border-violet-400 text-white shadow-[0_20px_40px_-10px_rgba(139,92,246,0.5)] scale-105 z-10' 
-                        : 'bg-fg/[0.03] border-fg/5 text-fg/50 hover:bg-fg/5 hover:border-fg/20 hover:scale-105'
+                        ? 'bg-gradient-to-b from-violet-600/90 to-violet-800 border-violet-400 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.6)] z-10 ring-1 ring-white/20' 
+                        : 'bg-bg/50 backdrop-blur-md border-white/5 text-fg/60 hover:bg-white/5 hover:border-white/10 hover:text-fg'
                       }`}
                     >
-                       <span className="text-3xl">🌟</span>
-                       <span className="font-black text-sm uppercase tracking-widest text-current">الكل</span>
+                       <span className="text-3xl drop-shadow-md">🌟</span>
+                       <span className="font-semibold text-sm tracking-wide text-current">الكل</span>
                     </motion.button>
                     {dynamicCategories.filter(c => (c.level === 0 || c.level === undefined)).map((category, idx) => (
                       <motion.button
                         key={category.slug}
-                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                        initial={{ opacity: 0, scale: 0.9, y: 15 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         transition={{ delay: idx * 0.05 }}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => { 
                           setActiveCategory(category.name);
                           setActiveSubL1(null);
                           setActiveSubL2(null);
                         }}
-                        className={`group relative px-8 py-6 rounded-[2.5rem] flex flex-col items-center gap-4 whitespace-nowrap transition-all border overflow-hidden min-w-[150px] ${
+                        className={`group relative px-6 py-4 rounded-2xl flex flex-col items-center gap-3 whitespace-nowrap transition-all border overflow-hidden min-w-[120px] shrink-0 ${
                           activeCategory === category.name 
-                          ? 'bg-violet-600 border-violet-400 text-white shadow-[0_20px_40px_-10px_rgba(139,92,246,0.5)] scale-105 z-10' 
-                          : 'bg-fg/[0.03] border-fg/5 text-fg/50 hover:bg-fg/5 hover:border-fg/20 hover:scale-105'
+                          ? 'bg-gradient-to-b from-violet-600/90 to-violet-800 border-violet-400 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.6)] z-10 ring-1 ring-white/20' 
+                          : 'bg-bg/50 backdrop-blur-md border-white/5 text-fg/60 hover:bg-white/5 hover:border-white/10 hover:text-fg'
                         }`}
                       >
                         {/* Interactive Background Glow */}
                         <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-gradient-to-br ${category.color?.split(' ')[0].replace('bg-', '') || 'from-violet-500 to-fuchsia-500'}`} />
                         
-                        <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center transition-all duration-500 shadow-lg overflow-hidden ${
+                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 shadow-inner overflow-hidden ${
                           activeCategory === category.name 
-                          ? 'bg-fg/20 rotate-[15deg] scale-110' 
-                          : `${category.color || 'bg-fg/5 text-white'} group-hover:rotate-[-10deg]`
+                          ? 'bg-white/20 rotate-[5deg] scale-105' 
+                          : `${category.color || 'bg-fg/5 text-white'} group-hover:rotate-[-5deg]`
                         }`}>
                           {category.imageUrl ? (
                             <img src={category.imageUrl} alt={category.name} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-3xl">{category.icon}</span>
+                            <span className="text-3xl drop-shadow-md">{category.icon}</span>
                           )}
                         </div>
                         
-                        <div className="flex flex-col items-center gap-1.5 text-current">
-                          <span className={`text-sm font-black tracking-tight ${activeCategory === category.name ? 'text-white' : 'group-hover:text-fg transition-colors'}`}>
+                        <div className="flex flex-col items-center gap-1.5 text-current w-full">
+                          <span className={`text-sm font-semibold tracking-wide ${activeCategory === category.name ? 'text-white' : 'group-hover:text-fg transition-colors'}`}>
                             {category.name}
                           </span>
                           {activeCategory === category.name && (
                             <motion.div 
                               layoutId="active-nav-indicator"
-                              className="w-8 h-1 bg-white rounded-full shadow-[0_0_15px_white]" 
+                              className="absolute bottom-0 inset-x-0 h-1 bg-white/40 shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
                             />
                           )}
                         </div>
@@ -1522,13 +1744,13 @@ export default function App() {
 
                 {/* Sub-Category L1 Navigation */}
                 {activeCategory !== 'الكل' && (
-                   <div className="mt-8 flex gap-4 overflow-x-auto pb-4 px-2 no-scrollbar scroll-smooth">
+                   <div className="mt-2 mb-8 flex gap-3 overflow-x-auto pb-4 px-2 no-scrollbar scroll-smooth">
                       <motion.button 
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => { setActiveSubL1(null); setActiveSubL2(null); }}
-                        className={`px-8 py-4 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border ${
-                          !activeSubL1 ? 'bg-violet-600 border-violet-500 shadow-lg shadow-violet-500/20' : 'bg-fg/5 border-fg/10 text-fg/40 hover:bg-fg/10'
+                        className={`px-6 py-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                          !activeSubL1 ? 'bg-violet-600/90 border-violet-500 shadow-md shadow-violet-500/20 text-white' : 'bg-bg/50 backdrop-blur-sm border-white/5 text-fg/50 hover:bg-white/5 hover:text-fg'
                         }`}
                       >
                          الكل في {activeCategory}
@@ -1538,18 +1760,18 @@ export default function App() {
                         .map(sub => (
                            <motion.button 
                              key={sub.slug}
-                             whileHover={{ scale: 1.05 }}
-                             whileTap={{ scale: 0.95 }}
+                             whileHover={{ scale: 1.02 }}
+                             whileTap={{ scale: 0.98 }}
                              onClick={() => { setActiveSubL1(sub.slug); setActiveSubL2(null); }}
-                             className={`px-8 py-4 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-3 ${
-                               activeSubL1 === sub.slug ? 'bg-violet-600 border-violet-500 shadow-lg shadow-violet-500/20 text-white' : 'bg-fg/5 border-fg/10 text-fg/40 hover:bg-fg/10'
+                             className={`px-6 py-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border flex items-center gap-2 ${
+                               activeSubL1 === sub.slug ? 'bg-violet-600/90 border-violet-500 shadow-md shadow-violet-500/20 text-white' : 'bg-bg/50 backdrop-blur-sm border-white/5 text-fg/50 hover:bg-white/5 hover:text-fg'
                              }`}
                            >
-                              <div className="w-6 h-6 flex items-center justify-center overflow-hidden">
+                              <div className="w-5 h-5 flex items-center justify-center overflow-hidden">
                                 {sub.imageUrl ? (
                                   <img src={sub.imageUrl} alt={sub.name} className="w-full h-full object-cover rounded-md" />
                                 ) : (
-                                  <span className="text-xl">{sub.icon}</span>
+                                  <span className="text-lg">{sub.icon}</span>
                                 )}
                               </div>
                               {sub.name}
@@ -1560,13 +1782,13 @@ export default function App() {
 
                 {/* Sub-Category L2 Navigation */}
                 {activeSubL1 && (
-                   <div className="mt-4 flex gap-3 overflow-x-auto pb-4 px-2 no-scrollbar scroll-smooth">
+                   <div className="mt-2 mb-8 flex gap-3 overflow-x-auto pb-4 px-2 no-scrollbar scroll-smooth">
                       <motion.button 
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setActiveSubL2(null)}
-                        className={`px-6 py-2.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all border ${
-                          !activeSubL2 ? 'bg-fg border-fg text-bg font-black' : 'bg-fg/5 border-fg/10 text-fg/40 hover:bg-fg/10'
+                        className={`px-5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                          !activeSubL2 ? 'bg-fg text-bg border-fg shadow-md' : 'bg-bg/50 backdrop-blur-sm border-white/5 text-fg/50 hover:bg-white/5 hover:text-fg'
                         }`}
                       >
                          الكل
@@ -1579,8 +1801,8 @@ export default function App() {
                              whileHover={{ scale: 1.02 }}
                              whileTap={{ scale: 0.98 }}
                              onClick={() => setActiveSubL2(sub.slug)}
-                             className={`px-6 py-2.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all border flex items-center gap-2 ${
-                               activeSubL2 === sub.slug ? 'bg-fg border-fg text-bg font-black' : 'bg-fg/5 border-fg/10 text-fg/40 hover:bg-fg/10'
+                             className={`px-5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border flex items-center gap-2 ${
+                               activeSubL2 === sub.slug ? 'bg-fg text-bg border-fg shadow-md' : 'bg-bg/50 backdrop-blur-sm border-white/5 text-fg/50 hover:bg-white/5 hover:text-fg'
                              }`}
                            >
                               <div className="w-4 h-4 flex items-center justify-center overflow-hidden">
@@ -1717,7 +1939,7 @@ export default function App() {
               </section>
 
               {/* Dynamic Products Grid */}
-              <section id="products-grid" className="max-w-7xl mx-auto px-4 py-8 mb-20 relative z-10">
+              <section id="products-grid" className="max-w-7xl mx-auto px-4 py-8 mb-20 relative z-10" dir="rtl">
                 {filteredProducts.length === 0 ? (
                   <div className="py-20 text-center">
                     <div className="inline-flex p-6 bg-fg/5 rounded-full mb-4">
@@ -1727,72 +1949,130 @@ export default function App() {
                     <p className="text-fg/40 mt-2">جرب لوّج على حاجة اخرى.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <AnimatePresence mode="popLayout">
-                      {filteredProducts.map((product) => (
-                        <motion.div
-                          key={product.id}
-                          layout
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
-                          className="p-6 rounded-[2.5rem] bg-fg/[0.03] border border-fg/5 flex flex-col group hover:border-violet-500/30 transition-all hover:translate-y-[-8px] hover:shadow-[0_20px_40px_-20px_rgba(139,92,246,0.3)] shadow-2xl overflow-hidden relative cursor-pointer"
-                        >
-                          <div className="aspect-square bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 rounded-3xl flex items-center justify-center text-6xl mb-6 group-hover:scale-105 transition-transform overflow-hidden relative shadow-inner">
-                            {product.badge && (
-                              <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-violet-600 text-white text-[10px] font-black uppercase rounded-full shadow-lg border border-fg/20">
-                                {product.badge}
-                              </div>
-                            )}
-                            <div className="absolute inset-0 bg-violet-500/0 group-hover:bg-violet-500/5 transition-colors"></div>
-                            <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-fg/5 flex items-center justify-center border border-fg/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                               <Zap size={12} className="text-violet-400" />
-                            </div>
-                            {product.imageUrl ? (
-                              <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                            ) : (
-                              product.image
-                            )}
-                          </div>
-                          <div className="flex-1 text-right">
-                            <div className="flex items-center justify-between mb-2">
-                               <span className="px-2.5 py-1 bg-fg/5 rounded-lg border border-fg/5 text-[10px] font-bold text-violet-400/80 font-mono tracking-wider">{product.category}</span>
-                               <div className="flex items-center gap-1.5 text-yellow-500">
-                                 <Star size={12} fill="currentColor" />
-                                 <span className="text-[10px] font-black text-white">{product.rating}</span>
-                               </div>
-                            </div>
-                            <h3 className="font-bold text-xl group-hover:text-violet-400 transition-colors tracking-tight truncate leading-none mb-4">{product.name}</h3>
-                            <div className="flex flex-wrap gap-1.5 justify-end">
-                               {product.features?.slice(0, 2).map((f, i) => (
-                                 <span key={i} className="text-[9px] text-fg/30 border border-fg/5 px-2 py-0.5 rounded-md">{f}</span>
-                               ))}
-                            </div>
-                          </div>
-                          <div className="mt-8 flex items-center justify-between gap-2 border-t border-fg/5 pt-6">
-                            <button 
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                if (product.options && product.options.length > 0) {
-                                  addToCart(product, product.options[0]);
-                                } else {
-                                  addToCart(product);
-                                }
-                              }}
-                              className="bg-violet-600 text-white p-4 rounded-2xl hover:bg-violet-500 transition-all shadow-xl active:scale-90 hover:shadow-violet-600/40"
-                            >
-                              <Plus size={22} strokeWidth={3} />
-                            </button>
-                            <div className="flex flex-col text-left">
-                              <span className="text-[10px] text-fg/40 font-bold uppercase opacity-60 tracking-wider">السعر</span>
-                              <span className="text-2xl font-black">{product.price.toFixed(3)} <span className="text-xs text-violet-400 opacity-80">DT</span></span>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  </div>
+                  searchQuery === '' && priceRange.min === '' && priceRange.max === '' && sortBy === 'featured' ? (
+                    <div className="space-y-16">
+                      {(activeCategory === 'الكل' ? dynamicCategories.filter(c => !c.level) : dynamicCategories.filter(c => c.name === activeCategory && !c.level)).map(cat => {
+                          const catProducts = products.filter(p => p.category === cat.name);
+                          if (catProducts.length === 0) return null;
+                          
+                          const l1s = dynamicCategories.filter(c => c.level === 1 && c.parentId === cat.slug);
+                          const pdsNoL1 = catProducts.filter(p => !p.subCategoryL1);
+
+                          return (
+                             <div key={cat.slug} className="space-y-12">
+                                {/* Category Header */}
+                                <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+                                   <div className="w-14 h-14 rounded-2xl bg-fg/5 border border-white/5 flex items-center justify-center text-3xl shadow-inner">
+                                     {cat.imageUrl ? <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover rounded-2xl" /> : cat.icon}
+                                   </div>
+                                   <h2 className="text-3xl font-black">{cat.name}</h2>
+                                </div>
+                                
+                                {/* General products for this category (if any) */}
+                                {pdsNoL1.length > 0 && (
+                                   <div className="space-y-6">
+                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
+                                        <AnimatePresence mode="popLayout">
+                                          {pdsNoL1.slice(0, activeCategory === 'الكل' ? 4 : undefined).map(product => (
+                                             <ProductCardItem 
+                                               key={product.id} 
+                                               product={product} 
+                                               onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
+                                               onAddCart={(e) => {
+                                                 e.stopPropagation();
+                                                 addToCart(product, product.options?.[0]);
+                                               }}
+                                             />
+                                          ))}
+                                          {l1s.length === 0 && (
+                                              <CustomRequestCard key="custom-req" categoryName={cat.name} onClick={() => setIsRequestModalOpen(true)} />
+                                          )}
+                                        </AnimatePresence>
+                                     </div>
+                                     {activeCategory === 'الكل' && pdsNoL1.length > 4 && (
+                                        <div className="flex justify-center mt-6">
+                                           <button 
+                                             onClick={() => setActiveCategory(cat.name)}
+                                             className="px-8 py-3 bg-bg/50 border border-white/10 rounded-2xl hover:bg-white/5 hover:text-white transition-all text-sm font-bold flex items-center gap-2 group text-fg/70"
+                                           >
+                                             عرض المزيد من خدمات {cat.name} <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                                           </button>
+                                        </div>
+                                     )}
+                                   </div>
+                                )}
+
+                                {/* Sub-categories */}
+                                <div className="space-y-16">
+                                   {l1s.map(l1 => {
+                                      let pdsL1 = catProducts.filter(p => p.subCategoryL1 === l1.slug);
+                                      if (activeSubL1 && activeSubL1 !== l1.slug) return null;
+                                      
+                                      if (pdsL1.length === 0) return null;
+                                      
+                                      const isExpanded = activeCategory === cat.name && activeSubL1 === l1.slug;
+                                      const displayLimit = isExpanded ? pdsL1.length : 4;
+                                      const displayProducts = pdsL1.slice(0, displayLimit);
+                                      const hasMore = pdsL1.length > displayLimit;
+
+                                      return (
+                                         <div key={l1.slug} className="space-y-6 relative before:absolute before:right-0 before:top-2 before:bottom-2 before:w-1 before:bg-gradient-to-b before:from-violet-500/0 before:via-violet-500/20 before:to-violet-500/0 pr-6">
+                                            <div className="flex items-center gap-3">
+                                               <div className="w-8 h-8 rounded-xl bg-fg/5 flex items-center justify-center text-lg">{l1.icon}</div>
+                                               <h3 className="text-xl font-bold text-fg/90">{l1.name}</h3>
+                                            </div>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
+                                               <AnimatePresence mode="popLayout">
+                                                  {displayProducts.map(product => (
+                                                     <ProductCardItem 
+                                                       key={product.id} 
+                                                       product={product} 
+                                                       onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
+                                                       onAddCart={(e) => {
+                                                         e.stopPropagation();
+                                                         addToCart(product, product.options?.[0]);
+                                                       }}
+                                                     />
+                                                  ))}
+                                                  <CustomRequestCard key="custom-req" categoryName={l1.name} onClick={() => setIsRequestModalOpen(true)} />
+                                               </AnimatePresence>
+                                            </div>
+                                            {hasMore && (
+                                               <div className="flex justify-center mt-6">
+                                                  <button 
+                                                    onClick={() => { setActiveCategory(cat.name); setActiveSubL1(l1.slug); }} 
+                                                    className="px-6 py-2.5 bg-fg/5 border border-white/5 rounded-xl hover:bg-white/10 hover:border-white/20 hover:text-white transition-all text-sm font-bold flex items-center gap-2 group text-fg/60"
+                                                  >
+                                                    عرض كل خدمات {l1.name} <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                                                  </button>
+                                               </div>
+                                            )}
+                                         </div>
+                                      );
+                                   })}
+                                </div>
+                             </div>
+                          );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
+                      <AnimatePresence mode="popLayout">
+                        {filteredProducts.map((product) => (
+                           <ProductCardItem 
+                             key={product.id} 
+                             product={product} 
+                             onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
+                             onAddCart={(e) => {
+                               e.stopPropagation();
+                               addToCart(product, product.options?.[0]);
+                             }}
+                           />
+                        ))}
+                        <CustomRequestCard key="custom-req" categoryName={searchQuery || activeCategory || 'الخدمات'} onClick={() => setIsRequestModalOpen(true)} />
+                      </AnimatePresence>
+                    </div>
+                  )
                 )}
               </section>
 
@@ -2671,28 +2951,49 @@ export default function App() {
                  <p className="text-fg/40 text-lg">أفضل الحسابات الجاهزة بأرخص الأسعار و التسليم فوري</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                  {accountCategories.map((cat, i) => (
-                    <div key={i} className="bg-panel border border-fg/10 rounded-3xl p-6 hover:-translate-y-2 hover:shadow-xl transition-all cursor-pointer group flex items-center gap-4">
-                       <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden ${cat.bg} ${cat.color} group-hover:scale-110 transition-transform`}>
-                          {cat.imageUrl ? (
-                            <img src={cat.imageUrl} alt={cat.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-3xl">
-                               <Monitor size={32} />
-                            </div>
-                          )}
+                    <motion.div 
+                      key={i}
+                      initial={{ opacity: 0, y: 30 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.1 }}
+                      className="group relative bg-bg/50 backdrop-blur-xl border border-white/5 rounded-[2rem] p-5 cursor-pointer overflow-hidden transition-all duration-500 hover:border-blue-500/30 hover:shadow-[0_15px_40px_-15px_rgba(59,130,246,0.3)] flex flex-col"
+                    >
+                       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-indigo-500/0 to-cyan-500/0 group-hover:from-blue-500/5 group-hover:via-indigo-500/10 group-hover:to-cyan-500/5 transition-colors duration-500" />
+                       
+                       <div className="flex items-start justify-between mb-6 relative z-10">
+                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden ${cat.bg} ${cat.color} border border-white/5 shadow-inner group-hover:scale-110 group-hover:rotate-[5deg] transition-all duration-500`}>
+                            {cat.imageUrl ? (
+                              <img src={cat.imageUrl} alt={cat.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-3xl">
+                                 <Monitor size={28} />
+                              </div>
+                            )}
+                         </div>
+                         <div className="px-3 py-1.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-xl flex items-center gap-2 group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300">
+                           <span className="w-2 h-2 rounded-full bg-current animate-pulse shadow-[0_0_8px_currentColor]" />
+                           <span className="text-[11px] font-bold tracking-wider">{cat.count} متوفر</span>
+                         </div>
                        </div>
-                       <div>
-                          <h3 className="font-black text-xl mb-1">{cat.title}</h3>
-                          <p className="text-sm text-fg/40 mb-2">{cat.desc}</p>
-                          <span className="text-xs font-bold px-2 py-1 bg-fg/5 rounded-lg">{cat.count} حساب متوفر</span>
+                       
+                       <div className="relative z-10 flex-1 flex flex-col text-right">
+                          <h3 className="font-bold text-xl mb-2 text-fg group-hover:text-blue-400 transition-colors">{cat.title}</h3>
+                          <p className="text-sm text-fg/50 mb-6 leading-relaxed group-hover:text-fg/70 transition-colors line-clamp-2 flex-1">{cat.desc}</p>
+                          
+                          <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between text-blue-400 group-hover:translate-x-[-4px] transition-transform duration-300">
+                            <span className="text-sm font-semibold">تصفح الحسابات</span>
+                            <ArrowLeft size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
                        </div>
-                    </div>
+                    </motion.div>
                  ))}
                  {accountCategories.length === 0 && (
-                   <div className="col-span-full py-12 text-center text-fg/40 border-2 border-dashed border-fg/10 rounded-3xl">
-                     <p>لا توجد أصناف حاليا</p>
+                   <div className="col-span-full py-20 flex flex-col items-center justify-center text-fg/30 border-2 border-dashed border-white/5 rounded-[3rem] bg-bg/20 backdrop-blur-sm">
+                     <Monitor size={48} className="mb-4 opacity-20" />
+                     <p className="text-lg font-medium">لا توجد أصناف حاليا</p>
                    </div>
                  )}
               </div>
@@ -2743,12 +3044,18 @@ export default function App() {
                           <input 
                             type="text" 
                             placeholder="A1B2-C3D4-E5F6"
-                            className="w-full bg-black/40 border border-fg/10 rounded-2xl px-6 py-5 font-mono text-center text-xl tracking-[0.25em] text-rose-400 outline-none focus:border-rose-500/50 transition-colors uppercase"
+                            value={giftCodeInput}
+                            onChange={(e) => setGiftCodeInput(e.target.value)}
+                            disabled={giftProcessing}
+                            className="w-full bg-black/40 border border-fg/10 rounded-2xl px-6 py-5 font-mono text-center text-xl tracking-[0.25em] text-rose-400 outline-none focus:border-rose-500/50 transition-colors uppercase disabled:opacity-50"
                             maxLength={14}
                           />
-                          <button className="w-full py-4 bg-gradient-to-r from-rose-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-black rounded-2xl transition-all shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2">
+                          <button 
+                            disabled={giftProcessing || !giftCodeInput.trim()}
+                            onClick={handleRedeemGiftCode}
+                            className="w-full py-4 bg-gradient-to-r from-rose-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-black rounded-2xl transition-all shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                              <CheckCircle2 size={20} />
-                             استعمل الكود
+                             {giftProcessing ? 'جاري التحقق...' : 'استعمل الكود'}
                           </button>
                        </div>
                     </div>
@@ -2767,14 +3074,22 @@ export default function App() {
                        <div className="mt-auto space-y-4">
                           <div className="grid grid-cols-3 gap-2">
                              {[10, 20, 50].map(amount => (
-                               <button key={amount} className="bg-black/20 hover:bg-black/40 border border-white/10 rounded-xl py-3 font-black text-lg transition-colors flex items-center justify-center gap-1">
-                                  {amount} <span className="text-xs text-white/50">DT</span>
+                               <button 
+                                 key={amount} 
+                                 onClick={() => setGiftAmount(amount)}
+                                 className={`${giftAmount === amount ? 'bg-white text-violet-900 border-white' : 'bg-black/20 text-white border-white/10 hover:bg-black/40'} border rounded-xl py-3 font-black text-lg transition-all flex items-center justify-center gap-1`}
+                               >
+                                  {amount} <span className="text-xs opacity-50">DT</span>
                                </button>
                              ))}
                           </div>
-                          <button className="w-full py-4 bg-white text-violet-900 font-black rounded-2xl hover:bg-white/90 transition-colors flex items-center justify-center gap-2 mt-4">
+                          <button 
+                            disabled={giftProcessing}
+                            onClick={handleBuyGiftCard}
+                            className="w-full py-4 bg-white text-violet-900 font-black rounded-2xl hover:bg-white/90 transition-colors flex items-center justify-center gap-2 mt-4 disabled:opacity-75"
+                          >
                              <Gift size={20} />
-                             شراء بطاقة هدية
+                             {giftProcessing ? 'جاري الشراء...' : 'شراء بطاقة هدية'}
                           </button>
                        </div>
                     </div>
@@ -2796,7 +3111,7 @@ export default function App() {
                  <p className="text-fg/40 text-lg">نحن هنا للإجابة على جميع استفساراتك وتقديم الدعم اللازم</p>
               </div>
 
-              <div className="flex justify-center max-w-2xl mx-auto">
+              <div className="flex flex-col gap-6 max-w-4xl mx-auto">
                  {/* WhatsApp Only */}
                  <a href="https://wa.me/21655123456" target="_blank" rel="noopener noreferrer" className="w-full bg-fg/[0.02] border border-fg/5 rounded-[3rem] p-10 flex flex-col md:flex-row items-center text-center md:text-right gap-8 hover:bg-emerald-500/10 hover:border-emerald-500/20 transition-all group shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]" />
@@ -2809,6 +3124,50 @@ export default function App() {
                        <p className="font-mono font-bold text-3xl text-emerald-400 group-hover:scale-105 transition-transform" dir="ltr">+216 55 123 456</p>
                     </div>
                  </a>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Facebook */}
+                    <a href="https://facebook.com/" target="_blank" rel="noopener noreferrer" className="bg-fg/[0.02] border border-fg/5 rounded-[2rem] p-6 flex flex-col items-center text-center gap-4 hover:bg-blue-600/10 hover:border-blue-600/20 transition-all group shadow-xl relative overflow-hidden">
+                       <div className="absolute top-0 left-0 w-full h-1 bg-blue-600 shadow-[0_0_20px_rgba(37,99,235,0.5)]" />
+                       <div className="w-16 h-16 bg-blue-600/10 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-transform shadow-inner">
+                          <svg fill="currentColor" viewBox="0 0 24 24" stroke="none" className="w-8 h-8">
+                            <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/>
+                          </svg>
+                       </div>
+                       <div>
+                          <h3 className="font-bold mb-1">تواصل عبر فيسبوك</h3>
+                          <p className="text-fg/40 text-xs">نحن نرد على جميع الرسائل</p>
+                       </div>
+                    </a>
+                    
+                    {/* Instagram */}
+                    <a href="https://instagram.com/" target="_blank" rel="noopener noreferrer" className="bg-fg/[0.02] border border-fg/5 rounded-[2rem] p-6 flex flex-col items-center text-center gap-4 hover:bg-pink-600/10 hover:border-pink-600/20 transition-all group shadow-xl relative overflow-hidden">
+                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 to-purple-500 shadow-[0_0_20px_rgba(219,39,119,0.5)]" />
+                       <div className="w-16 h-16 bg-pink-600/10 text-pink-500 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:-rotate-6 transition-transform shadow-inner">
+                          <svg fill="currentColor" viewBox="0 0 24 24" stroke="none" className="w-8 h-8">
+                            <path fillRule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" clipRule="evenodd" />
+                          </svg>
+                       </div>
+                       <div>
+                          <h3 className="font-bold mb-1">ديركت انستغرام</h3>
+                          <p className="text-fg/40 text-xs">جاوب سريع على الانستا</p>
+                       </div>
+                    </a>
+                    
+                    {/* Discord */}
+                    <a href="https://discord.gg/" target="_blank" rel="noopener noreferrer" className="bg-fg/[0.02] border border-fg/5 rounded-[2rem] p-6 flex flex-col items-center text-center gap-4 hover:bg-[#5865F2]/10 hover:border-[#5865F2]/20 transition-all group shadow-xl relative overflow-hidden">
+                       <div className="absolute top-0 left-0 w-full h-1 bg-[#5865F2] shadow-[0_0_20px_rgba(88,101,242,0.5)]" />
+                       <div className="w-16 h-16 bg-[#5865F2]/10 text-[#5865F2] rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:-rotate-3 transition-transform shadow-inner">
+                          <svg fill="currentColor" viewBox="0 0 24 24" stroke="none" className="w-8 h-8 transform translate-y-0.5">
+                            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                          </svg>
+                       </div>
+                       <div>
+                          <h3 className="font-bold mb-1">دعم الديسكورد</h3>
+                          <p className="text-fg/40 text-xs">ادخل لسيرفر الديسكورد</p>
+                       </div>
+                    </a>
+                 </div>
               </div>
             </motion.div>
           )}
@@ -3032,7 +3391,6 @@ export default function App() {
                 <div className="flex bg-panel/80 backdrop-blur-xl p-1.5 md:p-2 rounded-full border border-fg/10 shadow-lg relative">
                    <button onClick={() => document.getElementById('pd-desc')?.scrollIntoView({behavior: 'smooth'})} className="px-4 py-1.5 md:px-6 md:py-2 rounded-full text-[10px] md:text-xs font-bold text-fg/60 hover:text-fg hover:bg-fg/10 transition-all cursor-pointer">التفاصيل</button>
                    <button onClick={() => document.getElementById('pd-features')?.scrollIntoView({behavior: 'smooth'})} className="px-4 py-1.5 md:px-6 md:py-2 rounded-full text-[10px] md:text-xs font-bold text-fg/60 hover:text-fg hover:bg-fg/10 transition-all cursor-pointer">المميزات</button>
-                   <button onClick={() => document.getElementById('pd-reviews')?.scrollIntoView({behavior: 'smooth'})} className="px-4 py-1.5 md:px-6 md:py-2 rounded-full text-[10px] md:text-xs font-bold text-fg/60 hover:text-fg hover:bg-fg/10 transition-all cursor-pointer">الآراء</button>
                 </div>
               </div>
 
@@ -3121,24 +3479,6 @@ export default function App() {
                       </div>
                     </div>
                   )}
-
-                  <div id="pd-reviews" className="scroll-mt-32 mb-8">
-                    <h3 className="text-sm font-bold text-fg/40 uppercase tracking-widest mb-6">آراء الحرفاء</h3>
-                    <div className="space-y-4">
-                      {mockReviews.map((review, i) => (
-                        <div key={i} className="bg-fg/[0.02] p-6 rounded-3xl border border-fg/5">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex gap-1 text-yellow-500">
-                              {[...Array(review.rating)].map((_, idx) => <Star key={idx} size={14} fill="currentColor" />)}
-                            </div>
-                            <span className="font-bold text-sm bg-fg/5 px-3 py-1 rounded-lg">{review.user}</span>
-                          </div>
-                          <p className="text-fg/70 font-medium leading-relaxed">{review.comment}</p>
-                          <span className="text-[10px] font-bold text-fg/30 mt-4 block">{review.date}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
                 
                 {/* Spacer so content doesn't get hidden behind bottom bar */}
