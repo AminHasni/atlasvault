@@ -69,7 +69,7 @@ import { ServiceRequestModal } from './components/ServiceRequestModal';
 import { OrderChatModal } from './components/OrderChatModal';
 import { RequestChatModal } from './components/RequestChatModal';
 import { P2PModal } from './components/P2PModal';
-import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User, db, setDoc, getDoc, updateDoc, deleteDoc, doc, collection, query, where, onSnapshot, addDoc, serverTimestamp, increment, OperationType, handleFirestoreError, getDocs } from './lib/firebase';
+import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User, db, setDoc, getDoc, updateDoc, deleteDoc, doc, collection, query, where, onSnapshot, addDoc, serverTimestamp, increment, OperationType, handleFirestoreError, getDocs, messaging, getToken, onMessage } from './lib/firebase';
 import { Product, UserProfile, Order, Category, Transaction, GiftCode, AccountCategory, ServiceRequest, AppNotification } from './types';
 import { Joyride, Step, STATUS } from 'react-joyride';
 import type { EventData } from 'react-joyride';
@@ -1207,13 +1207,32 @@ export default function App() {
                             </div>
                             {pushPermission === 'default' && (
                                <button 
-                                 onClick={() => {
-                                   if ('Notification' in window) {
-                                     Notification.requestPermission().then(perm => {
-                                       setPushPermission(perm);
-                                       if (perm === 'granted') {
-                                         new Notification('تم التفعيل بنجاح', { body: 'ستتوصل بإشعارات عند وجود أي تحديث.' });
+                                 onClick={async () => {
+                                   if (!('Notification' in window)) {
+                                     alert('متصفحك لا يدعم الإشعارات');
+                                     return;
+                                   }
+                                   try {
+                                     const perm = await Notification.requestPermission();
+                                     setPushPermission(perm);
+                                     if (perm === 'granted') {
+                                    
+                                       // FCM CONFIGURATION COMMENT
+                                       // To fully use Firebase Cloud Messaging, you need to replace VAPID_KEY_HERE
+                                       if (messaging) {
+                                         const currentToken = await getToken(messaging, { vapidKey: 'BKJvtKHXnyH22U7AIobhIc7y7oqBipfUOWhcbjK7dCqqKZH4OLLYqkA_5XY9LkMqnJBlpvTa0a3EMYhK9_n_IV8' });
+                                         if (currentToken && user) await updateDoc(doc(db, 'users', user.uid), { fcmToken: currentToken });
+                                         onMessage(messaging, (payload) => {
+                                           new Notification(payload.notification?.title || '', { body: payload.notification?.body });
+                                         });
                                        }
+                                       
+                                       new Notification('تم التفعيل', { body: 'الإشعارات مفعلة' });
+                                     }
+                                   } catch(err) {
+                                     Notification.requestPermission((perm) => {
+                                       setPushPermission(perm);
+                                       if (perm === 'granted') new Notification('تم التفعيل', { body: 'الإشعارات مفعلة' });
                                      });
                                    }
                                  }}

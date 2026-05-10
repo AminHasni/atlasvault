@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { 
   getFirestore, 
   doc, 
@@ -40,6 +41,16 @@ try {
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+
+export let messaging: any = null;
+if (typeof window !== 'undefined') {
+  try {
+    messaging = getMessaging(app);
+  } catch (e) {
+    console.warn('Firebase Messaging not supported');
+  }
+}
+export { getToken, onMessage };
 
 // Validation connection
 async function testConnection() {
