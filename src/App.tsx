@@ -286,6 +286,7 @@ export default function App() {
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [allServiceRequests, setAllServiceRequests] = useState<ServiceRequest[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [toasts, setToasts] = useState<{id: string, title: string, message: string}[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isP2PModalOpen, setIsP2PModalOpen] = useState(false);
@@ -482,12 +483,19 @@ export default function App() {
                 const userIdsToListen = isAdminUser ? ['admin', currentUser.uid] : [currentUser.uid];
                 const notifQuery = query(collection(db, 'notifications'), where('userId', 'in', userIdsToListen));
                 const unsubNotifs = onSnapshot(notifQuery, (snapshot) => {
-                  if (initialNotifsLoaded.current && 'Notification' in window && Notification.permission === 'granted') {
+                  if (initialNotifsLoaded.current) {
                     snapshot.docChanges().forEach((change) => {
                       if (change.type === 'added') {
                         const notif = change.doc.data() as AppNotification;
                         if (!notif.isRead) {
-                           new Notification(notif.title, { body: notif.message, icon: '/favicon.ico' });
+                           if ('Notification' in window && Notification.permission === 'granted') {
+                             new Notification(notif.title, { body: notif.message, icon: '/favicon.ico' });
+                           }
+                           const newToast = { id: Date.now().toString() + Math.random(), title: notif.title, message: notif.message };
+                           setToasts(prev => [...prev, newToast]);
+                           setTimeout(() => {
+                             setToasts(prev => prev.filter(t => t.id !== newToast.id));
+                           }, 5000);
                         }
                       }
                     });
@@ -898,6 +906,29 @@ export default function App() {
         <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-600/10 dark:bg-violet-600/10 blur-[120px] rounded-full opacity-50 dark:opacity-100" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-fuchsia-600/10 dark:bg-fuchsia-600/20 blur-[120px] rounded-full opacity-50 dark:opacity-100" />
         <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+      </div>
+
+      {/* Toasts */}
+      <div className="fixed top-20 right-4 z-[9999] flex flex-col gap-3 pointer-events-none w-80 max-w-[calc(100vw-2rem)]">
+        <AnimatePresence>
+          {toasts.map(toast => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: 50, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+              className="bg-panel border border-fg/10 rounded-2xl p-4 shadow-2xl backdrop-blur-xl flex items-start gap-3 pointer-events-auto"
+            >
+              <div className="mt-0.5 bg-amber-500/20 text-amber-500 rounded-full p-1.5 shrink-0">
+                <Bell size={14} />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm mb-1">{toast.title}</h4>
+                <p className="text-xs text-fg/60 leading-relaxed">{toast.message}</p>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       <Joyride
