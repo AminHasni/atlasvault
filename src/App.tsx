@@ -58,6 +58,7 @@ import {
   Filter,
   SlidersHorizontal,
   ArrowUpDown,
+  Activity,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AtlasLogo } from './components/Logo';
@@ -226,7 +227,7 @@ const initialProducts: Product[] = [
     ]
   },
   { id: 12, name: 'ميدجورني برو', price: 95, category: 'ذكاء اصطناعي', image: '🖼️', rating: 4.9, features: ['Fast Generations', 'Relax Mode', 'Commercial License'] },
-  { id: 13, name: 'يوتيوب بريميوم', price: 15, category: 'ذكاء اصطناعي', image: '🔴', rating: 4.9, duration: 'شهر واحد', features: ['No Ads', 'Background Play', 'YouTube Music'] },
+  { id: 13, name: 'يوتيوب بريميوم', price: 15, category: 'ستريمينغ', image: '🔴', rating: 4.9, duration: 'شهر واحد', features: ['No Ads', 'Background Play', 'YouTube Music'] },
 
   // --- STREAMING ---
   { 
@@ -320,6 +321,23 @@ export default function App() {
   const [giftAmount, setGiftAmount] = useState<number>(10);
   const [giftProcessing, setGiftProcessing] = useState(false);
   const [cart, setCart] = useState<{product: Product, quantity: number, selectedOption?: {name: string, price: number}}[]>([]);
+  const cartSyncedRef = useRef(false);
+
+  useEffect(() => {
+    if (user && profile && cartSyncedRef.current) {
+      const dbCart = cart.map(item => {
+        const cleaned = { ...item };
+        if (cleaned.selectedOption === undefined) {
+          delete cleaned.selectedOption;
+        }
+        // remove any other potential undefined properties from product as well just to be totally safe
+        cleaned.product = JSON.parse(JSON.stringify(item.product));
+        return cleaned;
+      });
+      updateDoc(doc(db, 'users', user.uid), { cart: dbCart }).catch((e) => console.error(e));
+    }
+  }, [cart, user, profile]);
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
     return saved ? saved === 'dark' : true;
@@ -402,8 +420,18 @@ export default function App() {
       // Global Products Listener
       const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
         if (!snapshot.empty) {
-          const fetched = snapshot.docs.map(doc => doc.data() as Product);
-          setProducts(fetched.sort((a, b) => a.id - b.id));
+          const fetched = snapshot.docs.map(doc => {
+            const data = doc.data() as Product;
+            return {
+              ...data,
+              id: data.id !== undefined ? data.id : doc.id // Use doc.id as fallback
+            };
+          });
+          setProducts(fetched.sort((a, b) => {
+            const idA = typeof a.id === 'number' ? a.id : parseFloat(String(a.id)) || 0;
+            const idB = typeof b.id === 'number' ? b.id : parseFloat(String(b.id)) || 0;
+            return idA - idB;
+          }));
         } else {
           setProducts(initialProducts);
         }
@@ -463,12 +491,22 @@ export default function App() {
               displayName: currentUser.displayName || 'مستخدم Atlas',
               photoURL: currentUser.photoURL || '',
               balance: 0,
+              cart: [],
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             };
             await setDoc(userDocRef, newProfile);
             setProfile(newProfile);
+          } else {
+            const data = userDoc.data() as UserProfile;
+            if (data.cart && Array.isArray(data.cart)) {
+              setCart(data.cart);
+            }
           }
+          
+          setTimeout(() => {
+             cartSyncedRef.current = true;
+          }, 100);
 
           // Profile Listener
           const unsubProfile = onSnapshot(userDocRef, async (docSnap) => {
@@ -827,7 +865,7 @@ export default function App() {
 
   const filteredProducts = useMemo(() => {
     let result = products.filter(p => {
-      const matchesCategory = activeCategory === 'الكل' || p.category === activeCategory;
+      const matchesCategory = activeCategory === 'الكل' || p.category?.trim() === activeCategory?.trim();
       const matchesSubL1 = !activeSubL1 || p.subCategoryL1 === activeSubL1;
       const matchesSubL2 = !activeSubL2 || p.subCategoryL2 === activeSubL2;
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -869,11 +907,11 @@ export default function App() {
     setIsCartOpen(true);
   };
 
-  const removeFromCart = (id: number, optionName?: string) => {
+  const removeFromCart = (id: string | number, optionName?: string) => {
     setCart(prev => prev.filter(item => !(item.product.id === id && item.selectedOption?.name === optionName)));
   };
 
-  const updateQuantity = (id: number, optionName: string | undefined, delta: number) => {
+  const updateQuantity = (id: string | number, optionName: string | undefined, delta: number) => {
     setCart(prev => prev.map(item => {
       if (item.product.id === id && item.selectedOption?.name === optionName) {
         const newQty = Math.max(1, item.quantity + delta);
@@ -1212,19 +1250,29 @@ export default function App() {
                                      alert('متصفحك لا يدعم الإشعارات');
                                      return;
                                    }
+                                   if (window.self !== window.top) {
+                                     alert('يرجى فتح التطبيق في نافذة جديدة (Open in New Tab) لتفعيل الإشعارات، لأن المتصفح يمنعها داخل الإطار (iframe).');
+                                     return;
+                                   }
                                    try {
                                      const perm = await Notification.requestPermission();
                                      setPushPermission(perm);
                                      if (perm === 'granted') {
-                                    
-                                       // FCM CONFIGURATION COMMENT
-                                       // To fully use Firebase Cloud Messaging, you need to replace VAPID_KEY_HERE
-                                       if (messaging) {
-                                         const currentToken = await getToken(messaging, { vapidKey: 'BKJvtKHXnyH22U7AIobhIc7y7oqBipfUOWhcbjK7dCqqKZH4OLLYqkA_5XY9LkMqnJBlpvTa0a3EMYhK9_n_IV8' });
-                                         if (currentToken && user) await updateDoc(doc(db, 'users', user.uid), { fcmToken: currentToken });
-                                         onMessage(messaging, (payload) => {
-                                           new Notification(payload.notification?.title || '', { body: payload.notification?.body });
-                                         });
+                                       if (messaging && 'serviceWorker' in navigator) {
+                                         try {
+                                           const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+                                           const currentToken = await getToken(messaging, { 
+                                             vapidKey: 'BKJvtKHXnyH22U7AIobhIc7y7oqBipfUOWhcbjK7dCqqKZH4OLLYqkA_5XY9LkMqnJBlpvTa0a3EMYhK9_n_IV8',
+                                             serviceWorkerRegistration: registration
+                                           });
+                                           if (currentToken && user) await updateDoc(doc(db, 'users', user.uid), { fcmToken: currentToken });
+                                           onMessage(messaging, (payload) => {
+                                             new Notification(payload.notification?.title || '', { body: payload.notification?.body });
+                                           });
+                                           console.log('Push notification is configured!', currentToken);
+                                         } catch(err) {
+                                           console.error('Service worker or FCM token error:', err);
+                                         }
                                        }
                                        
                                        new Notification('تم التفعيل', { body: 'الإشعارات مفعلة' });
@@ -1507,6 +1555,35 @@ export default function App() {
                   ))}
                 </div>
               </div>
+
+              {/* Featured Products Section on Home */}
+              <div className="mb-20">
+                <div className="flex items-center justify-between mb-12">
+                   <div>
+                      <h2 className="text-4xl font-black mb-2">الأكثر مبيعاً</h2>
+                      <p className="text-fg/40">اشهر الخدمات اللي يستعملوا فيها التوانسة توة.</p>
+                   </div>
+                   <button 
+                     onClick={() => setCurrentTab('shop')}
+                     className="px-6 py-3 bg-fg/5 hover:bg-fg/10 text-fg font-bold rounded-2xl flex items-center gap-2 transition-all"
+                   >
+                     مشاهدة الكل <ArrowLeft size={16} />
+                   </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                   {products.slice(0, 4).map(product => (
+                      <ProductCardItem 
+                        key={product.id} 
+                        product={product} 
+                        onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
+                        onAddCart={(e) => {
+                          e.stopPropagation();
+                          addToCart(product, product.options?.[0]);
+                        }}
+                      />
+                   ))}
+                </div>
+              </div>
             </motion.div>
           )}
 
@@ -1723,8 +1800,8 @@ export default function App() {
                    </div>
                 </div>
 
-                <div className="relative">
-                  <div className="flex gap-4 overflow-x-auto pb-6 px-2 scrollbar-hide no-scrollbar">
+                <div className="relative mb-8">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 pb-4">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -1733,14 +1810,14 @@ export default function App() {
                         setActiveSubL1(null);
                         setActiveSubL2(null);
                       }}
-                      className={`group relative px-6 py-4 rounded-2xl flex flex-col items-center gap-3 whitespace-nowrap transition-all border overflow-hidden min-w-[120px] shrink-0 ${
+                      className={`group relative p-4 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all border overflow-hidden w-full ${
                         activeCategory === 'الكل' 
                         ? 'bg-gradient-to-b from-violet-600/90 to-violet-800 border-violet-400 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.6)] z-10 ring-1 ring-white/20' 
                         : 'bg-bg/50 backdrop-blur-md border-white/5 text-fg/60 hover:bg-white/5 hover:border-white/10 hover:text-fg'
                       }`}
                     >
-                       <span className="text-3xl drop-shadow-md">🌟</span>
-                       <span className="font-semibold text-sm tracking-wide text-current">الكل</span>
+                       <span className="text-4xl drop-shadow-md">🌟</span>
+                       <span className="font-semibold text-sm tracking-wide text-current text-center w-full truncate">الكل</span>
                     </motion.button>
                     {dynamicCategories.filter(c => (c.level === 0 || c.level === undefined)).map((category, idx) => (
                       <motion.button
@@ -1755,7 +1832,7 @@ export default function App() {
                           setActiveSubL1(null);
                           setActiveSubL2(null);
                         }}
-                        className={`group relative px-6 py-4 rounded-2xl flex flex-col items-center gap-3 whitespace-nowrap transition-all border overflow-hidden min-w-[120px] shrink-0 ${
+                        className={`group relative p-4 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all border overflow-hidden w-full ${
                           activeCategory === category.name 
                           ? 'bg-gradient-to-b from-violet-600/90 to-violet-800 border-violet-400 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.6)] z-10 ring-1 ring-white/20' 
                           : 'bg-bg/50 backdrop-blur-md border-white/5 text-fg/60 hover:bg-white/5 hover:border-white/10 hover:text-fg'
@@ -1777,7 +1854,7 @@ export default function App() {
                         </div>
                         
                         <div className="flex flex-col items-center gap-1.5 text-current w-full">
-                          <span className={`text-sm font-semibold tracking-wide ${activeCategory === category.name ? 'text-white' : 'group-hover:text-fg transition-colors'}`}>
+                          <span className={`text-sm font-semibold tracking-wide text-center w-full truncate ${activeCategory === category.name ? 'text-white' : 'group-hover:text-fg transition-colors'}`}>
                             {category.name}
                           </span>
                           {activeCategory === category.name && (
@@ -1794,7 +1871,7 @@ export default function App() {
 
                 {/* Sub-Category L1 Navigation */}
                 {activeCategory !== 'الكل' && (
-                   <div className="mt-2 mb-8 flex gap-3 overflow-x-auto pb-4 px-2 no-scrollbar scroll-smooth">
+                   <div className="mb-10 flex flex-wrap gap-3 pb-4">
                       <motion.button 
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -1832,7 +1909,7 @@ export default function App() {
 
                 {/* Sub-Category L2 Navigation */}
                 {activeSubL1 && (
-                   <div className="mt-2 mb-8 flex gap-3 overflow-x-auto pb-4 px-2 no-scrollbar scroll-smooth">
+                   <div className="mb-10 flex flex-wrap gap-3 pb-4">
                       <motion.button 
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -2001,12 +2078,14 @@ export default function App() {
                 ) : (
                   searchQuery === '' && priceRange.min === '' && priceRange.max === '' && sortBy === 'featured' ? (
                     <div className="space-y-16">
-                      {(activeCategory === 'الكل' ? dynamicCategories.filter(c => !c.level) : dynamicCategories.filter(c => c.name === activeCategory && !c.level)).map(cat => {
-                          const catProducts = products.filter(p => p.category === cat.name);
+                      {(activeCategory === 'الكل' ? dynamicCategories.filter(c => !c.level) : dynamicCategories.filter(c => c.name?.trim() === activeCategory?.trim() && !c.level)).map(cat => {
+                          const catProducts = products.filter(p => p.category?.trim() === cat.name?.trim());
                           if (catProducts.length === 0) return null;
                           
                           const l1s = dynamicCategories.filter(c => c.level === 1 && c.parentId === cat.slug);
-                          const pdsNoL1 = catProducts.filter(p => !p.subCategoryL1);
+                          const l1Slugs = new Set(l1s.map(l => l.slug));
+                          // Products that either have no subCategoryL1 or have one that doesn't exist in current l1s
+                          const pdsNoL1 = catProducts.filter(p => !p.subCategoryL1 || !l1Slugs.has(p.subCategoryL1));
 
                           return (
                              <div key={cat.slug} className="space-y-12">
@@ -2023,7 +2102,7 @@ export default function App() {
                                    <div className="space-y-6">
                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
                                         <AnimatePresence mode="popLayout">
-                                          {pdsNoL1.slice(0, activeCategory === 'الكل' ? 4 : undefined).map(product => (
+                                          {pdsNoL1.map(product => (
                                              <ProductCardItem 
                                                key={product.id} 
                                                product={product} 
@@ -2039,16 +2118,6 @@ export default function App() {
                                           )}
                                         </AnimatePresence>
                                      </div>
-                                     {activeCategory === 'الكل' && pdsNoL1.length > 4 && (
-                                        <div className="flex justify-center mt-6">
-                                           <button 
-                                             onClick={() => setActiveCategory(cat.name)}
-                                             className="px-8 py-3 bg-bg/50 border border-white/10 rounded-2xl hover:bg-white/5 hover:text-white transition-all text-sm font-bold flex items-center gap-2 group text-fg/70"
-                                           >
-                                             عرض المزيد من خدمات {cat.name} <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                                           </button>
-                                        </div>
-                                     )}
                                    </div>
                                 )}
 
@@ -2059,11 +2128,6 @@ export default function App() {
                                       if (activeSubL1 && activeSubL1 !== l1.slug) return null;
                                       
                                       if (pdsL1.length === 0) return null;
-                                      
-                                      const isExpanded = activeCategory === cat.name && activeSubL1 === l1.slug;
-                                      const displayLimit = isExpanded ? pdsL1.length : 4;
-                                      const displayProducts = pdsL1.slice(0, displayLimit);
-                                      const hasMore = pdsL1.length > displayLimit;
 
                                       return (
                                          <div key={l1.slug} className="space-y-6 relative before:absolute before:right-0 before:top-2 before:bottom-2 before:w-1 before:bg-gradient-to-b before:from-violet-500/0 before:via-violet-500/20 before:to-violet-500/0 pr-6">
@@ -2073,7 +2137,7 @@ export default function App() {
                                             </div>
                                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
                                                <AnimatePresence mode="popLayout">
-                                                  {displayProducts.map(product => (
+                                                  {pdsL1.map(product => (
                                                      <ProductCardItem 
                                                        key={product.id} 
                                                        product={product} 
@@ -2087,16 +2151,6 @@ export default function App() {
                                                   <CustomRequestCard key="custom-req" categoryName={l1.name} onClick={() => setIsRequestModalOpen(true)} />
                                                </AnimatePresence>
                                             </div>
-                                            {hasMore && (
-                                               <div className="flex justify-center mt-6">
-                                                  <button 
-                                                    onClick={() => { setActiveCategory(cat.name); setActiveSubL1(l1.slug); }} 
-                                                    className="px-6 py-2.5 bg-fg/5 border border-white/5 rounded-xl hover:bg-white/10 hover:border-white/20 hover:text-white transition-all text-sm font-bold flex items-center gap-2 group text-fg/60"
-                                                  >
-                                                    عرض كل خدمات {l1.name} <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                                                  </button>
-                                               </div>
-                                            )}
                                          </div>
                                       );
                                    })}
@@ -2104,6 +2158,57 @@ export default function App() {
                              </div>
                           );
                       })}
+
+                      {/* Catch-all for uncategorized products or products in current category but unmatched by structure */}
+                      {searchQuery === '' && priceRange.min === '' && priceRange.max === '' && sortBy === 'featured' && (() => {
+                         const rootCategoryNames = new Set(dynamicCategories.filter(c => !c.level).map(c => c.name));
+                         
+                         let uncategorizedProducts: Product[] = [];
+                         let sectionTitle = "أخرى";
+                         let sectionIcon = "📦";
+
+                         if (activeCategory === 'الكل') {
+                           // Find products whose category doesn't match any known root category
+                           uncategorizedProducts = products.filter(p => !rootCategoryNames.has(p.category));
+                         } else {
+                           // We are in a specific category, but maybe some products have subcategories that aren't L1s?
+                           // Actually the pdsNoL1 fix above handles most of this.
+                           // But what if the user manually typed a subCategoryL1 that exists in ANOTHER root category?
+                           // That's rare but possible.
+                           return null; 
+                         }
+                         
+                         if (uncategorizedProducts.length === 0) return null;
+                         
+                         return (
+                            <div key="uncategorized" className="space-y-12 mt-12">
+                               <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+                                  <div className="w-14 h-14 rounded-2xl bg-fg/5 border border-white/5 flex items-center justify-center text-3xl shadow-inner">
+                                    📦
+                                  </div>
+                                  <h2 className="text-3xl font-black">أخرى</h2>
+                               </div>
+                               <div className="space-y-6">
+                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
+                                    <AnimatePresence mode="popLayout">
+                                      {uncategorizedProducts.map(product => (
+                                         <ProductCardItem 
+                                           key={product.id} 
+                                           product={product} 
+                                           onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
+                                           onAddCart={(e) => {
+                                             e.stopPropagation();
+                                             addToCart(product, product.options?.[0]);
+                                           }}
+                                         />
+                                      ))}
+                                    </AnimatePresence>
+                                 </div>
+                               </div>
+                            </div>
+                         );
+                      })()}
+
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
@@ -2137,62 +2242,75 @@ export default function App() {
               animate={{ opacity: 1, scale: 1 }}
               className="max-w-7xl mx-auto px-4 py-8"
             >
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-violet-600 rounded-[2rem] flex items-center justify-center shadow-[0_0_40px_-5px_rgba(139,92,246,0.5)]">
-                    <Shield size={32} className="text-white" />
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12">
+                <div className="flex items-center gap-5">
+                  <div className="w-16 h-16 bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-3xl flex items-center justify-center shadow-lg shadow-violet-500/20">
+                    <Shield size={32} className="text-white drop-shadow-md" />
                   </div>
                   <div>
-                    <h2 className="text-4xl font-black tracking-tight">لوحة التحكم الإدارية</h2>
-                    <p className="text-fg/40 font-medium">مرحباً بك مجدداً، {profile.displayName}</p>
+                    <h2 className="text-3xl font-black tracking-tight">لوحة التحكم الإدارية</h2>
+                    <p className="text-fg/50 font-medium mt-1">مرحباً بك مجدداً، <span className="text-violet-400 font-bold">{profile.displayName}</span></p>
                   </div>
                 </div>
-                <div className="flex gap-4">
-                  <div className="p-4 bg-fg/5 border border-fg/10 rounded-2xl text-center min-w-[120px]">
-                    <p className="text-[10px] text-fg/40 font-bold uppercase mb-1">إجمالي الطلبات</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full md:w-auto">
+                  <div className="p-4 bg-fg/5 hover:bg-fg/[0.07] border border-fg/5 hover:border-fg/10 rounded-2xl text-center min-w-[120px] transition-all">
+                    <p className="text-xs text-fg/40 justify-center font-bold uppercase mb-2 flex items-center gap-1.5"><Users size={12} /> العملاء</p>
+                    <p className="text-2xl font-black">{allUsers.length}</p>
+                  </div>
+                  <div className="p-4 bg-fg/5 hover:bg-fg/[0.07] border border-fg/5 hover:border-fg/10 rounded-2xl text-center min-w-[120px] transition-all">
+                    <p className="text-xs text-fg/40 justify-center font-bold uppercase mb-2 flex items-center gap-1.5"><ShoppingBag size={12} /> المنتجات</p>
+                    <p className="text-2xl font-black">{products.length}</p>
+                  </div>
+                  <div className="p-4 bg-fg/5 hover:bg-fg/[0.07] border border-fg/5 hover:border-fg/10 rounded-2xl text-center min-w-[120px] transition-all">
+                    <p className="text-xs text-fg/40 justify-center font-bold uppercase mb-2 flex items-center gap-1.5"><Zap size={12} /> إجمالي الطلبات</p>
                     <p className="text-2xl font-black">{allOrders.length}</p>
                   </div>
-                  <div className="p-4 bg-violet-600/20 border border-violet-500/20 rounded-2xl text-center min-w-[120px]">
-                    <p className="text-[10px] text-violet-400 font-bold uppercase mb-1">المبيعات</p>
-                    <p className="text-2xl font-black text-violet-400">{allOrders.reduce((acc, o) => acc + o.total, 0).toFixed(2)}</p>
+                  <div className="p-4 bg-gradient-to-b from-violet-600/10 to-violet-600/5 border border-violet-500/20 rounded-2xl text-center min-w-[120px]">
+                    <p className="text-xs text-violet-400 justify-center font-bold uppercase mb-2 flex items-center gap-1.5"><Activity size={12} /> المبيعات</p>
+                    <p className="text-2xl font-black text-violet-400">{(allOrders.reduce((acc, o) => acc + (Number(o.total) || 0), 0)).toFixed(2)}</p>
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-col lg:flex-row gap-8">
                 {/* Admin Sidebar */}
-                <div className="flex gap-2 lg:flex-col lg:w-64 lg:space-y-2 overflow-x-auto pb-4 lg:pb-0 no-scrollbar snap-x">
-                  {[
-                    { id: 'orders', label: 'الطلبات', icon: Zap, count: allOrders.length },
-                    { id: 'requests', label: 'طلبات الخدمات', icon: MessageSquare, count: allServiceRequests.length },
-                    { id: 'products', label: 'المنتجات', icon: ShoppingBag, count: products.length },
-                    { id: 'categories', label: 'الأصناف', icon: Layout, count: dynamicCategories.length },
-                    { id: 'users', label: 'المستخدمين', icon: Users, count: allUsers.length },
-                    { id: 'gifts', label: 'كودات الهدايا', icon: Ticket, count: giftCodes.length },
-                    { id: 'accounts', label: 'الحسابات', icon: Monitor, count: accountCategories.length },
-                  ].map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setAdminTab(item.id)}
-                      className={`min-w-[140px] lg:min-w-0 lg:w-full p-4 rounded-2xl flex items-center justify-between border transition-all snap-start ${
-                        adminTab === item.id 
-                        ? 'bg-violet-600 border-violet-500 text-white shadow-lg' 
-                        : 'bg-fg/[0.03] border-fg/5 text-fg/40 hover:bg-fg/5 hover:border-fg/10'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <item.icon size={18} />
-                        <span className="font-bold text-sm">{item.label}</span>
-                      </div>
-                      {item.count !== undefined && (
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                          adminTab === item.id ? 'bg-fg/20' : 'bg-fg/10 text-fg/40'
-                        }`}>
-                          {item.count}
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                <div className="flex gap-3 lg:flex-col lg:w-64 overflow-x-auto pb-4 lg:pb-0 no-scrollbar snap-x shrink-0">
+                  <div className="flex lg:flex-col gap-2">
+                    {[
+                      { id: 'orders', label: 'الطلبات', icon: Zap, count: allOrders.length },
+                      { id: 'requests', label: 'طلبات الخدمات', icon: MessageSquare, count: allServiceRequests.length },
+                      { id: 'products', label: 'المنتجات', icon: ShoppingBag, count: products.length },
+                      { id: 'categories', label: 'الأصناف', icon: Layout, count: dynamicCategories.length },
+                      { id: 'users', label: 'المستخدمين', icon: Users, count: allUsers.length },
+                      { id: 'gifts', label: 'كودات الهدايا', icon: Ticket, count: giftCodes.length },
+                      { id: 'accounts', label: 'الحسابات', icon: Monitor, count: accountCategories.length },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setAdminTab(item.id)}
+                        className={`min-w-[160px] lg:min-w-0 lg:w-full p-4 rounded-2xl flex items-center justify-between transition-all snap-start group relative overflow-hidden ${
+                          adminTab === item.id 
+                          ? 'bg-fg text-bg shadow-xl' 
+                          : 'bg-fg/[0.02] border border-transparent hover:bg-fg/[0.05] hover:border-fg/10 text-fg/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 relative z-10">
+                          <item.icon size={18} className={adminTab === item.id ? 'text-bg' : 'group-hover:text-violet-400 transition-colors'} />
+                          <span className={`font-bold text-sm ${adminTab === item.id ? 'text-bg' : 'group-hover:text-fg transition-colors'}`}>{item.label}</span>
+                        </div>
+                        {item.count !== undefined && (
+                          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full relative z-10 ${
+                            adminTab === item.id ? 'bg-bg/20 text-bg' : 'bg-fg/10 text-fg/60 group-hover:bg-violet-500/10 group-hover:text-violet-400'
+                          }`}>
+                            {item.count}
+                          </span>
+                        )}
+                        {adminTab === item.id && (
+                          <motion.div layoutId="adminTabIndicator" className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-transparent opacity-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
                   
                   <button
                     onClick={async () => {
@@ -2221,7 +2339,7 @@ export default function App() {
                 </div>
 
                 {/* Admin Content Area */}
-                <div className="flex-1 bg-fg/[0.02] border border-fg/5 rounded-[3rem] p-8 min-h-[600px]">
+                <div className="flex-1 bg-fg/[0.02] border border-fg/5 rounded-[2.5rem] p-6 md:p-10 min-h-[600px] shadow-sm">
                   <AnimatePresence mode="wait">
                     {adminTab === 'requests' && (
                       <motion.div
@@ -2231,7 +2349,9 @@ export default function App() {
                         exit={{ opacity: 0, x: -20 }}
                         className="space-y-6"
                       >
-                         <h3 className="text-2xl font-black">طلبات الخدمات الإضافية</h3>
+                         <div className="flex items-center justify-between pb-6 border-b border-fg/5">
+                           <h3 className="text-2xl font-black">طلبات الخدمات الإضافية</h3>
+                         </div>
                          <div className="space-y-4">
                            {allServiceRequests.map((req) => (
                               <div key={req.id} className="bg-panel border border-fg/10 rounded-2xl p-6 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center relative group">
@@ -2325,91 +2445,105 @@ export default function App() {
                         exit={{ opacity: 0, x: -20 }}
                         className="space-y-6"
                       >
-                         <h3 className="text-2xl font-black mb-8">إدارة الطلبات</h3>
-                         <div className="space-y-4">
-                            {allOrders.length === 0 ? (
-                              <div className="p-20 text-center">لا يوجد طلبات حالياً</div>
-                            ) : (
-                              allOrders.map(order => (
-                                <div key={order.orderId} className="bg-fg/[0.03] border border-fg/5 rounded-3xl p-6 hover:bg-fg/[0.05] transition-all">
-                                  <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                        <div className="flex items-center justify-between pb-6 border-b border-fg/5">
+                          <h3 className="text-2xl font-black">إدارة الطلبات</h3>
+                        </div>
+                        
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-right border-separate border-spacing-y-2">
+                            <thead>
+                              <tr className="text-fg/40 text-xs uppercase tracking-wider font-bold">
+                                <th className="px-4 py-3 font-medium">الطلب / العميل</th>
+                                <th className="px-4 py-3 font-medium">التاريخ</th>
+                                <th className="px-4 py-3 font-medium">الإجمالي</th>
+                                <th className="px-4 py-3 font-medium">الحالة</th>
+                                <th className="px-4 py-3 font-medium text-left">إجراءات</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {allOrders.map(order => (
+                                <tr key={order.orderId} className="bg-fg/[0.02] hover:bg-fg/[0.04] transition-colors rounded-2xl overflow-hidden group">
+                                  <td className="px-4 py-3 rounded-r-2xl border-y border-r border-transparent group-hover:border-fg/5">
                                     <div className="flex items-center gap-3">
-                                       <div className="w-10 h-10 bg-fg/5 rounded-full flex items-center justify-center font-mono text-xs text-fg/40">
+                                       <div className="w-10 h-10 bg-fg/5 rounded-2xl flex items-center justify-center font-mono text-[10px] text-fg/40 shrink-0">
                                          #{order.orderId.slice(-4)}
                                        </div>
                                        <div>
-                                         <p className="font-bold text-sm truncate max-w-[200px]">{(order as any).userEmail || order.userId}</p>
-                                         <p className="text-[10px] text-fg/20">{order.createdAt?.toDate?.().toLocaleString()}</p>
+                                         <p className="font-bold text-sm truncate max-w-[150px]">{(order as any).userEmail || order.userId}</p>
+                                         <div className="flex gap-1 overflow-x-auto mt-1 max-w-[150px] no-scrollbar">
+                                            {order.items.map((item, i) => (
+                                              <div key={i} className="flex items-center gap-1 bg-fg/5 px-2 py-0.5 rounded-md shrink-0">
+                                                {item.imageUrl ? <img src={item.imageUrl} alt={item.name} className="w-3 h-3 object-cover rounded-sm" /> : <span className="text-[10px]">{item.image}</span>}
+                                                <span className="text-[8px] font-bold">x{item.quantity}</span>
+                                              </div>
+                                            ))}
+                                         </div>
                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                       <span className="text-lg font-black text-violet-400">{(Number(order.total) || 0).toFixed(3)} DT</span>
-                                       <div className="flex gap-2">
-                                          <select 
-                                            value={order.status}
-                                            onChange={async (e) => {
-                                              const newStatus = e.target.value as any;
-                                              await updateDoc(doc(db, 'orders', order.orderId), { status: newStatus, updatedAt: serverTimestamp() });
-                                              try {
-                                                await addDoc(collection(db, 'notifications'), {
-                                                  userId: order.userId,
-                                                  title: 'تحديث حالة الطلب',
-                                                  message: `تم تغيير حالة طلبك إلى ${newStatus}`,
-                                                  isRead: false,
-                                                  link: 'orders',
-                                                  createdAt: serverTimestamp(),
-                                                });
-                                              } catch (err) {
-                                                console.error("Failed to notify user", err);
-                                              }
-                                            }}
-                                            className="bg-black border border-fg/10 rounded-xl text-xs px-4 py-2 outline-none focus:border-violet-500"
-                                          >
-                                            <option value="pending">⏳ قيد الانتظار</option>
-                                            <option value="paid">💳 تم الدفع (بانتظار التأكيد)</option>
-                                            <option value="completed">✅ مكتمل</option>
-                                            <option value="cancelled">❌ ملغي</option>
-                                          </select>
-                                          <button
-                                            onClick={async () => {
-                                              if (confirm('هل أنت متأكد أنك تريد حذف هذا الطلب نهائياً؟')) {
-                                                await deleteDoc(doc(db, 'orders', order.orderId));
-                                              }
-                                            }}
-                                            className="bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 rounded-xl text-xs px-3 py-2 transition-all"
-                                          >
-                                            <Trash2 size={16} />
-                                          </button>
-                                          <button
-                                            onClick={() => setSelectedOrderChat(order)}
-                                            className="relative bg-fg/5 text-fg border border-fg/10 hover:bg-fg/10 rounded-xl text-xs px-4 py-2 transition-all font-bold"
-                                          >
-                                            المحادثة
-                                            {order.unreadMessagesAdmin ? (
-                                              <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px]">
-                                                {order.unreadMessagesAdmin}
-                                              </span>
-                                            ) : null}
-                                          </button>
-                                       </div>
+                                  </td>
+                                  <td className="px-4 py-3 border-y border-transparent group-hover:border-fg/5">
+                                     <p className="text-xs text-fg/60 whitespace-nowrap">{order.createdAt?.toDate?.().toLocaleDateString()}</p>
+                                     <p className="text-[10px] text-fg/40 whitespace-nowrap">{order.createdAt?.toDate?.().toLocaleTimeString()}</p>
+                                  </td>
+                                  <td className="px-4 py-3 border-y border-transparent group-hover:border-fg/5">
+                                    <p className="text-sm font-black text-violet-400 whitespace-nowrap">{(Number(order.total) || 0).toFixed(3)} DT</p>
+                                  </td>
+                                  <td className="px-4 py-3 border-y border-transparent group-hover:border-fg/5">
+                                     <select 
+                                       value={order.status}
+                                       onChange={async (e) => {
+                                         const newStatus = e.target.value as any;
+                                         await updateDoc(doc(db, 'orders', order.orderId), { status: newStatus, updatedAt: serverTimestamp() });
+                                         try {
+                                           await addDoc(collection(db, 'notifications'), {
+                                             userId: order.userId, title: 'تحديث حالة الطلب', message: `تم تغيير حالة طلبك إلى ${newStatus}`, isRead: false, link: 'orders', createdAt: serverTimestamp()
+                                           });
+                                         } catch (err) {}
+                                       }}
+                                       className="bg-bg/50 border border-fg/10 rounded-xl text-xs px-3 py-1.5 outline-none focus:border-violet-500 font-bold"
+                                     >
+                                       <option value="pending">⏳ قيد الانتظار</option>
+                                       <option value="paid">💳 تم الدفع</option>
+                                       <option value="completed">✅ مكتمل</option>
+                                       <option value="cancelled">❌ ملغي</option>
+                                     </select>
+                                  </td>
+                                  <td className="px-4 py-3 rounded-l-2xl border-y border-l border-transparent group-hover:border-fg/5 text-left">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        onClick={() => setSelectedOrderChat(order)}
+                                        className="relative p-2 bg-fg/5 text-fg hover:bg-fg/10 hover:shadow-inner hover:text-violet-400 rounded-xl transition-all"
+                                      >
+                                        <MessageSquare size={16} />
+                                        {order.unreadMessagesAdmin ? (
+                                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px]">
+                                            {order.unreadMessagesAdmin}
+                                          </span>
+                                        ) : null}
+                                      </button>
+                                      <button
+                                        onClick={async () => {
+                                          if (confirm('هل أنت متأكد أنك تريد حذف هذا الطلب نهائياً؟')) {
+                                            await deleteDoc(doc(db, 'orders', order.orderId));
+                                          }
+                                        }}
+                                        className="p-2 bg-red-500/5 text-red-500/60 hover:bg-red-500/10 hover:text-red-500 hover:shadow-inner rounded-xl transition-all"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
                                     </div>
-                                  </div>
-                                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                                    {order.items.map((item, i) => (
-                                      <div key={i} className="flex items-center gap-2 bg-fg/5 px-3 py-1.5 rounded-full border border-fg/5 whitespace-nowrap overflow-hidden">
-                                        {item.imageUrl ? (
-                                          <img src={item.imageUrl} alt={item.name} className="w-6 h-6 object-cover rounded-md" />
-                                        ) : (
-                                          <span className="text-lg">{item.image}</span>
-                                        )}
-                                        <span className="text-[10px] font-bold">{item.name} x{item.quantity}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                         </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {allOrders.length === 0 && (
+                            <div className="py-20 text-center text-fg/40 border-2 border-dashed border-fg/10 rounded-3xl mt-4">
+                              <Zap size={48} className="mx-auto mb-4 opacity-20" />
+                              <p>لا يوجد طلبات حالياً</p>
+                            </div>
+                          )}
+                        </div>
                       </motion.div>
                     )}
 
@@ -2421,57 +2555,74 @@ export default function App() {
                         exit={{ opacity: 0, x: -20 }}
                         className="space-y-8"
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between pb-6 border-b border-fg/5">
                           <h3 className="text-2xl font-black">إدارة المنتجات</h3>
                           <button 
                             onClick={() => setEditingProduct({})}
-                            className="px-6 py-3 bg-violet-600 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-violet-500"
+                            className="px-6 py-3 bg-violet-600 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-violet-500 shadow-lg shadow-violet-500/20 transition-all"
                           >
                             <Plus size={18} /> إضافة منتج جديد
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {products.map(p => (
-                            <div key={p.id} className="p-4 bg-fg/5 rounded-3xl border border-fg/5 flex items-center justify-between group hover:border-violet-500/50 transition-all">
-                               <div className="flex items-center gap-4">
-                                  <div className="w-12 h-12 bg-fg/5 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform overflow-hidden">
-                                    {p.imageUrl ? (
-                                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      p.image
-                                    )}
-                                  </div>
-                                  <div>
-                                     <p className="font-bold text-sm">{p.name}</p>
-                                     <p className="text-[10px] text-fg/30">{p.category}</p>
-                                     <p className="text-xs font-black text-violet-400 mt-0.5">{(Number(p.price) || 0).toFixed(3)} DT</p>
-                                  </div>
-                               </div>
-                               <div className="flex items-center gap-2">
-                                 <button 
-                                   onClick={() => setEditingProduct(p)}
-                                   className="p-2.5 text-violet-400 hover:bg-violet-500/10 rounded-xl transition-all"
-                                 >
-                                    <Settings size={18} />
-                                 </button>
-                                 <button 
-                                   onClick={async () => {
-                                     if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
-                                       try {
-                                         await deleteDoc(doc(db, 'products', String(p.id)));
-                                       } catch (e) {
-                                         alert('حدث خطأ أثناء الحذف');
-                                       }
-                                     }
-                                   }}
-                                   className="p-2.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
-                                 >
-                                    <Trash2 size={18} />
-                                 </button>
-                               </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-right border-separate border-spacing-y-2">
+                            <thead>
+                              <tr className="text-fg/40 text-xs uppercase tracking-wider font-bold">
+                                <th className="px-4 py-3 font-medium">المنتج</th>
+                                <th className="px-4 py-3 font-medium">الصنف</th>
+                                <th className="px-4 py-3 font-medium">السعر</th>
+                                <th className="px-4 py-3 font-medium text-left">إجراءات</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {products.map(p => (
+                                <tr key={p.id} className="bg-fg/[0.02] hover:bg-fg/[0.04] transition-colors rounded-2xl overflow-hidden group">
+                                  <td className="px-4 py-3 rounded-r-2xl border-y border-r border-transparent group-hover:border-fg/5">
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-12 h-12 bg-fg/5 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform overflow-hidden shrink-0">
+                                        {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" /> : p.image}
+                                      </div>
+                                      <p className="font-bold text-sm line-clamp-1">{p.name}</p>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 border-y border-transparent group-hover:border-fg/5 text-sm text-fg/60">
+                                    <span className="bg-fg/5 px-2 py-1 rounded-md text-xs">{p.category}</span>
+                                  </td>
+                                  <td className="px-4 py-3 border-y border-transparent group-hover:border-fg/5">
+                                    <p className="text-sm font-black text-violet-400">{(Number(p.price) || 0).toFixed(3)} DT</p>
+                                  </td>
+                                  <td className="px-4 py-3 rounded-l-2xl border-y border-l border-transparent group-hover:border-fg/5 text-left">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button 
+                                        onClick={() => setEditingProduct(p)}
+                                        className="p-2 text-violet-400 hover:bg-violet-500/10 hover:shadow-inner rounded-xl transition-all"
+                                      >
+                                        <Settings size={18} />
+                                      </button>
+                                      <button 
+                                        onClick={async () => {
+                                          if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
+                                            try { await deleteDoc(doc(db, 'products', String(p.id))); } 
+                                            catch (e) { alert('حدث خطأ أثناء الحذف'); }
+                                          }
+                                        }}
+                                        className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 hover:shadow-inner rounded-xl transition-all"
+                                      >
+                                        <Trash2 size={18} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {products.length === 0 && (
+                            <div className="py-20 text-center text-fg/40 border-2 border-dashed border-fg/10 rounded-3xl mt-4">
+                              <ShoppingBag size={48} className="mx-auto mb-4 opacity-20" />
+                              <p>لا توجد منتجات حاليا</p>
                             </div>
-                          ))}
+                          )}
                         </div>
                         
                         {editingProduct && (
@@ -2493,24 +2644,23 @@ export default function App() {
                         exit={{ opacity: 0, x: -20 }}
                         className="space-y-8"
                       >
-                         <div className="flex items-center justify-between">
+                         <div className="flex items-center justify-between pb-6 border-b border-fg/5">
                             <h3 className="text-2xl font-black">إدارة الأصناف</h3>
-                            <div className="flex gap-2">
-                               <button 
-                                 onClick={() => setEditingCategory({} as any)}
-                                 className="px-6 py-3 bg-violet-600 rounded-xl font-bold text-sm hover:bg-violet-500 transition-all shadow-lg"
-                               >
-                                 + إضافة صنف جديد
-                               </button>
-                            </div>
+                            <button 
+                              onClick={() => setEditingCategory({} as any)}
+                              className="px-6 py-3 bg-violet-600 rounded-xl font-bold text-sm hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2"
+                            >
+                              <Plus size={18} /> إضافة صنف جديد
+                            </button>
                          </div>
 
-                         <div className="space-y-12">
+                         <div className="space-y-6">
                             {dynamicCategories.filter(c => c.level === 0 || !c.level).map(root => (
-                               <div key={root.slug} className="bg-fg/[0.02] border border-fg/5 rounded-[2.5rem] p-6 space-y-6">
+                               <div key={root.slug} className="bg-fg/[0.02] border border-fg/5 rounded-3xl p-6 space-y-6 hover:shadow-lg transition-all relative overflow-hidden group/root">
+                                  <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-violet-500 to-fuchsia-500 opacity-0 group-hover/root:opacity-100 transition-all" />
                                   <div className="flex items-center justify-between border-b border-fg/5 pb-4">
                                      <div className="flex items-center gap-4">
-                                                                                 <div className="w-16 h-16 shrink-0 bg-fg/5 rounded-2xl flex items-center justify-center text-3xl overflow-hidden">
+                                         <div className="w-14 h-14 shrink-0 bg-fg/5 rounded-2xl flex items-center justify-center text-3xl overflow-hidden group-hover/root:scale-110 transition-transform">
                                            {root.imageUrl ? (
                                              <img src={root.imageUrl} alt={root.name} className="w-full h-full object-cover" />
                                            ) : (
@@ -2641,57 +2791,81 @@ export default function App() {
                         exit={{ opacity: 0, x: -20 }}
                         className="space-y-6"
                       >
-                        <h3 className="text-2xl font-black">إدارة المستخدمين</h3>
-                        <div className="relative">
-                           <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-fg/20" size={18} />
-                           <input 
-                             type="text" 
-                             value={userSearchQuery}
-                             onChange={(e) => setUserSearchQuery(e.target.value)}
-                             placeholder="ابحث بالاسم أو البريد الإلكتروني..." 
-                             className="w-full bg-fg/5 border border-fg/10 rounded-2xl py-4 pr-12 pl-4 text-sm focus:border-violet-500 outline-none transition-all"
-                           />
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-fg/5">
+                          <h3 className="text-2xl font-black">إدارة المستخدمين</h3>
+                          <div className="relative w-full md:w-96">
+                             <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-fg/40" size={18} />
+                             <input 
+                               type="text" 
+                               value={userSearchQuery}
+                               onChange={(e) => setUserSearchQuery(e.target.value)}
+                               placeholder="ابحث بالاسم أو البريد الإلكتروني..." 
+                               className="w-full bg-fg/[0.03] border border-fg/10 rounded-2xl py-3 pr-12 pl-4 text-sm focus:border-violet-500 focus:bg-fg/[0.05] outline-none transition-all"
+                             />
+                          </div>
                         </div>
 
-                        <div className="space-y-4">
-                          {filteredUsers.map(u => (
-                            <div key={u.userId} className="p-6 bg-fg/[0.03] rounded-3xl border border-fg/5 flex flex-wrap items-center justify-between gap-6 hover:bg-fg/[0.05] transition-all">
-                              <div className="flex items-center gap-4">
-                                 <img src={u.photoURL} alt="" className="w-14 h-14 rounded-2xl border-2 border-fg/10" />
-                                 <div>
-                                   <p className="font-bold text-lg">{u.displayName}</p>
-                                   <p className="text-xs text-fg/30">{u.email}</p>
-                                 </div>
-                              </div>
-                              
-                              <div className="flex items-center gap-8">
-                                <div>
-                                  {user?.uid !== u.userId && (
-                                    <button
-                                      onClick={async () => {
-                                        const adminDocRef = doc(db, 'admins', u.userId);
-                                        const adminSnap = await getDoc(adminDocRef);
-                                        if (adminSnap.exists()) {
-                                          if (confirm('نزع صلاحيات المسؤول من هذا المستخدم؟')) {
-                                            await deleteDoc(adminDocRef);
-                                            alert('تم نزع الصلاحيات بنجاح');
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-right border-separate border-spacing-y-2">
+                            <thead>
+                              <tr className="text-fg/40 text-xs uppercase tracking-wider font-bold">
+                                <th className="px-4 py-3 font-medium">المستخدم</th>
+                                <th className="px-4 py-3 font-medium">البريد الإلكتروني</th>
+                                <th className="px-4 py-3 font-medium">الحالة</th>
+                                <th className="px-4 py-3 font-medium text-left">إجراءات</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredUsers.map(u => (
+                                <tr key={u.userId} className="bg-fg/[0.02] hover:bg-fg/[0.04] transition-colors rounded-2xl overflow-hidden group">
+                                  <td className="px-4 py-3 rounded-r-2xl border-y border-r border-transparent group-hover:border-fg/5">
+                                    <div className="flex items-center gap-3">
+                                      <img src={u.photoURL} alt="" className="w-10 h-10 rounded-full border border-fg/10" />
+                                      <p className="font-bold text-sm">{u.displayName}</p>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 border-y border-transparent group-hover:border-fg/5 text-sm text-fg/60">
+                                    {u.email}
+                                  </td>
+                                  <td className="px-4 py-3 border-y border-transparent group-hover:border-fg/5">
+                                    {u.isAdmin ? <span className="bg-fuchsia-500/10 text-fuchsia-500 px-2 py-1 rounded-md text-xs font-bold border border-fuchsia-500/20">مدير</span> : <span className="bg-fg/5 text-fg/50 px-2 py-1 rounded-md text-xs font-bold">عميل</span>}
+                                  </td>
+                                  <td className="px-4 py-3 rounded-l-2xl border-y border-l border-transparent group-hover:border-fg/5 text-left">
+                                    {user?.uid !== u.userId && (
+                                      <button
+                                        onClick={async () => {
+                                          const adminDocRef = doc(db, 'admins', u.userId);
+                                          const adminSnap = await getDoc(adminDocRef);
+                                          if (adminSnap.exists()) {
+                                            if (confirm('نزع صلاحيات المسؤول من هذا المستخدم؟')) {
+                                              await deleteDoc(adminDocRef);
+                                            }
+                                          } else {
+                                            if (confirm('ترقية هذا المستخدم ليكون مسؤول؟')) {
+                                              await setDoc(adminDocRef, { email: u.email, assignedAt: serverTimestamp() });
+                                            }
                                           }
-                                        } else {
-                                          if (confirm('ترقية هذا المستخدم ليكون مسؤول؟')) {
-                                            await setDoc(adminDocRef, { email: u.email, assignedAt: serverTimestamp() });
-                                            alert('تمت الترقية بنجاح');
-                                          }
-                                        }
-                                      }}
-                                      className="text-xs px-4 py-2 border border-violet-500/20 text-violet-500 font-bold rounded-xl hover:bg-violet-500/10 transition-all"
-                                    >
-                                      التحكم في الصلاحيات
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
+                                        }}
+                                        className={`text-xs px-4 py-2 font-bold rounded-xl transition-all ${
+                                          u.isAdmin 
+                                          ? 'border border-red-500/20 text-red-500 hover:bg-red-500/10' 
+                                          : 'border border-violet-500/20 text-violet-500 hover:bg-violet-500/10'
+                                        }`}
+                                      >
+                                        {u.isAdmin ? 'نزع الإدارة' : 'ترقية لمدير'}
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {filteredUsers.length === 0 && (
+                            <div className="py-20 text-center text-fg/40 border-2 border-dashed border-fg/10 rounded-3xl mt-4">
+                              <Users size={48} className="mx-auto mb-4 opacity-20" />
+                              <p>لا يوجد مستخدمين للبحث</p>
                             </div>
-                          ))}
+                          )}
                         </div>
                       </motion.div>
                     )}
@@ -3284,76 +3458,162 @@ export default function App() {
                 </div>
               ) : (
                 <div className="space-y-8">
-                  <div className="bg-fg/[0.02] border border-fg/5 rounded-[3.5rem] overflow-hidden relative group shadow-2xl">
-                    <div className="h-40 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 opacity-20 group-hover:opacity-30 transition-opacity duration-700" />
-                    <div className="px-10 pb-12 -mt-20 text-center relative z-10">
-                      <div className="relative inline-block">
-                       {user.photoURL ? (
-                         <img 
-                           src={user.photoURL} 
-                           alt="" 
-                           className="w-32 h-32 rounded-[3.5rem] border-4 border-violet-600/30 shadow-2xl group-hover:scale-105 transition-transform object-cover" 
-                         />
-                       ) : (
-                         <div className="w-32 h-32 rounded-[3.5rem] bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center text-4xl font-black">
-                            {user.displayName?.[0] || 'A'}
-                         </div>
-                       )}
-                       <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-violet-600 rounded-2xl flex items-center justify-center border-4 border-bg shadow-lg">
-                          <Star size={16} className="text-white" />
-                       </div>
-                    </div>
-                    <div className="mt-8">
-                       <h2 className="text-4xl font-black tracking-tight">Mohamed Amine Hasni</h2>
-                       <p className="text-fg/40 font-mono text-sm mt-2">{user.email}</p>
-                    </div>
-                      <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
-                        <span className="px-4 py-1.5 bg-fg/5 border border-fg/10 rounded-full text-[10px] font-black uppercase tracking-widest text-fg/40">Atlas Member</span>
-                        <span className="px-4 py-1.5 bg-violet-500/10 border border-violet-500/20 rounded-full text-[10px] font-black uppercase tracking-widest text-violet-400">Verified Profile</span>
+                  <div className="bg-fg/[0.02] border border-fg/5 rounded-[3.5rem] overflow-hidden relative shadow-2xl">
+                    <div className="h-40 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 opacity-20 transition-opacity duration-700" />
+                    <div className="px-8 md:px-12 pb-12 -mt-20 relative z-10 flex flex-col md:flex-row items-center md:items-end justify-between gap-8">
+                      <div className="flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-right">
+                        <div className="relative inline-block">
+                         {user.photoURL ? (
+                           <img 
+                             src={user.photoURL} 
+                             alt="" 
+                             className="w-32 h-32 rounded-[2.5rem] border-4 border-bg shadow-2xl object-cover bg-bg" 
+                           />
+                         ) : (
+                           <div className="w-32 h-32 rounded-[2.5rem] bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center text-4xl font-black border-4 border-bg shadow-2xl">
+                              {user.displayName?.[0] || 'A'}
+                           </div>
+                         )}
+                         {profile?.isAdmin && (
+                           <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-fuchsia-500 rounded-2xl flex items-center justify-center border-4 border-bg shadow-lg" title="مدير">
+                              <Shield size={16} className="text-white" />
+                           </div>
+                         )}
+                        </div>
+                        <div className="mb-2">
+                           <h2 className="text-4xl font-black tracking-tight">{user.displayName || 'مستخدم'}</h2>
+                           <p className="text-fg/50 font-medium text-sm mt-1">{user.email}</p>
+                           <div className="flex items-center justify-center md:justify-start gap-3 mt-4">
+                             <span className="px-3 py-1 bg-fg/5 border border-fg/10 rounded-full text-[10px] font-bold uppercase tracking-wider text-fg/60">عضو Atlas</span>
+                             <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/20 rounded-full text-[10px] font-bold uppercase tracking-wider text-violet-400">حساب موثق</span>
+                           </div>
+                        </div>
                       </div>
-                      
-                      <div className="mt-10 grid grid-cols-2 md:grid-cols-3 gap-4 max-w-lg mx-auto">
-                        <button 
-                          onClick={() => setCurrentTab('orders')}
-                          className="flex flex-col items-center gap-2 p-6 bg-fg/5 border border-fg/10 rounded-3xl hover:bg-fg/10 transition-all group/btn"
-                        >
-                          <ShoppingBag size={24} className="text-violet-400 group-hover/btn:scale-110 transition-transform" />
-                          <span className="text-xs font-bold">طلبياتي</span>
-                        </button>
-                        <button 
-                          onClick={() => setCurrentTab('requests')}
-                          className="flex flex-col items-center gap-2 p-6 bg-fg/5 border border-fg/10 rounded-3xl hover:bg-fg/10 transition-all group/btn"
-                        >
-                          <MessageSquare size={24} className="text-amber-400 group-hover/btn:scale-110 transition-transform" />
-                          <span className="text-xs font-bold">طلباتي</span>
-                        </button>
-                        <button 
-                          onClick={handleLogout}
-                          className="flex flex-col items-center gap-2 p-6 bg-red-500/5 border border-red-500/10 rounded-3xl hover:bg-red-500/10 transition-all text-red-500 group/btn col-span-2 md:col-span-1"
-                        >
-                          <LogOut size={24} className="group-hover/btn:translate-x-1 transition-transform" />
-                          <span className="text-xs font-bold">تسجيل الخروج</span>
-                        </button>
+                      <div className="flex items-center gap-4">
+                         <div className="text-center px-6 border-l border-fg/10">
+                            <p className="text-3xl font-black">{orders.length}</p>
+                            <p className="text-[10px] text-fg/40 font-bold uppercase mt-1">طلبات</p>
+                         </div>
+                         <div className="text-center px-6">
+                            <p className="text-3xl font-black">{serviceRequests.length}</p>
+                            <p className="text-[10px] text-fg/40 font-bold uppercase mt-1">خدمات</p>
+                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-8 bg-fg/[0.01] border border-fg/5 rounded-[3rem] space-y-6">
-                    <h3 className="text-sm font-bold opacity-60 px-4 text-right uppercase tracking-[0.2em] border-r-2 border-violet-500 mr-2">Account Details</h3>
-                    <div className="flex flex-col gap-2">
-                       <div className="p-6 bg-fg/5 rounded-3xl border border-fg/5 flex items-center justify-between hover:bg-fg/[0.07] transition-colors">
-                          <p className="font-bold opacity-80">{user.email}</p>
-                          <p className="text-[10px] font-bold text-fg/20 uppercase tracking-widest">Email Address</p>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-8">
+                       {/* Activity Overview */}
+                       <div className="bg-fg/[0.01] border border-fg/5 rounded-[2.5rem] p-8">
+                          <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-xl font-black">نشاطاتك الأخيرة</h3>
+                            <div className="flex gap-2">
+                              <button onClick={() => setCurrentTab('orders')} className="text-xs font-bold text-violet-400 hover:text-violet-300 transition-colors bg-violet-500/10 hover:bg-violet-500/20 px-4 py-2 rounded-xl">كل الطلبات</button>
+                            </div>
+                          </div>
+                          
+                          {orders.length === 0 && serviceRequests.length === 0 ? (
+                            <div className="text-center py-10 opacity-40">
+                               <ShoppingBag size={48} className="mx-auto mb-4" />
+                               <p>لا يوجد نشاطات مسجلة بعد</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {orders.slice(0, 3).map(order => (
+                                <div key={order.orderId} className="flex items-center justify-between p-4 bg-fg/[0.03] rounded-2xl hover:bg-fg/[0.05] transition-colors">
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-fg/5 rounded-xl flex items-center justify-center shrink-0">
+                                      <Zap size={20} className="text-fg/40" />
+                                    </div>
+                                    <div>
+                                      <p className="font-bold text-sm">طلب #{order.orderId.slice(-4)}</p>
+                                      <p className="text-xs text-fg/40 mt-1">{order.items.length} منتج • {(Number(order.total) || 0).toFixed(3)} DT</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-left">
+                                      <span className={`text-[10px] px-3 py-1.5 rounded-lg font-bold border ${order.status === 'completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' : order.status === 'paid' ? 'bg-violet-500/10 text-violet-500 border-violet-500/20' : order.status === 'cancelled' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-fg/5 text-fg/60 border-fg/10'}`}>
+                                        {order.status === 'completed' ? 'مكتمل' : order.status === 'paid' ? 'تم الدفع' : order.status === 'cancelled' ? 'ملغي' : 'قيد الانتظار'}
+                                      </span>
+                                  </div>
+                                </div>
+                              ))}
+                              
+                              {serviceRequests.slice(0, 2).map((req) => (
+                                <div key={req.id} className="flex items-center justify-between p-4 bg-amber-500/5 rounded-2xl border border-amber-500/10 hover:bg-amber-500/10 transition-colors">
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center shrink-0">
+                                      <MessageSquare size={20} className="text-amber-500" />
+                                    </div>
+                                    <div>
+                                      <p className="font-bold text-sm">{req.title}</p>
+                                      <p className="text-xs text-amber-500/60 mt-1 truncate max-w-[150px] md:max-w-[300px]">{req.description}</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-left">
+                                      <span className={`text-[10px] px-3 py-1.5 rounded-lg font-bold border ${req.status === 'completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' : req.status === 'in-progress' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : req.status === 'rejected' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+                                        {req.status === 'completed' ? 'مكتمل' : req.status === 'in-progress' ? 'قيد التنفيذ' : req.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+                                      </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                        </div>
-                       <div className="p-6 bg-fg/5 rounded-3xl border border-fg/5 flex items-center justify-between hover:bg-fg/[0.07] transition-colors">
-                          <p className="font-bold opacity-80">{profile?.createdAt?.toDate?.().toLocaleDateString() || 'Premium Member'}</p>
-                          <p className="text-[10px] font-bold text-fg/20 uppercase tracking-widest">Member Since</p>
+                    </div>
+                    
+                    <div className="space-y-4">
+                       <div className="bg-fg/[0.01] border border-fg/5 rounded-[2.5rem] p-6 text-center">
+                          <h3 className="text-sm font-bold opacity-60 mb-6 uppercase tracking-[0.2em]">إجراءات سريعة</h3>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button 
+                              onClick={() => setCurrentTab('orders')}
+                              className="flex flex-col items-center gap-2 p-4 bg-fg/5 rounded-2xl hover:bg-fg/[0.08] transition-all"
+                            >
+                              <ShoppingBag size={20} className="text-violet-400" />
+                              <span className="text-xs font-bold">طلبياتي</span>
+                            </button>
+                            <button 
+                              onClick={() => setCurrentTab('requests')}
+                              className="flex flex-col items-center gap-2 p-4 bg-fg/5 rounded-2xl hover:bg-fg/[0.08] transition-all"
+                            >
+                              <MessageSquare size={20} className="text-amber-400" />
+                              <span className="text-xs font-bold">طلباتي</span>
+                            </button>
+                            <button 
+                              onClick={() => setRunTour(true)} 
+                              className="flex flex-col items-center gap-2 p-4 bg-fg/5 rounded-2xl hover:bg-fg/[0.08] transition-all"
+                            >
+                              <HelpCircle size={20} className="text-blue-400" />
+                              <span className="text-xs font-bold">جولة سريعة</span>
+                            </button>
+                            <button 
+                              onClick={handleLogout}
+                              className="flex flex-col items-center gap-2 p-4 bg-red-500/5 text-red-500 rounded-2xl hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+                            >
+                              <LogOut size={20} />
+                              <span className="text-xs font-bold">تسجيل الخروج</span>
+                            </button>
+                          </div>
                        </div>
-                       <button onClick={() => setRunTour(true)} className="p-6 bg-fg/5 rounded-3xl border border-fg/5 flex items-center justify-between hover:bg-fg/[0.07] transition-colors">
-                          <HelpCircle size={18} className="text-fg/40 ml-4 hidden md:block" />
-                          <p className="font-bold opacity-80 w-full md:w-auto text-right md:text-left">إعادة شرح واجهة الموقع</p>
-                          <p className="text-[10px] font-bold text-fg/20 uppercase tracking-widest hidden md:block">Site Tour</p>
-                       </button>
+                       
+                       <div className="bg-fg/[0.01] border border-fg/5 rounded-[2.5rem] p-6">
+                          <h3 className="text-sm font-bold opacity-60 mb-6 uppercase tracking-[0.2em] text-center">معلومات الحساب</h3>
+                          <div className="space-y-4">
+                             <div className="flex items-center justify-between text-sm p-3 bg-fg/5 rounded-xl">
+                                <span className="text-fg/60">البريد</span>
+                                <span className="font-bold truncate max-w-[150px]" title={user.email || ''}>{user.email}</span>
+                             </div>
+                             <div className="flex items-center justify-between text-sm p-3 bg-fg/5 rounded-xl">
+                                <span className="text-fg/60">تاريخ الانضمام</span>
+                                <span className="font-bold">{profile?.createdAt?.toDate?.().toLocaleDateString() || 'Premium Member'}</span>
+                             </div>
+                             <div className="flex items-center justify-between text-sm p-3 bg-fg/5 rounded-xl">
+                                <span className="text-fg/60">حالة الحساب</span>
+                                <span className="font-bold text-green-500">نشط</span>
+                             </div>
+                          </div>
+                       </div>
                     </div>
                   </div>
                 </div>

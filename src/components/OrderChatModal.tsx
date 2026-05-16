@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, User as UserIcon, Shield, AlertCircle, CheckCircle2, Clock, Wallet, Info, Paperclip, FileText, Download, Loader2 } from 'lucide-react';
+import { X, Send, User as UserIcon, Shield, AlertCircle, CheckCircle2, Clock, Wallet, Info, Paperclip, FileText, Download, Loader2, AlertTriangle, Lock } from 'lucide-react';
 import { Order, UserProfile, Message as MessageType } from '../types';
 import { storage, db, addDoc, collection, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, increment } from '../lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -28,6 +28,10 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('d17');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Security confirmation state
+  const [confirmAction, setConfirmAction] = useState<'paid' | 'completed' | 'cancelled' | null>(null);
+  const [isAgreed, setIsAgreed] = useState(false);
 
   const paymentMethods = [
     {
@@ -189,6 +193,7 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
           senderId: currentUser.uid,
           isAdmin: isSenderAdmin,
           createdAt: serverTimestamp(),
+          isSystemMessage: true,
         });
 
         // Notify the other party
@@ -266,62 +271,85 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
             </div>
 
             {/* Payment Instructions / Action Rules */}
-            {order.status === 'pending' && (
-               <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl p-5 space-y-4">
-                  <h4 className="font-bold text-amber-500 flex items-center gap-2">
-                     <Info size={18} />
-                     تعليمات الدفع
-                  </h4>
-                  {isBuyer ? (
-                     <div className="text-sm space-y-4 text-fg/80 leading-relaxed font-medium">
-                        <p>الرجاء اختيار طريقة الدفع المناسبة وتحويل المبلغ المطلوب:</p>
-                        
-                        <div className="bg-fg/5 p-4 rounded-xl border border-fg/10 space-y-4 my-2">
-                           <div>
-                              <select 
-                                value={selectedPaymentMethod}
-                                onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                                className="w-full bg-bg border border-fg/10 rounded-lg px-3 py-2 text-sm text-fg outline-none focus:border-amber-500/50 transition-colors"
-                              >
-                                {paymentMethods.map(method => (
-                                  <option key={method.id} value={method.id} className="bg-bg text-fg">
-                                    {method.name}
-                                  </option>
+            <div className="space-y-4">
+              {order.status === 'pending' && (
+                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl p-5 space-y-4">
+                    <h4 className="font-bold text-amber-500 flex items-center gap-2">
+                       <Shield size={18} />
+                       تعليمات الدفع الآمن
+                    </h4>
+                    {isBuyer ? (
+                       <div className="text-sm space-y-4 text-fg/80 leading-relaxed font-medium">
+                          <p>يجب تحويل المبلغ المطلوب من خلال إحدى طرق الدفع التالية لتجنب إلغاء الطلب تلقائياً:</p>
+                          
+                          <div className="bg-bg border border-amber-500/20 p-4 rounded-xl space-y-4 my-2 relative overflow-hidden">
+                             <div className="absolute top-0 right-0 w-1 h-full bg-amber-500 rounded-r-lg" />
+                             <div>
+                                <select 
+                                  value={selectedPaymentMethod}
+                                  onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                                  className="w-full bg-fg/5 border border-fg/10 rounded-lg px-3 py-2 text-sm text-fg outline-none focus:border-amber-500/50 transition-colors font-bold"
+                                >
+                                  {paymentMethods.map(method => (
+                                    <option key={method.id} value={method.id} className="bg-bg text-fg">
+                                      {method.name}
+                                    </option>
+                                  ))}
+                                </select>
+                             </div>
+                             
+                             <div className="space-y-2 pt-2 border-t border-fg/10">
+                                {paymentMethods.find(m => m.id === selectedPaymentMethod)?.details.map((detail, idx) => (
+                                  <div key={idx} className="flex justify-between items-center text-xs">
+                                    <span className="text-fg/60">{detail.label}</span>
+                                    <span className="font-mono font-black tracking-wider text-violet-500 dark:text-violet-400 select-all">{detail.value}</span>
+                                  </div>
                                 ))}
-                              </select>
-                           </div>
-                           
-                           <div className="space-y-2 pt-2 border-t border-fg/10">
-                              {paymentMethods.find(m => m.id === selectedPaymentMethod)?.details.map((detail, idx) => (
-                                <div key={idx} className="flex justify-between items-center text-xs">
-                                  <span className="text-fg/60">{detail.label}</span>
-                                  <span className="font-mono font-bold tracking-wider text-violet-500 dark:text-violet-300">{detail.value}</span>
-                                </div>
-                              ))}
-                           </div>
-                        </div>
-                        
-                        <p className="text-xs opacity-70">بعد عملية الدفع، اضغط على "تم الدفع، أخبر البائع" وقم بإرسال صورة الإيصال في المحادثة لتسريع التأكيد.</p>
-                     </div>
-                  ) : (
-                     <div className="text-sm space-y-2 text-amber-500/80 leading-relaxed">
-                        <p>بانتظار أن يقوم الحريف بتحويل المبلغ.</p>
-                     </div>
-                  )}
-               </div>
-            )}
+                             </div>
+                          </div>
+                          
+                          <div className="bg-amber-500/10 p-3 rounded-lg text-xs flex items-start gap-2">
+                            <Info size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                            <p className="text-amber-600 dark:text-amber-400">تنبيه أمان: لا تقم بكتابة أي كلمات تخص العملات الرقمية أو الحسابات الوهمية في ملاحظات التحويل البنكي أو D17 لتجنب تجميد حسابك.</p>
+                          </div>
+                          <p className="text-xs opacity-70">بعد الدفع والتأكد، اضغط على زر "تم الدفع، أخبر البائع" وأرسل صورة الإثبات في الدردشة.</p>
+                       </div>
+                    ) : (
+                       <div className="text-sm space-y-2 text-amber-500/80 leading-relaxed">
+                          <p>بانتظار أن يقوم الحريف بدفع المبلغ ({Number(order.total).toFixed(3)} DT) وتأكيده.</p>
+                       </div>
+                    )}
+                 </div>
+              )}
+              
+              {order.status === 'paid' && !isBuyer && (
+                 <div className="bg-violet-500/10 border border-violet-500/20 rounded-3xl p-5 space-y-4">
+                    <h4 className="font-bold text-violet-500 flex items-center gap-2">
+                       <Shield size={18} />
+                       التحقق من الدفع (إجراء أمني)
+                    </h4>
+                    <div className="text-sm space-y-3 text-fg/80 leading-relaxed">
+                       <p>قام الحريف بتأكيد إجراء التحويل. يرجى مراجعة حسابك المصرفي أو تطبيق D17 الخاص بك واستلام صورة الإثبات.</p>
+                       <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold flex items-start gap-2">
+                         <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                         <p>تحذير: لا تفرج عن الطلب أو العملات قبل التأكد الفعلي من دخول المبلغ في حسابك. إيصالات التحويل يمكن تزويرها!</p>
+                       </div>
+                    </div>
+                 </div>
+              )}
+            </div>
 
             {/* Actions */}
             <div className="space-y-3 pt-4">
               {isBuyer ? (
                 <>
                   {order.status === 'pending' && (
-                    <button onClick={() => updateOrderStatus('paid')} className="w-full py-4 bg-violet-600 hover:bg-violet-500 text-white font-black rounded-xl transition-all shadow-lg shadow-violet-500/20">
+                    <button onClick={() => { setConfirmAction('paid'); setIsAgreed(false); }} className="w-full py-4 bg-violet-600 hover:bg-violet-500 text-white font-black rounded-xl transition-all shadow-lg shadow-violet-500/20">
                       تم الدفع، أخبر البائع
                     </button>
                   )}
                   {(order.status === 'pending' || order.status === 'paid') && (
-                    <button onClick={() => updateOrderStatus('cancelled')} className="w-full py-3 bg-fg/5 hover:bg-red-500/10 text-fg/60 hover:text-red-500 font-bold rounded-xl transition-all">
+                    <button onClick={() => { setConfirmAction('cancelled'); setIsAgreed(false); }} className="w-full py-3 bg-fg/5 hover:bg-red-500/10 text-fg/60 hover:text-red-500 font-bold rounded-xl transition-all">
                       إلغاء الطلب
                     </button>
                   )}
@@ -329,12 +357,12 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
               ) : (
                 <>
                   {(order.status === 'pending' || order.status === 'paid') && (
-                    <button onClick={() => updateOrderStatus('completed')} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all shadow-lg shadow-emerald-500/20">
+                    <button onClick={() => { setConfirmAction('completed'); setIsAgreed(false); }} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition-all shadow-lg shadow-emerald-500/20">
                       تأكيد استلام الأموال
                     </button>
                   )}
                   {(order.status === 'pending' || order.status === 'paid') && (
-                    <button onClick={() => updateOrderStatus('cancelled')} className="w-full py-3 bg-fg/5 hover:bg-red-500/10 text-fg/60 hover:text-red-500 font-bold rounded-xl transition-all">
+                    <button onClick={() => { setConfirmAction('cancelled'); setIsAgreed(false); }} className="w-full py-3 bg-fg/5 hover:bg-red-500/10 text-fg/60 hover:text-red-500 font-bold rounded-xl transition-all">
                       إلغاء الطلب
                     </button>
                   )}
@@ -383,6 +411,16 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
                </div>
              ) : (
                messages.map((msg) => {
+                 if (msg.isSystemMessage) {
+                   return (
+                     <div key={msg.id} className="flex justify-center w-full my-6">
+                       <div className="bg-amber-500/10 px-4 py-2 rounded-2xl border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold text-center flex flex-col sm:flex-row items-center justify-center gap-2 max-w-[90%] shadow-sm">
+                         <AlertCircle size={16} className="shrink-0" />
+                         <span>{msg.text}</span>
+                       </div>
+                     </div>
+                   );
+                 }
                  const isMe = msg.senderId === currentUser.uid;
                  return (
                    <div key={msg.id} className={`flex flex-col ${isMe ? 'items-start' : 'items-end'}`}>
@@ -473,6 +511,88 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
         </div>
 
       </div>
+
+      {/* Security Confirmation Modal */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmAction(null)} />
+          <div className="relative bg-bg border border-fg/10 rounded-3xl w-full max-w-md p-6 overflow-hidden" dir="rtl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`p-3 rounded-full ${confirmAction === 'cancelled' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                {confirmAction === 'cancelled' ? <AlertTriangle size={24} /> : <Lock size={24} />}
+              </div>
+              <div>
+                <h3 className="font-black text-xl">
+                  {confirmAction === 'paid' && 'تأكيد الدفع'}
+                  {confirmAction === 'completed' && 'تأكيد استلام الأموال والإفراج'}
+                  {confirmAction === 'cancelled' && 'إلغاء الطلب'}
+                </h3>
+                <p className="text-xs text-fg/60">إجراء أمني للتحقق</p>
+              </div>
+            </div>
+
+            <div className="bg-fg/5 rounded-2xl p-4 mb-6 text-sm font-medium leading-relaxed">
+              {confirmAction === 'paid' && (
+                <p className="text-fg/80">
+                  يرجى التأكد من أنك قمت بتحويل مبلغ <span className="font-black text-violet-400">{(Number(order.total) || 0).toFixed(3)} DT</span> كاملاً إلى حساب البائع. النقر على تأكيد دون إتمام الدفع قد يؤدي إلى حظر حسابك.
+                </p>
+              )}
+              {confirmAction === 'completed' && (
+                <p className="text-amber-600 dark:text-amber-400">
+                  <strong className="block mb-2">انتبه بشدة:</strong>
+                  تأكد من تسجيل الدخول إلى حسابك البنكي أو حساب D17 الخاص بك والتحقق من وصول المبلغ كاملاً. <strong>لا تعتمد فقط على صورة الإيصال المرسلة من الحريف!</strong>
+                </p>
+              )}
+              {confirmAction === 'cancelled' && (
+                <p className="text-fg/80">
+                  هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟ إذا كنت قد قمت بالدفع فعلياً، يرجى عدم إلغاء الطلب والتواصل مع الدعم الفني بدلاً من ذلك.
+                </p>
+              )}
+            </div>
+
+            <label className="flex items-start gap-3 cursor-pointer group mb-8">
+              <div className="relative flex items-center justify-center shrink-0 mt-0.5">
+                <input 
+                  type="checkbox" 
+                  checked={isAgreed}
+                  onChange={(e) => setIsAgreed(e.target.checked)}
+                  className="peer appearance-none w-5 h-5 border-2 border-fg/30 rounded bg-transparent checked:bg-violet-500 checked:border-violet-500 transition-colors"
+                />
+                <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
+              </div>
+              <span className="text-sm font-bold text-fg/80 group-hover:text-fg transition-colors select-none">
+                {confirmAction === 'paid' && 'أؤكد أنني قمت بتحويل المبلغ كاملاً وأتحمل المسؤولية الكلية.'}
+                {confirmAction === 'completed' && 'أؤكد أنني تحققت بنفسي من وصول الأموال إلى حسابي.'}
+                {confirmAction === 'cancelled' && 'أؤكد أنني أريد إلغاء الطلب بشكل نهائي.'}
+              </span>
+            </label>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 py-3 bg-fg/5 hover:bg-fg/10 text-fg font-bold rounded-xl transition-colors"
+              >
+                تراجع
+              </button>
+              <button 
+                onClick={() => {
+                  if (!isAgreed) return;
+                  updateOrderStatus(confirmAction);
+                  setConfirmAction(null);
+                }}
+                disabled={!isAgreed}
+                className={`flex-1 py-3 font-black rounded-xl transition-all shadow-lg ${
+                  confirmAction === 'cancelled'
+                  ? 'bg-red-500 hover:bg-red-400 text-white shadow-red-500/20 disabled:bg-red-500/50'
+                  : 'bg-violet-600 hover:bg-violet-500 text-white shadow-violet-500/20 disabled:bg-violet-500/50'
+                }`}
+              >
+                {confirmAction === 'cancelled' ? 'تأكيد الإلغاء' : 'تأكيد'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

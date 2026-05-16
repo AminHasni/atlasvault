@@ -4,7 +4,7 @@ export interface ProductOption {
 }
 
 export interface Product {
-  id: number;
+  id: string | number;
   name: string;
   price: number;
   category: string;
@@ -39,6 +39,8 @@ export interface UserProfile {
   createdAt: any;
   updatedAt: any;
   isAdmin?: boolean;
+  fcmToken?: string;
+  cart?: any[];
 }
 
 export interface Transaction {
@@ -95,7 +97,7 @@ export interface AppNotification {
 }
 
 export interface OrderItem {
-  productId: number;
+  productId: string | number;
   name: string;
   price: number;
   quantity: number;
@@ -118,7 +120,7 @@ export interface Order {
 
 export interface Wishlist {
   userId: string;
-  productIds: number[];
+  productIds: (string | number)[];
 }
 
 export interface Attachment {
@@ -134,4 +136,5 @@ export interface Message {
   isAdmin: boolean;
   createdAt: any;
   attachment?: Attachment;
+  isSystemMessage?: boolean;
 }

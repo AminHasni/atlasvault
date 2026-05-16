@@ -74,8 +74,17 @@ service cloud.firestore {
     }
 
     match /giftCodes/{code} {
-      allow read, write: if isAdmin();
-      allow get: if isSignedIn(); // Allow fetching specific gift codes to redeem
+      allow read: if isAdmin();
+      allow get: if isSignedIn();
+      allow update: if isSignedIn() && (
+        isAdmin() || (
+          existing().status == 'active' && 
+          incoming().status == 'used' && 
+          incoming().usedBy == request.auth.uid &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'usedBy', 'usedAt'])
+        )
+      );
+      allow create, delete: if isAdmin();
     }
 
     match /categories/{categoryId} {
@@ -141,8 +150,8 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt', 'balance']))
-                  || (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'updatedAt']));
+      allow update: if (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt', 'balance', 'fcmToken', 'cart']))
+                  || (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'updatedAt', 'fcmToken', 'cart']));
     }
 
     match /orders/{orderId} {

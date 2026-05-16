@@ -10,6 +10,8 @@
         "displayName": { "type": "string" },
         "photoURL": { "type": "string" },
         "balance": { "type": "number" },
+        "fcmToken": { "type": "string" },
+        "cart": { "type": "array" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
