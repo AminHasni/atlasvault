@@ -19,10 +19,10 @@ export default defineConfig(({mode}) => {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
-      allowedHosts: true // Autorise votre sous-domaine spécifique
+      allowedHosts: ['atlasvaultshop.onrender.com', '.onrender.com', '.europe-west2.run.app'] // Autorise votre sous-domaine spécifique
     },
     preview: {
-      allowedHosts: true // Sécurité additionnelle pour le mode preview
+      allowedHosts: ['atlasvaultshop.onrender.com', '.onrender.com', '.europe-west2.run.app'] // Sécurité additionnelle pour le mode preview
     }
   };
 });
