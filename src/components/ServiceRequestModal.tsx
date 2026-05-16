@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Send } from 'lucide-react';
+import { X, Send, Loader2 } from 'lucide-react';
 import { db, setDoc, doc, collection, serverTimestamp, handleFirestoreError, OperationType, addDoc } from '../lib/firebase';
 import { ServiceRequest } from '../types';
 
@@ -109,9 +109,14 @@ export function ServiceRequestModal({ isOpen, onClose, userId, userEmail }: Serv
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-700 hover:from-violet-500 hover:to-indigo-600 text-white rounded-2xl font-black transition-all shadow-lg flex items-center justify-center gap-2 group disabled:opacity-70"
+              className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-700 hover:from-violet-500 hover:to-indigo-600 text-white rounded-2xl font-black transition-all shadow-lg flex items-center justify-center gap-2 group disabled:opacity-70 disabled:hover:scale-100 disabled:cursor-not-allowed hover:scale-[1.02]"
             >
-              {loading ? 'جاري الإرسال...' : (
+              {loading ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  جاري الإرسال...
+                </>
+              ) : (
                 <>
                   <Send size={18} className="group-hover:-translate-y-1 transition-transform" />
                   إرسال الطلب

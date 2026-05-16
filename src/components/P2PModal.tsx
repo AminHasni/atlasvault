@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, AlertTriangle, Upload, CheckCircle2, User, Camera, FileText } from 'lucide-react';
+import { X, ShieldCheck, AlertTriangle, Upload, CheckCircle2, User, Camera, FileText, Loader2 } from 'lucide-react';
 import { db, addDoc, collection, serverTimestamp, storage } from '../lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { User as AuthUser } from 'firebase/auth';
@@ -214,9 +214,14 @@ export const P2PModal: React.FC<P2PModalProps> = ({ isOpen, onClose, user }) => 
                 <button 
                   type="submit" 
                   disabled={!isAgreed || isUploading}
-                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black rounded-xl hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center gap-2"
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black rounded-xl hover:shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
                 >
-                  {isUploading ? 'جاري الإرسال...' : 'تأكيد التعهد وإرسال العرض'}
+                  {isUploading ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin" />
+                      <span>جاري الإرسال...</span>
+                    </>
+                  ) : 'تأكيد التعهد وإرسال العرض'}
                 </button>
               </div>
 
