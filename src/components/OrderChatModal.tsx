@@ -230,15 +230,15 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
       <div className="relative bg-panel border border-fg/10 rounded-[2.5rem] w-full max-w-5xl h-[90vh] flex flex-col md:flex-row shadow-2xl overflow-hidden" dir="rtl">
         
         {/* Right Side: Order Details & Actions */}
-        <div className="w-full md:w-[400px] bg-fg/[0.02] border-l border-fg/10 flex flex-col overflow-y-auto no-scrollbar shrink-0">
-          <div className="p-6 border-b border-fg/10 flex items-center justify-between">
-             <h3 className="font-black text-xl">تفاصيل الطلب</h3>
+        <div className="w-full md:w-[400px] max-h-[40vh] md:max-h-full bg-fg/[0.02] border-b md:border-b-0 md:border-l border-fg/10 flex flex-col overflow-y-auto shrink-0 z-10 custom-scrollbar">
+          <div className="p-4 md:p-6 border-b border-fg/10 flex items-center justify-between sticky top-0 bg-panel/90 backdrop-blur-md z-20">
+             <h3 className="font-black text-lg md:text-xl">تفاصيل الطلب</h3>
              <button onClick={onClose} className="p-2 bg-fg/5 rounded-full hover:bg-fg/10 transition-colors md:hidden">
                 <X size={20} />
              </button>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="p-4 md:p-6 space-y-4 md:space-y-6">
             {/* Amount */}
             <div className="text-center">
               <p className="text-sm font-bold text-fg/40 mb-1">المبلغ المطلوب</p>
@@ -378,7 +378,7 @@ export function OrderChatModal({ order, currentUser, profile, onClose }: OrderCh
         </div>
 
         {/* Left Side: Chat */}
-        <div className="flex-1 flex flex-col relative h-[50vh] md:h-auto">
+        <div className="flex-1 flex flex-col relative overflow-hidden min-h-0">
            {/* Desktop Header */}
            <div className="hidden md:flex px-6 py-4 border-b border-fg/10 bg-fg/[0.01] items-center justify-between shrink-0">
              <div className="flex items-center gap-4">

@@ -122,24 +122,24 @@ const ProductCardItem: React.FC<{
          </div>
       </div>
       
-      <h3 className="font-bold text-base text-fg group-hover:text-violet-400 transition-colors mb-1.5 leading-tight line-clamp-1">{product.name}</h3>
+      <h3 className="font-bold text-sm sm:text-base text-fg group-hover:text-violet-400 transition-colors mb-1.5 leading-tight line-clamp-1">{product.name}</h3>
       
-      <p className="text-[11px] text-fg/50 line-clamp-2 mb-3 leading-relaxed group-hover:text-fg/70 transition-colors">
+      <p className="hidden sm:block text-[11px] text-fg/50 line-clamp-2 mb-3 leading-relaxed group-hover:text-fg/70 transition-colors">
          {product.description || 'احصل على هذه الخدمة الآن بأفضل الأسعار'}
       </p>
       
-      <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between">
+      <div className="mt-auto pt-2 sm:pt-3 border-t border-white/5 flex items-center justify-between">
         <button 
           onClick={onAddCart}
-          className="w-8 h-8 rounded-lg bg-fg/5 hover:bg-violet-600 text-fg hover:text-white flex items-center justify-center transition-all duration-300 group-hover:shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-fg/5 hover:bg-violet-600 text-fg hover:text-white flex items-center justify-center transition-all duration-300 group-hover:shadow-[0_0_15px_rgba(139,92,246,0.3)]"
         >
-          <Plus size={16} strokeWidth={2.5} />
+          <Plus size={16} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
         <div className="flex flex-col items-end">
-          <span className="text-[9px] text-fg/40 uppercase tracking-widest font-medium">السعر</span>
+          <span className="text-[8px] sm:text-[9px] text-fg/40 uppercase tracking-widest font-medium">السعر</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-lg font-bold text-fg">{product.price.toFixed(3)}</span>
-            <span className="text-[10px] font-medium text-violet-400">DT</span>
+            <span className="text-sm sm:text-lg font-bold text-fg">{product.price.toFixed(3)}</span>
+            <span className="text-[9px] sm:text-[10px] font-medium text-violet-400">DT</span>
           </div>
         </div>
       </div>
@@ -1417,7 +1417,7 @@ export default function App() {
               className="max-w-7xl mx-auto px-4 py-8 md:py-12"
             >
               {/* Hero Section */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 border border-fg/10 rounded-[3rem] p-12 mb-16 text-center">
+              <div className="relative overflow-hidden bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 border border-fg/10 rounded-[3rem] p-6 sm:p-12 mb-8 sm:mb-16 text-center">
                 <div className="absolute top-0 left-0 w-full h-full -z-10 blur-[80px] opacity-20">
                   <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-violet-500 rounded-full" />
                   <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-fuchsia-500 rounded-full" />
@@ -1433,11 +1433,11 @@ export default function App() {
                   <span className="inline-block px-4 py-1.5 rounded-full bg-amber-400/20 border border-amber-400/30 text-amber-300 text-xs font-black uppercase mb-6 tracking-widest">
                     مرحباً بك في AtlasVault
                   </span>
-                  <h1 className="text-5xl md:text-7xl font-black mb-8 leading-tight">
+                  <h1 className="text-4xl sm:text-5xl md:text-7xl font-black mb-6 md:mb-8 leading-tight">
                     وجهتك الأولى لجميع <br />
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">الإشتراكات الرقمية</span>
                   </h1>
-                  <p className="text-xl text-fg/50 mb-12 max-w-2xl mx-auto leading-relaxed">
+                  <p className="text-base sm:text-lg md:text-xl text-fg/50 mb-8 md:mb-12 max-w-2xl mx-auto leading-relaxed">
                     استمتع بأفضل الأسعار وأسرع خدمة في تونس مع AtlasVault. نوفر لك جميع بطاقات الهدايا، اشتراكات البث، وألعاب الفيديو بجودة عالية وضمان كامل.
                   </p>
                   
