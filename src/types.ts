@@ -41,6 +41,7 @@ export interface UserProfile {
   isAdmin?: boolean;
   fcmToken?: string;
   cart?: any[];
+  phoneNumber?: string;
 }
 
 export interface Transaction {

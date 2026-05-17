@@ -70,6 +70,7 @@ import { ServiceRequestModal } from './components/ServiceRequestModal';
 import { OrderChatModal } from './components/OrderChatModal';
 import { RequestChatModal } from './components/RequestChatModal';
 import { P2PModal } from './components/P2PModal';
+import { ProfileSetupModal } from './components/ProfileSetupModal';
 import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User, db, setDoc, getDoc, updateDoc, deleteDoc, doc, collection, query, where, onSnapshot, addDoc, serverTimestamp, increment, OperationType, handleFirestoreError, getDocs, messaging, getToken, onMessage } from './lib/firebase';
 import { Product, UserProfile, Order, Category, Transaction, GiftCode, AccountCategory, ServiceRequest, AppNotification } from './types';
 import { Joyride, Step, STATUS } from 'react-joyride';
@@ -85,9 +86,6 @@ const ProductCardItem: React.FC<{
 }> = ({ product, onClick, onAddCart, index = -1 }) => {
   const [isAdding, setIsAdding] = useState(false);
   
-  // Make the 1st and 8th items larger to break monotony
-  const isFeatured = index === 0 || index === 7;
-
   const handleAddClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsAdding(true);
@@ -105,63 +103,57 @@ const ProductCardItem: React.FC<{
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9 }}
       onClick={onClick}
-      className={`group relative flex flex-col bg-bg/50 backdrop-blur-xl border border-white/5 rounded-2xl cursor-pointer hover:border-violet-500/30 transition-all duration-500 overflow-hidden ${isFeatured ? 'md:col-span-2 md:row-span-2 p-5' : 'p-3'}`}
+      className={`group relative flex flex-col bg-bg/60 backdrop-blur-md border border-fg/5 rounded-[1.5rem] cursor-pointer hover:border-violet-500/40 hover:shadow-[0_10px_40px_-15px_rgba(139,92,246,0.3)] transition-all duration-500 overflow-hidden p-3`}
     >
-      {/* Glow Effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-violet-500/0 via-fuchsia-500/0 to-purple-500/0 group-hover:from-violet-500/10 group-hover:via-fuchsia-500/5 group-hover:to-purple-500/10 transition-colors duration-500" />
+      {/* Subtle background glow on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       
       {/* Image Section */}
-      <div className={`relative rounded-xl overflow-hidden mb-3 bg-fg/5 border border-white/5 ${isFeatured ? 'aspect-[16/10] md:aspect-auto md:flex-1' : 'aspect-[16/10]'}`}>
+      <div className="relative rounded-2xl overflow-hidden mb-4 bg-fg/5 border border-fg/5 aspect-[1/1] sm:aspect-[4/3]">
         {product.badge && (
-          <div className="absolute top-2 left-2 z-20 px-2 py-0.5 bg-violet-500 text-white text-[9px] font-bold tracking-wide rounded-full shadow-lg backdrop-blur-md">
+          <div className="absolute top-3 left-3 z-20 px-3 py-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[10px] sm:text-xs font-bold tracking-wide rounded-full shadow-lg backdrop-blur-md">
             {product.badge}
           </div>
         )}
-        <div className="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-           <Zap size={12} className="text-violet-400" />
+        <div className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-300 scale-90 group-hover:scale-100">
+           <Zap size={14} className="text-violet-400" />
         </div>
         {product.imageUrl ? (
-          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-5xl group-hover:scale-110 transition-transform duration-500">
+          <div className="w-full h-full flex items-center justify-center text-7xl group-hover:scale-110 transition-transform duration-500 drop-shadow-lg">
             {product.image}
           </div>
         )}
       </div>
 
       {/* Content Section */}
-      <div className="flex flex-col flex-1 relative z-10 px-1 text-right">
-        <div className="flex items-center justify-between mb-2">
-           <span className="px-1.5 py-0.5 bg-fg/5 rounded-md border border-white/5 text-[9px] font-medium text-fg/60">{product.category}</span>
-           <div className="flex items-center gap-1 bg-yellow-500/10 px-1.5 py-0.5 rounded-md border border-yellow-500/20">
-             <Star size={9} className="text-yellow-500" fill="currentColor" />
-             <span className="text-[9px] font-bold text-yellow-500">{product.rating}</span>
+      <div className="flex flex-col flex-1 relative z-10 px-2 text-right">
+        <div className="flex items-center justify-between mb-3">
+           <span className="px-2 py-1 bg-fg/5 rounded-lg border border-fg/5 text-[10px] font-bold text-fg/60 uppercase tracking-widest">{product.category}</span>
+           <div className="flex items-center gap-1.5 bg-yellow-500/10 px-2 py-1 rounded-lg border border-yellow-500/20">
+             <Star size={10} className="text-yellow-500" fill="currentColor" />
+             <span className="text-[10px] font-black text-yellow-500">{product.rating}</span>
            </div>
         </div>
         
-        <h3 className="font-bold text-sm sm:text-base text-fg group-hover:text-violet-400 transition-colors mb-1.5 leading-tight line-clamp-1">{product.name}</h3>
+        <h3 className="text-sm border-t-0 sm:text-base font-bold text-fg line-clamp-1 mb-1 transition-colors group-hover:text-violet-500">{product.name}</h3>
+        {product.duration ? <p className="text-[11px] text-fg/40 font-semibold mb-3">{product.duration}</p> : <div className="h-4 mb-3" />}
         
-        <p className="hidden sm:block text-[11px] text-fg/50 line-clamp-2 mb-3 leading-relaxed group-hover:text-fg/70 transition-colors">
-           {product.description || 'احصل على هذه الخدمة الآن بأفضل الأسعار'}
-        </p>
-        
-        <div className="mt-auto pt-2 sm:pt-3 border-t border-white/5 flex items-center justify-between">
+        <div className="mt-auto pt-4 border-t border-fg/5 flex items-center justify-between">
           <button 
             onClick={handleAddClick}
             disabled={isAdding}
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-fg/5 hover:bg-violet-600 text-fg hover:text-white flex items-center justify-center transition-all duration-300 group-hover:shadow-[0_0_15px_rgba(139,92,246,0.3)] disabled:opacity-70 disabled:cursor-wait"
+            className="w-10 h-10 rounded-xl bg-violet-600/10 text-violet-600 dark:text-violet-400 hover:bg-violet-600 hover:text-white flex items-center justify-center transition-all duration-300 hover:shadow-[0_5px_15px_rgba(139,92,246,0.4)] hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:cursor-wait"
+            title="أضف إلى السلة"
           >
-            {isAdding ? (
-              <Loader2 size={16} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-            ) : (
-              <Plus size={16} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 delay-100" />
-            )}
+            {isAdding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={18} />}
           </button>
-          <div className="flex flex-col items-end">
-            <span className="text-[8px] sm:text-[9px] text-fg/40 uppercase tracking-widest font-medium">السعر</span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-sm sm:text-lg font-bold text-fg">{product.price.toFixed(3)}</span>
-              <span className="text-[9px] sm:text-[10px] font-medium text-violet-400">DT</span>
+          <div className="flex flex-col gap-0 items-end">
+            <span className="text-[9px] text-fg/40 font-bold uppercase tracking-widest">السعر</span>
+            <div className="font-black text-lg sm:text-xl text-fg flex items-baseline gap-1">
+              {product.price}
+              <span className="text-[10px] text-violet-500 font-black">DT</span>
             </div>
           </div>
         </div>
@@ -177,13 +169,14 @@ const CustomRequestCard: React.FC<{ categoryName: string, onClick: () => void }>
     animate={{ opacity: 1, scale: 1 }}
     exit={{ opacity: 0, scale: 0.9 }}
     onClick={onClick}
-    className="group relative flex flex-col items-center justify-center bg-bg/50 backdrop-blur-xl border border-dashed border-white/10 rounded-2xl p-5 cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 transition-all duration-500 overflow-hidden h-full min-h-[200px]"
+    className="group relative flex flex-col items-center justify-center bg-bg/60 backdrop-blur-md border border-dashed border-fg/10 rounded-[1.5rem] p-5 cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 transition-all duration-500 overflow-hidden h-full min-h-[260px] shadow-sm hover:shadow-[0_10px_40px_-15px_rgba(245,158,11,0.3)]"
   >
-    <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 mb-3 group-hover:scale-110 transition-transform duration-500">
-      <MessageSquare size={24} />
+    <div className="absolute inset-0 bg-gradient-to-t from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 mb-4 group-hover:scale-110 group-hover:rotate-[10deg] transition-all duration-500">
+      <MessageSquare size={28} />
     </div>
-    <h3 className="font-bold text-base text-fg group-hover:text-amber-500 transition-colors mb-2 text-center flex items-center gap-2">طلبية خاصة <ArrowLeft size={14} className="opacity-0 group-hover:opacity-100 group-hover:-translate-x-1 transition-all" /></h3>
-    <p className="text-[11px] text-fg/50 text-center leading-relaxed">مالقيتش الخدمة اللي تفركس عليها في <span className="font-bold text-fg/80">{categoryName}</span>؟ اطلبها توة واحنا نوفروهالك.</p>
+    <h3 className="font-bold text-lg text-fg group-hover:text-amber-600 transition-colors mb-2 text-center flex items-center gap-2">طلبية خاصة <ArrowLeft size={16} className="opacity-0 group-hover:opacity-100 group-hover:-translate-x-1 transition-all" /></h3>
+    <p className="text-xs text-fg/50 text-center leading-relaxed">مالقيتش الخدمة اللي تفركس عليها في <span className="font-bold text-fg/80">{categoryName}</span>؟ اطلبها توة واحنا نوفروهالك.</p>
   </motion.div>
 );
 
@@ -323,6 +316,16 @@ export default function App() {
   const [editingAccountCat, setEditingAccountCat] = useState<Partial<AccountCategory> | null>(null);
   const [selectedOrderChat, setSelectedOrderChat] = useState<Order | null>(null);
   const [selectedRequestChat, setSelectedRequestChat] = useState<ServiceRequest | null>(null);
+  const [pendingChatAction, setPendingChatAction] = useState<(() => void) | null>(null);
+
+  const handleOpenChatWithCheck = (action: () => void) => {
+    if (profile && (!profile.phoneNumber || !profile.displayName)) {
+      setPendingChatAction(() => action);
+    } else {
+      action();
+    }
+  };
+
   const [adminTab, setAdminTab] = useState('orders'); // orders, products, users, categories
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [activeSlide, setActiveSlide] = useState(0);
@@ -837,11 +840,11 @@ export default function App() {
       setCurrentTab('orders');
       
       // Auto-open chat for the newly created order
-      setSelectedOrderChat({
+      handleOpenChatWithCheck(() => setSelectedOrderChat({
         orderId: orderRef.id,
         ...orderData,
         createdAt: { toDate: () => new Date() } // Best-effort mock for instant UI
-      } as any);
+      } as any));
 
       // We don't alert anymore because the chat opens immediately
     } catch (error) {
@@ -1666,11 +1669,11 @@ export default function App() {
                             ))}
                           </div>
 
-                          <h1 className="text-5xl md:text-8xl font-black mb-8 leading-[1.1] tracking-tight whitespace-pre-line bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/40">
+                          <h1 className="text-5xl md:text-8xl font-black mb-8 leading-[1.1] tracking-tight whitespace-pre-line bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/60">
                             {heroSlides[activeSlide].title}
                           </h1>
 
-                          <p className="text-lg md:text-xl text-fg/40 mb-12 max-w-2xl font-medium leading-relaxed">
+                          <p className="text-lg md:text-xl text-fg/60 mb-12 max-w-2xl font-medium leading-relaxed">
                             {heroSlides[activeSlide].subtitle}
                           </p>
 
@@ -1685,17 +1688,21 @@ export default function App() {
                               className="px-10 py-5 bg-violet-600 text-white font-bold rounded-2xl shadow-[0_20px_50px_-10px_rgba(139,92,246,0.5)] relative group overflow-hidden"
                             >
                               <span className="relative z-10 flex items-center gap-2">
-                                Start Exploring <ArrowRight size={20} className="group-hover:-translate-x-2 transition-transform scale-x-[-1]" />
+                                تصفح الخدمات <ArrowRight size={20} className="group-hover:-translate-x-2 transition-transform scale-x-[-1]" />
                               </span>
-                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[100%] group-hover:translate-x-[-100%] transition-transform duration-700" />
                             </motion.button>
                             
                             <motion.button 
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
+                              onClick={() => {
+                                const el = document.getElementById('pd-features');
+                                el?.scrollIntoView({ behavior: 'smooth' });
+                              }}
                               className="px-10 py-5 bg-fg/5 border border-fg/10 text-fg font-bold rounded-2xl hover:bg-fg/10 transition-colors"
                             >
-                              View Deals
+                              المميزات
                             </motion.button>
                           </div>
                         </motion.div>
@@ -1718,7 +1725,7 @@ export default function App() {
 
                   {/* Floating Widgets Interface Mockup */}
                   <div className="hidden xl:block">
-                    {/* Total Earned Card */}
+                    {/* Security & Reliability Card */}
                     <motion.div 
                       animate={{ y: [0, -20, 0] }}
                       transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -1726,15 +1733,15 @@ export default function App() {
                     >
                       <div className="flex justify-between items-start mb-6">
                         <div className="text-right">
-                          <p className="text-[10px] text-fg/40 font-bold uppercase tracking-widest">Total Earned</p>
-                          <p className="text-2xl font-black">$4,329</p>
+                          <p className="text-[10px] text-fg/40 font-bold uppercase tracking-widest">تحديثات النظام</p>
+                          <p className="text-xl font-black">أمان عالي %100</p>
                         </div>
                         <div className="p-2 bg-violet-500/20 rounded-lg text-violet-400">
-                          <Zap size={16} />
+                          <ShieldCheck size={16} />
                         </div>
                       </div>
                       <div className="h-16 flex items-end gap-1 px-1">
-                        {[40, 70, 45, 90, 65, 85, 55, 75].map((h, i) => (
+                        {[40, 70, 45, 90, 65, 85, 55, 100].map((h, i) => (
                           <div key={i} className="flex-1 bg-violet-500/20 rounded-t-sm relative overflow-hidden h-full">
                             <div className="absolute bottom-0 inset-x-0 bg-violet-500 rounded-t-sm transition-all" style={{ height: `${h}%` }} />
                           </div>
@@ -1742,7 +1749,7 @@ export default function App() {
                       </div>
                     </motion.div>
 
-                    {/* Income Bar Chart */}
+                    {/* Speed / Delivery Bar Chart */}
                     <motion.div 
                       animate={{ y: [0, 20, 0] }}
                       transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
@@ -1750,15 +1757,15 @@ export default function App() {
                     >
                       <div className="flex items-center gap-3 mb-6">
                          <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center">
-                            <BarChart3 size={20} />
+                            <Zap size={20} className="text-white" />
                          </div>
-                         <div>
-                           <p className="text-[10px] text-fg/40 font-bold uppercase">income</p>
-                           <p className="font-bold">Growth Tracking</p>
+                         <div className="text-right flex-1">
+                           <p className="text-[10px] text-fg/40 font-bold uppercase">السرعة</p>
+                           <p className="font-bold">تفعيل فوري</p>
                          </div>
                       </div>
                       <div className="flex items-end gap-2 h-20">
-                        {[1, 0.6, 0.8, 0.4, 0.9, 0.7].map((s, i) => (
+                        {[1, 0.8, 0.9, 0.7, 0.9, 1].map((s, i) => (
                           <div key={i} className="flex-1 bg-fg/5 rounded-full relative h-full">
                             <div className="absolute bottom-0 inset-x-0 bg-fg/20 rounded-full" style={{ height: `${s * 100}%` }} />
                           </div>
@@ -1766,21 +1773,22 @@ export default function App() {
                       </div>
                     </motion.div>
 
-                    {/* Activity Mini-Card */}
+                    {/* Support Mini-Card */}
                     <motion.div 
-                      animate={{ x: [0, 15, 0] }}
+                      animate={{ x: [0, -15, 0] }}
                       transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute top-1/2 -left-32 -translate-y-1/2 p-4 bg-fg/[0.03] backdrop-blur-2xl border border-fg/10 rounded-2xl flex items-center gap-4 w-72 shadow-2xl"
+                      className="absolute top-1/2 -left-32 -translate-y-1/2 p-4 bg-fg/[0.03] backdrop-blur-2xl border border-fg/5 rounded-2xl flex items-center gap-4 w-72 shadow-2xl"
+                      dir="rtl"
                     >
-                      <div className="w-12 h-12 bg-fg/10 rounded-xl flex items-center justify-center text-xl">🛒</div>
+                      <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center text-xl"><MessageSquare size={20} /></div>
                       <div className="flex-1">
-                        <p className="font-black text-sm">Amazon Order</p>
-                        <p className="text-[10px] text-fg/40">Online pay - $99.99</p>
+                        <p className="font-black text-sm">دعم فني</p>
+                        <p className="text-[10px] text-fg/40">متواجدون دائماً للمساعدة</p>
                       </div>
-                      <div className="text-red-400 font-bold text-xs">-$99</div>
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.8)]"></div>
                     </motion.div>
 
-                    {/* Yellow Wallet Card */}
+                    {/* Yellow Subscription Card */}
                     <motion.div 
                       animate={{ rotate: [-3, 3, -3] }}
                       transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
@@ -1788,13 +1796,13 @@ export default function App() {
                     >
                       <div className="flex justify-between items-start mb-10">
                          <div className="w-12 h-12 bg-black/10 rounded-2xl flex items-center justify-center">
-                            <Cpu size={24} fill="currentColor" />
+                            <Star size={24} fill="currentColor" />
                          </div>
-                         <span className="text-xs font-black uppercase tracking-tighter">Atlas Safe Protocol</span>
+                         <span className="text-xs font-black uppercase tracking-tighter">أطلس الموثوق</span>
                       </div>
                       <div className="space-y-1">
-                         <p className="text-3xl font-black">18.73 ETH</p>
-                         <p className="text-[10px] font-bold opacity-60">0xF1 **** c8822</p>
+                         <p className="text-3xl font-black text-right">+5,000</p>
+                         <p className="text-[10px] font-bold opacity-60 text-right">مستخدم سعيد بخدماتنا</p>
                       </div>
                     </motion.div>
 
@@ -1804,10 +1812,10 @@ export default function App() {
                       transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
                       className="absolute -top-10 -right-20 p-10 bg-fg/5 backdrop-blur-md border border-fg/20 rounded-[3.5rem] shadow-2xl"
                     >
-                       <p className="text-[10px] text-fg/60 font-black uppercase tracking-[0.2em] mb-2">Acc balance</p>
-                       <p className="text-5xl font-black tracking-tighter">$3,853.65</p>
-                       <div className="mt-8 flex gap-2">
-                          <div className="w-8 h-2 bg-fg/20 rounded-full" />
+                       <p className="text-[10px] text-fg/60 font-black uppercase tracking-[0.2em] mb-2 text-right">رضا العملاء</p>
+                       <p className="text-5xl font-black tracking-tighter text-right">%99.9</p>
+                       <div className="mt-8 flex gap-2 justify-end">
+                          <div className="w-8 h-2 bg-emerald-500 rounded-full" />
                           <div className="w-2 h-2 bg-fg/20 rounded-full" />
                           <div className="w-2 h-2 bg-fg/20 rounded-full" />
                        </div>
@@ -1831,37 +1839,34 @@ export default function App() {
                 </div>
 
                 <div className="relative mb-8">
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 pb-4 auto-rows-fr">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-4">
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => { 
                         setActiveCategory('الكل');
                         setActiveSubL1(null);
                         setActiveSubL2(null);
                       }}
-                      className={`group relative p-4 rounded-2xl flex flex-col items-center justify-between gap-3 transition-all border overflow-hidden w-full h-full min-h-[140px] ${
+                      className={`group relative p-3 rounded-2xl flex items-center gap-4 transition-all border overflow-hidden w-full ${
                         activeCategory === 'الكل' 
-                        ? 'bg-gradient-to-br from-violet-600/90 to-fuchsia-800 border-violet-400/50 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.6)] z-10 ring-1 ring-white/20' 
-                        : 'bg-bg/50 backdrop-blur-md border-white/5 text-fg/60 hover:bg-white/5 hover:border-white/20 hover:text-fg shadow-lg'
+                        ? 'bg-gradient-to-br from-violet-600/90 to-fuchsia-800 border-violet-400/50 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.5)] z-10' 
+                        : 'bg-bg/60 backdrop-blur-md border-fg/5 text-fg/70 hover:bg-fg/5 hover:border-violet-500/30 hover:text-fg shadow-sm'
                       }`}
                     >
-                       <span className={`text-4xl drop-shadow-md transition-transform duration-300 ${activeCategory === 'الكل' ? 'scale-110' : 'group-hover:scale-110'}`}>🌟</span>
+                       <div className={`w-12 h-12 shrink-0 rounded-xl flex items-center justify-center transition-all duration-300 ${activeCategory === 'الكل' ? 'bg-white/20 shadow-inner' : 'bg-fg/5 group-hover:bg-violet-500/10'}`}>
+                         <span className={`text-2xl drop-shadow-sm transition-transform duration-300 ${activeCategory === 'الكل' ? 'scale-110' : 'group-hover:scale-110'}`}>🌟</span>
+                       </div>
                        
-                       <div className="flex flex-col items-center gap-1.5 text-current w-full flex-1 justify-end">
-                         <span className={`text-[13px] leading-tight font-bold tracking-wide text-center w-full px-1 ${activeCategory === 'الكل' ? 'text-white drop-shadow-sm' : 'text-fg/70 group-hover:text-fg transition-colors'}`}>الكل</span>
-                         {activeCategory === 'الكل' && (
-                           <motion.div 
-                             layoutId="active-nav-indicator"
-                             className="absolute bottom-0 inset-x-0 h-1 bg-white/40 shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
-                           />
-                         )}
+                       <div className="flex flex-col items-start text-right flex-1 truncate">
+                         <span className={`text-sm font-bold tracking-wide w-full truncate ${activeCategory === 'الكل' ? 'text-white' : 'text-fg transition-colors group-hover:text-violet-500'}`}>الكل</span>
+                         <span className={`text-[10px] uppercase font-bold tracking-widest mt-0.5 ${activeCategory === 'الكل' ? 'text-white/70' : 'text-fg/40'}`}>جميع المنتجات</span>
                        </div>
                     </motion.button>
                     {dynamicCategories.filter(c => (c.level === 0 || c.level === undefined)).map((category, idx) => (
                       <motion.button
                         key={category.slug}
-                        initial={{ opacity: 0, scale: 0.9, y: 15 }}
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         transition={{ delay: idx * 0.05 }}
                         whileHover={{ scale: 1.02 }}
@@ -1871,37 +1876,34 @@ export default function App() {
                           setActiveSubL1(null);
                           setActiveSubL2(null);
                         }}
-                        className={`group relative p-4 rounded-2xl flex flex-col items-center justify-between gap-3 transition-all border overflow-hidden w-full h-full min-h-[140px] ${
+                        className={`group relative p-3 rounded-2xl flex items-center gap-4 transition-all border overflow-hidden w-full ${
                           activeCategory === category.name 
-                          ? 'bg-gradient-to-br from-violet-600/90 to-fuchsia-800 border-violet-400/50 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.6)] z-10 ring-1 ring-white/20' 
-                          : 'bg-bg/50 backdrop-blur-md border-white/5 text-fg/60 hover:bg-white/5 hover:border-white/20 hover:text-fg shadow-lg'
+                          ? 'bg-gradient-to-br from-violet-600/90 to-fuchsia-800 border-violet-400/50 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.5)] z-10' 
+                          : 'bg-bg/60 backdrop-blur-md border-fg/5 text-fg/70 hover:bg-fg/5 hover:border-violet-500/30 hover:text-fg shadow-sm'
                         }`}
                       >
                         {/* Interactive Background Glow */}
                         <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-gradient-to-br ${category.color?.split(' ')[0].replace('bg-', '') || 'from-violet-500 to-fuchsia-500'}`} />
                         
-                        <div className={`w-14 h-14 shrink-0 rounded-[1rem] flex items-center justify-center transition-all duration-300 shadow-inner overflow-hidden ${
+                        <div className={`w-12 h-12 shrink-0 rounded-xl flex items-center justify-center transition-all duration-300 overflow-hidden ${
                           activeCategory === category.name 
-                          ? 'bg-white/20 rotate-[5deg] scale-110 shadow-[0_0_20px_rgba(255,255,255,0.3)]' 
-                          : `${category.color || 'bg-fg/5 text-white'} group-hover:rotate-[-8deg] group-hover:scale-105`
+                          ? 'bg-white/20 shadow-inner scale-105' 
+                          : `${category.color || 'bg-fg/5 text-white'} group-hover:scale-105`
                         }`}>
                           {category.imageUrl ? (
                             <img src={category.imageUrl} alt={category.name} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-3xl drop-shadow-md">{category.icon}</span>
+                            <span className="text-2xl drop-shadow-sm">{category.icon}</span>
                           )}
                         </div>
                         
-                        <div className="flex flex-col items-center gap-1.5 text-current w-full flex-1 justify-end">
-                          <span className={`text-[13px] leading-tight font-bold tracking-wide text-center w-full px-1 ${activeCategory === category.name ? 'text-white drop-shadow-sm' : 'text-fg/70 group-hover:text-fg transition-colors'}`}>
+                        <div className="flex flex-col items-start text-right flex-1 truncate">
+                          <span className={`text-sm font-bold tracking-wide w-full truncate ${activeCategory === category.name ? 'text-white' : 'text-fg transition-colors group-hover:text-violet-500'}`}>
                             {category.name}
                           </span>
-                          {activeCategory === category.name && (
-                            <motion.div 
-                              layoutId="active-nav-indicator"
-                              className="absolute bottom-0 inset-x-0 h-1 bg-white/40 shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
-                            />
-                          )}
+                          <span className={`text-[10px] uppercase font-bold tracking-widest mt-0.5 ${activeCategory === category.name ? 'text-white/70' : 'text-fg/40'}`}>
+                            {products.filter(p => p.category?.trim() === category.name?.trim()).length} منتجات
+                          </span>
                         </div>
                       </motion.button>
                     ))}
@@ -2107,13 +2109,33 @@ export default function App() {
               {/* Dynamic Products Grid */}
               <section id="products-grid" className="max-w-7xl mx-auto px-4 py-8 mb-20 relative z-10" dir="rtl">
                 {filteredProducts.length === 0 ? (
-                  <div className="py-20 text-center">
-                    <div className="inline-flex p-6 bg-fg/5 rounded-full mb-4">
-                      <Search size={48} className="text-fg/20" />
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="py-24 text-center flex flex-col items-center">
+                    <div className="relative w-32 h-32 mb-8 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-violet-500/10 rounded-full animate-ping" />
+                      <div className="absolute inset-2 bg-violet-500/10 rounded-full animate-pulse" />
+                      <div className="relative z-10 w-20 h-20 bg-panel border-2 border-fg/5 rounded-2xl flex items-center justify-center shadow-xl rotate-12">
+                        <Search size={32} className="text-violet-500/50" />
+                      </div>
+                      <div className="absolute -bottom-2 -right-2 z-20 w-12 h-12 bg-panel border-2 border-fg/5 rounded-full flex items-center justify-center shadow-lg -rotate-12">
+                        <X size={20} className="text-red-400" />
+                      </div>
                     </div>
-                    <h3 className="text-2xl font-bold">حتى شي ما فمّة</h3>
-                    <p className="text-fg/40 mt-2">جرب لوّج على حاجة اخرى.</p>
-                  </div>
+                    <h3 className="text-3xl font-black text-fg mb-3">للأسف، لم نجد ما تبحث عنه</h3>
+                    <p className="text-lg text-fg/50 max-w-md mx-auto leading-relaxed mb-8">
+                       حاول استخدام كلمات مفتاحية أخرى أو تصفح منتجاتنا في الأقسام المتاحة.
+                    </p>
+                    <button 
+                      onClick={() => {
+                        setSearchQuery('');
+                        setActiveCategory('الكل');
+                        setActiveSubL1(null);
+                        setActiveSubL2(null);
+                      }}
+                      className="px-8 py-4 bg-fg text-bg rounded-2xl font-bold hover:bg-violet-600 hover:text-white transition-all shadow-lg active:scale-95 flex items-center gap-2"
+                    >
+                      <ArrowRight size={18} /> العودة للرئيسية
+                    </button>
+                  </motion.div>
                 ) : (
                   searchQuery === '' && priceRange.min === '' && priceRange.max === '' && sortBy === 'featured' ? (
                     <div className="space-y-16">
@@ -2129,17 +2151,22 @@ export default function App() {
                           return (
                              <div key={cat.slug} className="space-y-12">
                                 {/* Category Header */}
-                                <div className="flex items-center gap-4 border-b border-white/5 pb-4">
-                                   <div className="w-14 h-14 rounded-2xl bg-fg/5 border border-white/5 flex items-center justify-center text-3xl shadow-inner">
-                                     {cat.imageUrl ? <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover rounded-2xl" /> : cat.icon}
+                                <div className="flex items-center justify-between border-b border-fg/5 pb-6">
+                                   <div className="flex items-center gap-4">
+                                     <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 flex items-center justify-center text-4xl shadow-inner shadow-violet-500/10">
+                                       {cat.imageUrl ? <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover rounded-[1.5rem]" /> : cat.icon}
+                                     </div>
+                                     <div>
+                                       <h2 className="text-3xl font-black text-fg mb-1">{cat.name}</h2>
+                                       <p className="text-xs text-fg/40 font-bold uppercase tracking-widest">{catProducts.length} منتجات متاحة</p>
+                                     </div>
                                    </div>
-                                   <h2 className="text-3xl font-black">{cat.name}</h2>
                                 </div>
                                 
                                 {/* General products for this category (if any) */}
                                 {pdsNoL1.length > 0 && (
                                    <div className="space-y-6">
-                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6 grid-flow-dense">
+                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
                                         <AnimatePresence mode="popLayout">
                                           {pdsNoL1.map((product, idx) => (
                                              <ProductCardItem 
@@ -2172,10 +2199,10 @@ export default function App() {
                                       return (
                                          <div key={l1.slug} className="space-y-6 relative before:absolute before:right-0 before:top-2 before:bottom-2 before:w-1 before:bg-gradient-to-b before:from-violet-500/0 before:via-violet-500/20 before:to-violet-500/0 pr-6">
                                             <div className="flex items-center gap-3">
-                                               <div className="w-8 h-8 rounded-xl bg-fg/5 flex items-center justify-center text-lg">{l1.icon}</div>
-                                               <h3 className="text-xl font-bold text-fg/90">{l1.name}</h3>
+                                               <div className="w-10 h-10 rounded-xl bg-violet-500/5 border border-violet-500/10 flex items-center justify-center text-xl">{l1.icon}</div>
+                                               <h3 className="text-xl font-bold text-fg">{l1.name}</h3>
                                             </div>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6 grid-flow-dense">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
                                                <AnimatePresence mode="popLayout">
                                                   {pdsL1.map((product, idx) => (
                                                      <ProductCardItem 
@@ -2230,7 +2257,7 @@ export default function App() {
                                   <h2 className="text-3xl font-black">أخرى</h2>
                                </div>
                                <div className="space-y-6">
-                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6 grid-flow-dense">
+                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
                                     <AnimatePresence mode="popLayout">
                                       {uncategorizedProducts.map((product, idx) => (
                                          <ProductCardItem 
@@ -2253,7 +2280,7 @@ export default function App() {
 
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6 grid-flow-dense">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
                       <AnimatePresence mode="popLayout">
                         {filteredProducts.map((product, idx) => (
                            <ProductCardItem 
@@ -2443,7 +2470,7 @@ export default function App() {
                                       <option value="rejected" className="bg-background">مرفوض</option>
                                    </select>
                                    <button 
-                                      onClick={() => setSelectedRequestChat(req)}
+                                      onClick={() => handleOpenChatWithCheck(() => setSelectedRequestChat(req))}
                                       className="relative p-2 bg-amber-500/10 text-amber-500 rounded-xl hover:bg-amber-500 hover:text-white transition-colors"
                                    >
                                       <MessageSquare size={16} />
@@ -2554,7 +2581,7 @@ export default function App() {
                                   <td className="px-4 py-3 rounded-l-2xl border-y border-l border-transparent group-hover:border-fg/5 text-left">
                                     <div className="flex items-center justify-end gap-2">
                                       <button
-                                        onClick={() => setSelectedOrderChat(order)}
+                                        onClick={() => handleOpenChatWithCheck(() => setSelectedOrderChat(order))}
                                         className="relative p-2 bg-fg/5 text-fg hover:bg-fg/10 hover:shadow-inner hover:text-violet-400 rounded-xl transition-all"
                                       >
                                         <MessageSquare size={16} />
@@ -3098,7 +3125,7 @@ export default function App() {
                             req.status === 'in-progress' ? 'قيد التنفيذ' :
                             req.status === 'completed' ? 'مكتمل' : 'مرفوض'}
                          </span>
-                         <button onClick={() => setSelectedRequestChat(req)} className="relative p-2 ml-2 bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-white rounded-xl transition-colors shrink-0">
+                         <button onClick={() => handleOpenChatWithCheck(() => setSelectedRequestChat(req))} className="relative p-2 ml-2 bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-white rounded-xl transition-colors shrink-0">
                            <MessageSquare size={18} />
                            {req.unreadMessagesUser ? (
                              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px]">
@@ -3169,7 +3196,7 @@ export default function App() {
                                    <span className="text-sm border-t-0 font-bold ml-1">DT</span>
                                 </div>
                                 <button
-                                  onClick={() => setSelectedOrderChat(order)}
+                                  onClick={() => handleOpenChatWithCheck(() => setSelectedOrderChat(order))}
                                   className="w-full relative px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl text-xs transition-all shadow-lg"
                                 >
                                   المحادثة
@@ -3731,6 +3758,18 @@ export default function App() {
          />
       )}
 
+      {pendingChatAction && profile && (
+        <ProfileSetupModal
+          isOpen={!!pendingChatAction}
+          onClose={() => setPendingChatAction(null)}
+          profile={profile}
+          onComplete={() => {
+            pendingChatAction();
+            setPendingChatAction(null);
+          }}
+        />
+      )}
+
       <AnimatePresence>
         {selectedProduct && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center isolate">
@@ -3915,7 +3954,7 @@ export default function App() {
                   ) : (
                     <ShoppingBag size={24} />
                   )}
-                  {isAddingModalToCart ? 'جاري الإضافة...' : 'اطلب هذه الخدمة'}
+                  {isAddingModalToCart ? 'جاري الإضافة...' : 'أضف إلى السلة'}
                 </button>
               </div>
 
