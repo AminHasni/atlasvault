@@ -333,6 +333,7 @@ export default function App() {
   const [activeSubL1, setActiveSubL1] = useState<string | null>(null);
   const [activeSubL2, setActiveSubL2] = useState<string | null>(null);
   const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [priceRange, setPriceRange] = useState<{ min: number | '', max: number | '' }>({ min: '', max: '' });
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
   const [currentTab, setCurrentTab] = useState('home'); // home, shop, profile
@@ -2164,29 +2165,47 @@ export default function App() {
                                 </div>
                                 
                                 {/* General products for this category (if any) */}
-                                {pdsNoL1.length > 0 && (
-                                   <div className="space-y-6">
-                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
-                                        <AnimatePresence mode="popLayout">
-                                          {pdsNoL1.map((product, idx) => (
-                                             <ProductCardItem 
-                                               key={product.id} 
-                                               product={product} 
-                                               index={idx}
-                                               onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
-                                               onAddCart={(e) => {
-                                                 e.stopPropagation();
-                                                 addToCart(product, product.options?.[0]);
-                                               }}
-                                             />
-                                          ))}
-                                          {l1s.length === 0 && (
-                                              <CustomRequestCard key="custom-req" categoryName={cat.name} onClick={() => setIsRequestModalOpen(true)} />
-                                          )}
-                                        </AnimatePresence>
+                                {pdsNoL1.length > 0 && (() => {
+                                   const isCatExpanded = expandedSections.has(`cat-${cat.slug}`);
+                                   const displayedPdsNoL1 = isCatExpanded ? pdsNoL1 : pdsNoL1.slice(0, 4);
+                                   const hasMorePdsNoL1 = pdsNoL1.length > 4;
+                                   return (
+                                     <div className="space-y-6 flex flex-col items-center">
+                                       <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
+                                          <AnimatePresence mode="popLayout">
+                                            {displayedPdsNoL1.map((product, idx) => (
+                                               <ProductCardItem 
+                                                 key={product.id} 
+                                                 product={product} 
+                                                 index={idx}
+                                                 onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
+                                                 onAddCart={(e) => {
+                                                   e.stopPropagation();
+                                                   addToCart(product, product.options?.[0]);
+                                                 }}
+                                               />
+                                            ))}
+                                            <CustomRequestCard key={`custom-req-${cat.slug}`} categoryName={cat.name} onClick={() => setIsRequestModalOpen(true)} />
+                                          </AnimatePresence>
+                                       </div>
+                                       {hasMorePdsNoL1 && (
+                                          <button 
+                                            onClick={() => {
+                                              setExpandedSections(prev => {
+                                                const next = new Set(prev);
+                                                if (next.has(`cat-${cat.slug}`)) next.delete(`cat-${cat.slug}`);
+                                                else next.add(`cat-${cat.slug}`);
+                                                return next;
+                                              });
+                                            }}
+                                            className="px-8 py-3 mt-2 bg-fg/5 hover:bg-fg/10 text-fg rounded-xl font-bold transition-all border border-fg/10"
+                                          >
+                                            {isCatExpanded ? 'عرض أقل' : `عرض الكل (${pdsNoL1.length})`}
+                                          </button>
+                                       )}
                                      </div>
-                                   </div>
-                                )}
+                                   );
+                                })()}
 
                                 {/* Sub-categories */}
                                 <div className="space-y-16">
@@ -2203,21 +2222,47 @@ export default function App() {
                                                <h3 className="text-xl font-bold text-fg">{l1.name}</h3>
                                             </div>
                                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
-                                               <AnimatePresence mode="popLayout">
-                                                  {pdsL1.map((product, idx) => (
-                                                     <ProductCardItem 
-                                                       key={product.id} 
-                                                       product={product} 
-                                                       index={idx}
-                                                       onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
-                                                       onAddCart={(e) => {
-                                                         e.stopPropagation();
-                                                         addToCart(product, product.options?.[0]);
-                                                       }}
-                                                     />
-                                                  ))}
-                                                  <CustomRequestCard key="custom-req" categoryName={l1.name} onClick={() => setIsRequestModalOpen(true)} />
-                                               </AnimatePresence>
+                                               {(() => {
+                                                  const isL1Expanded = expandedSections.has(`l1-${l1.slug}`);
+                                                  const displayedPdsL1 = isL1Expanded ? pdsL1 : pdsL1.slice(0, 4);
+                                                  const hasMorePdsL1 = pdsL1.length > 4;
+                                                  return (
+                                                    <div className="col-span-full flex flex-col items-center w-full gap-4">
+                                                      <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
+                                                        <AnimatePresence mode="popLayout">
+                                                           {displayedPdsL1.map((product, idx) => (
+                                                              <ProductCardItem 
+                                                                key={product.id} 
+                                                                product={product} 
+                                                                index={idx}
+                                                                onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
+                                                                onAddCart={(e) => {
+                                                                  e.stopPropagation();
+                                                                  addToCart(product, product.options?.[0]);
+                                                                }}
+                                                              />
+                                                           ))}
+                                                           <CustomRequestCard key={`custom-req-${l1.slug}`} categoryName={l1.name} onClick={() => setIsRequestModalOpen(true)} />
+                                                        </AnimatePresence>
+                                                      </div>
+                                                      {hasMorePdsL1 && (
+                                                         <button 
+                                                           onClick={() => {
+                                                             setExpandedSections(prev => {
+                                                               const next = new Set(prev);
+                                                               if (next.has(`l1-${l1.slug}`)) next.delete(`l1-${l1.slug}`);
+                                                               else next.add(`l1-${l1.slug}`);
+                                                               return next;
+                                                             });
+                                                           }}
+                                                           className="px-8 py-3 bg-fg/5 hover:bg-fg/10 text-fg rounded-xl font-bold transition-all border border-fg/10"
+                                                         >
+                                                           {isL1Expanded ? 'عرض أقل' : `عرض الكل (${pdsL1.length})`}
+                                                         </button>
+                                                      )}
+                                                    </div>
+                                                  );
+                                               })()}
                                             </div>
                                          </div>
                                       );
@@ -2258,20 +2303,47 @@ export default function App() {
                                </div>
                                <div className="space-y-6">
                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
-                                    <AnimatePresence mode="popLayout">
-                                      {uncategorizedProducts.map((product, idx) => (
-                                         <ProductCardItem 
-                                           key={product.id} 
-                                           product={product} 
-                                           index={idx}
-                                           onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
-                                           onAddCart={(e) => {
-                                             e.stopPropagation();
-                                             addToCart(product, product.options?.[0]);
-                                           }}
-                                         />
-                                      ))}
-                                    </AnimatePresence>
+                                      {(() => {
+                                         const isUncatExpanded = expandedSections.has('uncategorized');
+                                         const displayedUncat = isUncatExpanded ? uncategorizedProducts : uncategorizedProducts.slice(0, 4);
+                                         const hasMoreUncat = uncategorizedProducts.length > 4;
+                                         return (
+                                           <div className="col-span-full flex flex-col items-center w-full gap-4">
+                                              <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
+                                                <AnimatePresence mode="popLayout">
+                                                  {displayedUncat.map((product, idx) => (
+                                                     <ProductCardItem 
+                                                       key={product.id} 
+                                                       product={product} 
+                                                       index={idx}
+                                                       onClick={() => { setSelectedProduct(product); setSelectedOptionIndex(0); }}
+                                                       onAddCart={(e) => {
+                                                         e.stopPropagation();
+                                                         addToCart(product, product.options?.[0]);
+                                                       }}
+                                                     />
+                                                  ))}
+                                                  <CustomRequestCard key="custom-req-uncat" categoryName="أخرى" onClick={() => setIsRequestModalOpen(true)} />
+                                                </AnimatePresence>
+                                              </div>
+                                              {hasMoreUncat && (
+                                                <button 
+                                                  onClick={() => {
+                                                    setExpandedSections(prev => {
+                                                      const next = new Set(prev);
+                                                      if (next.has('uncategorized')) next.delete('uncategorized');
+                                                      else next.add('uncategorized');
+                                                      return next;
+                                                    });
+                                                  }}
+                                                  className="px-8 py-3 mt-4 bg-fg/5 hover:bg-fg/10 text-fg rounded-xl font-bold transition-all border border-fg/10"
+                                                >
+                                                  {isUncatExpanded ? 'عرض أقل' : `عرض الكل (${uncategorizedProducts.length})`}
+                                                </button>
+                                              )}
+                                           </div>
+                                         );
+                                      })()}
                                  </div>
                                </div>
                             </div>
