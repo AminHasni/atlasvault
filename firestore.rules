@@ -87,6 +87,11 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
     }
 
+    match /heroSlides/{slideId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /categories/{categoryId} {
       allow read: if true;
       allow write: if isAdmin();

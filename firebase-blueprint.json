@@ -89,6 +89,22 @@
       },
       "required": ["id", "name", "price", "category", "image", "rating"]
     },
+    "HeroSlide": {
+      "title": "Hero Slide",
+      "description": "Slides for the homepage hero section",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "emojis": { "type": "array" },
+        "accent": { "type": "string" },
+        "bg": { "type": "string" },
+        "buttonText": { "type": "string" },
+        "link": { "type": "string" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["title", "accent", "bg"]
+    },
     "AccountCategory": {
       "title": "Account Category",
       "description": "Category for accounts to be sold",
@@ -200,6 +216,10 @@
     "products/{id}": {
       "schema": "Product",
       "description": "Available products"
+    },
+    "heroSlides/{slideId}": {
+      "schema": "HeroSlide",
+      "description": "Hero section slides"
     }
   }
 }

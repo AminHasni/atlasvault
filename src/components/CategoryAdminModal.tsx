@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Check } from 'lucide-react';
 import { Category } from '../types';
 import { db, setDoc, doc, updateDoc } from '../lib/firebase';
+import { ImageUpload } from './ImageUpload';
 
 interface CategoryAdminModalProps {
   category: Partial<Category> | null;
@@ -76,9 +77,8 @@ export function CategoryAdminModal({ category, categories, onClose, onSave }: Ca
                <label className="block text-sm font-bold text-fg/60 mb-2">إيموجي</label>
                <input type="text" value={formData.icon} onChange={e => setFormData({...formData, icon: e.target.value})} className="w-full bg-fg/5 border border-fg/10 rounded-xl px-4 py-3 outline-none focus:border-violet-500" />
             </div>
-            <div>
-               <label className="block text-sm font-bold text-fg/60 mb-2">رابط الصورة (URL)</label>
-               <input type="text" value={formData.imageUrl || ''} onChange={e => setFormData({...formData, imageUrl: e.target.value})} placeholder="https://..." className="w-full bg-fg/5 border border-fg/10 rounded-xl px-4 py-3 outline-none focus:border-violet-500 text-left" dir="ltr" />
+            <div className="col-span-2 md:col-span-1">
+               <ImageUpload value={formData.imageUrl || ''} onChange={url => setFormData({...formData, imageUrl: url})} label="صورة الصنف (اختياري)" />
             </div>
             <div>
                <label className="block text-sm font-bold text-fg/60 mb-2">الألوان (Tailwind Classes)</label>

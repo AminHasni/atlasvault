@@ -16,11 +16,13 @@
     --color-fg: #0f172a;
     --color-bg: #f8fafc;
     --color-panel: #ffffff;
+    color-scheme: light;
   }
   .dark {
     --color-fg: #f8fafc;
     --color-bg: #020617; /* Slate 950 */
     --color-panel: #0f172a; /* Slate 900 */
+    color-scheme: dark;
   }
   html {
     scroll-behavior: smooth;
@@ -30,5 +32,9 @@
     color: var(--color-fg);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  option {
+    background-color: var(--color-panel);
+    color: var(--color-fg);
   }
 }

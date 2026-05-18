@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, ShieldCheck, AlertTriangle, Upload, CheckCircle2, User, Camera, FileText, Loader2 } from 'lucide-react';
-import { db, addDoc, collection, serverTimestamp, storage } from '../lib/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db, addDoc, collection, serverTimestamp } from '../lib/firebase';
 import { User as AuthUser } from 'firebase/auth';
 
 interface P2PModalProps {

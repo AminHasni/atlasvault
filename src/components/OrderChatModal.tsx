@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, User as UserIcon, Shield, AlertCircle, CheckCircle2, Clock, Wallet, Info, Paperclip, FileText, Download, Loader2, AlertTriangle, Lock } from 'lucide-react';
 import { Order, UserProfile, Message as MessageType } from '../types';
-import { storage, db, addDoc, collection, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, increment } from '../lib/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db, addDoc, collection, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, increment } from '../lib/firebase';
 import { User } from 'firebase/auth';
 
 interface Message {

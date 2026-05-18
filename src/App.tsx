@@ -59,6 +59,7 @@ import {
   SlidersHorizontal,
   ArrowUpDown,
   Activity,
+  ImageIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AtlasLogo } from './components/Logo';
@@ -66,6 +67,7 @@ import { ProductAdminModal } from './components/ProductAdminModal';
 import { CategoryAdminModal } from './components/CategoryAdminModal';
 import { GiftAdminModal } from './components/GiftAdminModal';
 import { AccountAdminModal } from './components/AccountAdminModal';
+import { HeroAdminModal } from './components/HeroAdminModal';
 import { ServiceRequestModal } from './components/ServiceRequestModal';
 import { OrderChatModal } from './components/OrderChatModal';
 import { RequestChatModal } from './components/RequestChatModal';
@@ -150,9 +152,11 @@ const ProductCardItem: React.FC<{
             {isAdding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={18} />}
           </button>
           <div className="flex flex-col gap-0 items-end">
-            <span className="text-[9px] text-fg/40 font-bold uppercase tracking-widest">السعر</span>
+            <span className="text-[9px] text-fg/40 font-bold uppercase tracking-widest">
+              {product.options && product.options.length > 0 ? 'السعر ابتداء من' : 'السعر'}
+            </span>
             <div className="font-black text-lg sm:text-xl text-fg flex items-baseline gap-1">
-              {product.price}
+              {product.options && product.options.length > 0 ? product.options[0].price : product.price}
               <span className="text-[10px] text-violet-500 font-black">DT</span>
             </div>
           </div>
@@ -314,6 +318,7 @@ export default function App() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingGiftCode, setEditingGiftCode] = useState<Partial<GiftCode> | null>(null);
   const [editingAccountCat, setEditingAccountCat] = useState<Partial<AccountCategory> | null>(null);
+  const [editingHeroSlide, setEditingHeroSlide] = useState<any>(null);
   const [selectedOrderChat, setSelectedOrderChat] = useState<Order | null>(null);
   const [selectedRequestChat, setSelectedRequestChat] = useState<ServiceRequest | null>(null);
   const [pendingChatAction, setPendingChatAction] = useState<(() => void) | null>(null);
@@ -652,36 +657,60 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveSlide(prev => (prev + 1) % heroSlides.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const heroSlides = [
+  const [heroSlides, setHeroSlides] = useState<any[]>([
     {
+      id: 'default-1',
       title: "Next - Gen \n Atlas Marketplace",
       subtitle: "اكتشف قوة البساطة والكفاءة مع منصتنا الرقمية الجديدة. مصممة لتبسيط اشتراكاتك الرقمية وتعزيز انتاجيتك.",
       emojis: ['✨', '🤖', '🎮', '🎵'],
       accent: 'from-violet-500 to-fuchsia-500',
-      bg: 'bg-violet-600/10'
+      bg: 'bg-violet-600/10',
+      buttonText: 'تصفح الخدمات',
+      link: 'shop'
     },
     {
+      id: 'default-2',
       title: "Premium AI \n For Everyone",
       subtitle: "أقوى اشتراكات الذكاء الاصطناعي بين يديك. ChatGPT، Claude و غيرهم بأسعار خيالية و تفعيل فوري.",
       emojis: ['🧠', '⚡', '🤖', '🔍'],
       accent: 'from-emerald-500 to-teal-500',
-      bg: 'bg-emerald-600/10'
+      bg: 'bg-emerald-600/10',
+      buttonText: 'اكتشف الذكاء الاصطناعي',
+      link: 'AI'
     },
     {
+      id: 'default-3',
       title: "Extreme Gaming \n Top-ups",
       subtitle: "اشحن ألعابك المفضلة في ثواني. Free Fire, PUBG, PlayStation و غيرهم بأفضل سوم في تونس.",
       emojis: ['🎮', '🔥', '💎', '🎯'],
       accent: 'from-orange-500 to-red-500',
-      bg: 'bg-orange-600/10'
+      bg: 'bg-orange-600/10',
+      buttonText: 'شحن الألعاب',
+      link: 'Games'
     }
-  ];
+  ]);
+
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'heroSlides'), (snapshot) => {
+        if (!snapshot.empty) {
+          const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+          setHeroSlides(fetched);
+        }
+      }, (err) => handleFirestoreError(err, OperationType.LIST, 'heroSlides'));
+      return () => unsub();
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (heroSlides.length === 0) return;
+    const timer = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % heroSlides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [heroSlides.length]);
 
   const handleLogin = async () => {
     try {
@@ -1638,10 +1667,17 @@ export default function App() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className={`absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-[600px] ${heroSlides[activeSlide].bg} blur-[120px] rounded-full -z-10`} 
-                  />
+                    className={`absolute inset-0 -z-10 bg-cover bg-center ${!heroSlides[activeSlide]?.imageUrl ? heroSlides[activeSlide]?.bg : ''}`}
+                    style={heroSlides[activeSlide]?.imageUrl ? { backgroundImage: `url(${heroSlides[activeSlide].imageUrl})` } : {}}
+                  >
+                    {heroSlides[activeSlide]?.imageUrl && <div className="absolute inset-0 bg-black/50" />}
+                    {/* Add blur element if no image to keep the original style */}
+                    {!heroSlides[activeSlide]?.imageUrl && (
+                      <div className={`absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-[600px] ${heroSlides[activeSlide]?.bg} blur-[120px] rounded-full`} />
+                    )}
+                  </motion.div>
                 </AnimatePresence>
-                <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-fg/5 blur-[100px] rounded-full -z-10" />
+                {!heroSlides[activeSlide]?.imageUrl && <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-fg/5 blur-[100px] rounded-full -z-10" />}
 
                 <div className="max-w-7xl mx-auto w-full relative">
                   <div className="flex flex-col items-center text-center max-w-4xl mx-auto z-10 relative">
@@ -1679,20 +1715,34 @@ export default function App() {
                           </p>
 
                           <div className="flex flex-wrap items-center justify-center gap-6">
-                            <motion.button 
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => {
-                                const el = document.getElementById('products-grid');
-                                el?.scrollIntoView({ behavior: 'smooth' });
-                              }}
-                              className="px-10 py-5 bg-violet-600 text-white font-bold rounded-2xl shadow-[0_20px_50px_-10px_rgba(139,92,246,0.5)] relative group overflow-hidden"
-                            >
-                              <span className="relative z-10 flex items-center gap-2">
-                                تصفح الخدمات <ArrowRight size={20} className="group-hover:-translate-x-2 transition-transform scale-x-[-1]" />
-                              </span>
-                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[100%] group-hover:translate-x-[-100%] transition-transform duration-700" />
-                            </motion.button>
+                            {heroSlides[activeSlide].buttonText && (
+                               <motion.button 
+                                 whileHover={{ scale: 1.05 }}
+                                 whileTap={{ scale: 0.95 }}
+                                 onClick={() => {
+                                   if (heroSlides[activeSlide].link) {
+                                     if (heroSlides[activeSlide].link.startsWith('http')) {
+                                       window.open(heroSlides[activeSlide].link, '_blank');
+                                     } else if (['home', 'shop', 'accounts', 'gift', 'contact', 'faq'].includes(heroSlides[activeSlide].link)) {
+                                       setCurrentTab(heroSlides[activeSlide].link);
+                                     } else {
+                                       // Assuming it's a category slug
+                                       setCurrentTab('shop');
+                                       setActiveCategory(heroSlides[activeSlide].link);
+                                     }
+                                   } else {
+                                     const el = document.getElementById('products-grid');
+                                     el?.scrollIntoView({ behavior: 'smooth' });
+                                   }
+                                 }}
+                                 className={`px-10 py-5 bg-gradient-to-r hover:bg-gradient-to-br ${heroSlides[activeSlide].accent} text-white font-bold rounded-2xl shadow-lg relative group overflow-hidden`}
+                               >
+                                 <span className="relative z-10 flex items-center gap-2">
+                                   {heroSlides[activeSlide].buttonText} <ArrowRight size={20} className="group-hover:-translate-x-2 transition-transform scale-x-[-1]" />
+                                 </span>
+                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[100%] group-hover:translate-x-[-100%] transition-transform duration-700" />
+                               </motion.button>
+                            )}
                             
                             <motion.button 
                               whileHover={{ scale: 1.05 }}
@@ -2426,6 +2476,7 @@ export default function App() {
                       { id: 'users', label: 'المستخدمين', icon: Users, count: allUsers.length },
                       { id: 'gifts', label: 'كودات الهدايا', icon: Ticket, count: giftCodes.length },
                       { id: 'accounts', label: 'الحسابات', icon: Monitor, count: accountCategories.length },
+                      { id: 'hero', label: 'اللافتات (Hero)', icon: ImageIcon, count: heroSlides.length },
                     ].map((item) => (
                       <button
                         key={item.id}
@@ -3136,6 +3187,84 @@ export default function App() {
                                accountCat={Object.keys(editingAccountCat).length === 0 ? null : editingAccountCat}
                                onClose={() => setEditingAccountCat(null)}
                                onSave={() => setEditingAccountCat(null)}
+                            />
+                         )}
+                      </motion.div>
+                    )}
+
+                    {adminTab === 'hero' && (
+                      <motion.div
+                        key="hero-tab"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="space-y-6"
+                      >
+                         <div className="flex justify-between items-center mb-8 pb-6 border-b border-fg/5">
+                            <div>
+                               <h2 className="text-2xl font-black mb-1 flex items-center gap-2">
+                                  <ImageIcon className="text-violet-500" />
+                                  إدارة اللافتات
+                               </h2>
+                               <p className="text-fg/40 text-sm">أضف لافتات الصفحة الرئيسية وحذفها</p>
+                            </div>
+                            <button onClick={() => setEditingHeroSlide({})} className="bg-fg text-bg px-6 py-2 rounded-xl font-bold hover:bg-fg/90 transition-colors flex items-center gap-2">
+                               <Plus size={18} />
+                               إضافة لافتة
+                            </button>
+                         </div>
+
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {heroSlides.map((slide, i) => (
+                               <div key={slide.id || i} className="bg-fg/[0.02] border border-fg/5 rounded-2xl p-6 relative group overflow-hidden">
+                                  <div className="flex justify-between items-start mb-4 relative z-10">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${slide.accent} flex items-center justify-center text-white font-bold`}>
+                                        {i + 1}
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                       <button onClick={() => setEditingHeroSlide(slide)} className="p-2 bg-fg/5 rounded-xl hover:bg-fg/10 transition-colors text-fg/60 hover:text-fg">
+                                          <Edit2 size={16} />
+                                       </button>
+                                       <button onClick={async () => {
+                                          if (confirm('هل أنت متأكد؟')) {
+                                             try {
+                                                if (!slide.id.startsWith('default-')) {
+                                                  await deleteDoc(doc(db, 'heroSlides', slide.id));
+                                                } else {
+                                                  alert('للحذف، الرجاء إضافة لافتات جديدة وسوف تحذف اللافتات الافتراضية تلقائياً.');
+                                                }
+                                             } catch (e) {
+                                               handleFirestoreError(e, OperationType.DELETE, `heroSlides/${slide.id}`);
+                                             }
+                                          }
+                                       }} className="p-2 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors text-red-500">
+                                          <Trash2 size={16} />
+                                       </button>
+                                    </div>
+                                  </div>
+                                  <h3 className="font-bold text-lg mb-2 relative z-10">{slide.title}</h3>
+                                  <p className="text-fg/60 text-sm mb-4 line-clamp-2 relative z-10">{slide.subtitle}</p>
+                                  <div className="flex gap-2 relative z-10">
+                                    {slide.emojis?.map((emoji: string, j: number) => (
+                                      <span key={j} className="w-8 h-8 flex items-center justify-center bg-fg/5 rounded-full">{emoji}</span>
+                                    ))}
+                                  </div>
+                               </div>
+                            ))}
+                            {heroSlides.length === 0 && (
+                               <div className="col-span-full py-16 text-center text-fg/40">
+                                 <ImageIcon size={48} className="mx-auto mb-4 opacity-20" />
+                                 <p>لا توجد لافتات حالياً</p>
+                               </div>
+                            )}
+                         </div>
+                         {editingHeroSlide && (
+                            <HeroAdminModal
+                               slide={Object.keys(editingHeroSlide).length === 0 ? null : editingHeroSlide}
+                               onClose={() => setEditingHeroSlide(null)}
+                               onSave={() => setEditingHeroSlide(null)}
                             />
                          )}
                       </motion.div>
