@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Check } from 'lucide-react';
 import { Product, ProductOption, Category } from '../types';
 import { db, setDoc, doc, updateDoc } from '../lib/firebase';
+import { toast } from 'react-hot-toast';
 
 interface ProductAdminModalProps {
   product: Partial<Product> | null;
@@ -30,8 +31,12 @@ export function ProductAdminModal({ product, categories, onClose, onSave }: Prod
   const [selectedL2, setSelectedL2] = useState<string>(formData.subCategoryL2 || '');
 
   const handleSave = async () => {
-    if (!formData.name || !formData.price || !selectedRoot) return alert('الرجاء تعبئة الحقول الأساسية (الاسم، السعر، الصنف)');
+    if (!formData.name || !formData.price || !selectedRoot) {
+      toast.error('الرجاء تعبئة الحقول الأساسية (الاسم، السعر، الصنف)');
+      return;
+    }
 
+    const toastId = toast.loading('جاري الحفظ...');
     const finalProduct = {
       ...formData,
       category: categories.find(c => c.slug === selectedRoot)?.name || '',
@@ -47,10 +52,11 @@ export function ProductAdminModal({ product, categories, onClose, onSave }: Prod
         const newId = Date.now();
         await setDoc(doc(db, 'products', String(newId)), { ...finalProduct, id: newId, createdAt: new Date() });
       }
+      toast.success('تم حفظ المنتج بنجاح', { id: toastId });
       onSave();
     } catch (err) {
       console.error(err);
-      alert('خطأ في حفظ المنتج');
+      toast.error('خطأ في حفظ المنتج', { id: toastId });
     }
   };
 

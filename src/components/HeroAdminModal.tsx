@@ -4,8 +4,9 @@ import { motion } from 'framer-motion';
 import { doc, setDoc, updateDoc, collection } from 'firebase/firestore';
 import { db, OperationType, handleFirestoreError } from '../lib/firebase';
 import { ImageUpload } from './ImageUpload';
+import { toast } from 'react-hot-toast';
 
-export function HeroAdminModal({ slide, onClose, onSave }: { slide: any; onClose: () => void; onSave: () => void }) {
+export function HeroAdminModal({ slide, categories, onClose, onSave }: { slide: any; categories: any[]; onClose: () => void; onSave: () => void }) {
   const [formData, setFormData] = useState({
     title: slide?.title || '',
     subtitle: slide?.subtitle || '',
@@ -22,11 +23,12 @@ export function HeroAdminModal({ slide, onClose, onSave }: { slide: any; onClose
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    const toastId = toast.loading('جاري الحفظ...');
     try {
       const dataToSave = {
         title: formData.title,
         subtitle: formData.subtitle,
-        emojis: formData.emojis.split(',').map(e => e.trim()).filter(Boolean),
+        emojis: formData.emojis.split(',').map((e: string) => e.trim()).filter(Boolean),
         accent: formData.accent,
         bg: formData.bg,
         buttonText: formData.buttonText,
@@ -40,10 +42,11 @@ export function HeroAdminModal({ slide, onClose, onSave }: { slide: any; onClose
         const docRef = doc(collection(db, 'heroSlides'));
         await setDoc(docRef, dataToSave);
       }
+      toast.success('تم الحفظ بنجاح', { id: toastId });
       onSave();
     } catch (err) {
       console.error(err);
-      alert('خطأ في الحفظ');
+      toast.error('خطأ في الحفظ', { id: toastId });
     } finally {
       setSaving(false);
     }
@@ -159,12 +162,17 @@ export function HeroAdminModal({ slide, onClose, onSave }: { slide: any; onClose
                 className="w-full bg-fg/5 border border-fg/10 rounded-xl px-4 py-3 focus:outline-none focus:border-violet-500 appearance-none"
               >
                 <option value="">-- بدون رابط --</option>
-                <option value="shop">البوتيك (الكل)</option>
-                <option value="accounts">حسابات</option>
-                <option value="gift">هدايا (كادو)</option>
-                <option value="contact">التواصل</option>
-                <option value="faq">الأسئلة الشائعة</option>
-                <option value="home">الرئيسية</option>
+                <optgroup label="الصفحات الرئيسية">
+                  <option value="home">الرئيسية</option>
+                  <option value="shop">البوتيك (الكل)</option>
+                  <option value="contact">التواصل</option>
+                  <option value="faq">الأسئلة الشائعة</option>
+                </optgroup>
+                <optgroup label="الأصناف">
+                  {categories.map((c: any) => (
+                    <option key={c.slug} value={c.slug}>{c.name}</option>
+                  ))}
+                </optgroup>
               </select>
             </div>
           </div>

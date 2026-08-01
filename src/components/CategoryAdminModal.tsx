@@ -3,6 +3,7 @@ import { X, Check } from 'lucide-react';
 import { Category } from '../types';
 import { db, setDoc, doc, updateDoc } from '../lib/firebase';
 import { ImageUpload } from './ImageUpload';
+import { toast } from 'react-hot-toast';
 
 interface CategoryAdminModalProps {
   category: Partial<Category> | null;
@@ -17,13 +18,20 @@ export function CategoryAdminModal({ category, categories, onClose, onSave }: Ca
   });
 
   const handleSave = async () => {
-    if (!formData.name) return alert('الرجاء إدخال اسم الصنف');
+    if (!formData.name) {
+      toast.error('الرجاء إدخال اسم الصنف');
+      return;
+    }
 
     const isEdit = !!category?.slug;
     const slug = isEdit ? category.slug : formData.name.trim().toLowerCase().replace(/\s+/g, '-');
 
-    if (!slug) return alert('الاسم غير صالح');
+    if (!slug) {
+      toast.error('الاسم غير صالح');
+      return;
+    }
 
+    const toastId = toast.loading('جاري الحفظ...');
     const finalCategory = {
       slug,
       name: formData.name,
@@ -40,10 +48,11 @@ export function CategoryAdminModal({ category, categories, onClose, onSave }: Ca
       } else {
         await setDoc(doc(db, 'categories', slug), finalCategory);
       }
+      toast.success('تم حفظ الصنف بنجاح', { id: toastId });
       onSave();
     } catch (err) {
       console.error(err);
-      alert('خطأ في حفظ الصنف');
+      toast.error('خطأ في حفظ الصنف', { id: toastId });
     }
   };
 

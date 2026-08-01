@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Phone, CheckCircle } from 'lucide-react';
@@ -27,7 +28,7 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
     e.preventDefault();
     
     if (!phoneNumber.trim() || !displayName.trim()) {
-      alert('الرجاء إدخال جميع البيانات المطلوبة');
+      toast.error('الرجاء إدخال جميع البيانات المطلوبة');
       return;
     }
 
@@ -41,7 +42,7 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
       onComplete();
     } catch (error) {
       console.error(error);
-      alert('حدث خطأ أثناء حفظ البيانات');
+      toast.error('حدث خطأ أثناء حفظ البيانات');
       setIsSubmitting(false);
     }
   };

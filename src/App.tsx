@@ -75,6 +75,7 @@ import { P2PModal } from './components/P2PModal';
 import { ProfileSetupModal } from './components/ProfileSetupModal';
 import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, User, db, setDoc, getDoc, updateDoc, deleteDoc, doc, collection, query, where, onSnapshot, addDoc, serverTimestamp, increment, OperationType, handleFirestoreError, getDocs, messaging, getToken, onMessage } from './lib/firebase';
 import { Product, UserProfile, Order, Category, Transaction, GiftCode, AccountCategory, ServiceRequest, AppNotification } from './types';
+import { Toaster, toast } from 'react-hot-toast';
 import { Joyride, Step, STATUS } from 'react-joyride';
 import type { EventData } from 'react-joyride';
 
@@ -307,7 +308,6 @@ export default function App() {
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [allServiceRequests, setAllServiceRequests] = useState<ServiceRequest[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [toasts, setToasts] = useState<{id: string, title: string, message: string}[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isP2PModalOpen, setIsP2PModalOpen] = useState(false);
@@ -562,11 +562,17 @@ export default function App() {
                            if ('Notification' in window && Notification.permission === 'granted') {
                              new Notification(notif.title, { body: notif.message, icon: '/favicon.ico' });
                            }
-                           const newToast = { id: Date.now().toString() + Math.random(), title: notif.title, message: notif.message };
-                           setToasts(prev => [...prev, newToast]);
-                           setTimeout(() => {
-                             setToasts(prev => prev.filter(t => t.id !== newToast.id));
-                           }, 5000);
+                           toast.custom((t) => (
+                             <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} bg-panel text-fg border border-fg/10 rounded-2xl p-4 shadow-2xl flex items-start gap-3 pointer-events-auto w-80 max-w-[calc(100vw-2rem)]`} dir="rtl">
+                               <div className="mt-0.5 bg-amber-500/20 text-amber-500 rounded-full p-1.5 shrink-0">
+                                 <Bell size={14} />
+                               </div>
+                               <div>
+                                 <h4 className="font-bold text-sm mb-1">{notif.title}</h4>
+                                 <p className="text-xs text-fg/60 leading-relaxed">{notif.message}</p>
+                               </div>
+                             </div>
+                           ), { duration: 5000 });
                         }
                       }
                     });
@@ -736,14 +742,14 @@ export default function App() {
       const q = query(collection(db, 'giftCodes'), where('code', '==', giftCodeInput.trim().toUpperCase()));
       const snap = await getDocs(q);
       if (snap.empty) {
-        alert('كود غير صالح أو غير موجود.');
+        toast.error('كود غير صالح أو غير موجود.');
         setGiftProcessing(false);
         return;
       }
       const codeDoc = snap.docs[0];
       const codeData = codeDoc.data() as GiftCode;
       if (codeData.status !== 'active') {
-        alert('هذا الكود تم استخدامه من قبل أو انتهت صلوحيته.');
+        toast.error('هذا الكود تم استخدامه من قبل أو انتهت صلوحيته.');
         setGiftProcessing(false);
         return;
       }
@@ -763,7 +769,7 @@ export default function App() {
           description: `استخدام كود هدية: ${codeData.code}`,
           createdAt: serverTimestamp()
         });
-        alert(`مبروك! تم إضافة ${val} د.ت إلى حسابك.`);
+        toast.success(`مبروك! تم إضافة ${val} د.ت إلى حسابك.`);
       }
 
       await updateDoc(doc(db, 'giftCodes', codeDoc.id), {
@@ -786,7 +792,7 @@ export default function App() {
     }
     if (giftProcessing) return;
     if (profile.balance < giftAmount) {
-      alert('رصيدك غير كافٍ. الرجاء شحن حسابك أولاً.');
+      toast.error('رصيدك غير كافٍ. الرجاء شحن حسابك أولاً.');
       return;
     }
     setGiftProcessing(true);
@@ -816,7 +822,7 @@ export default function App() {
         createdAt: serverTimestamp()
       });
 
-      alert(`تم شراء بطاقة الهدية بنجاح! احتفظ بالكود:\n\n${newCodeStr}`);
+      toast.success(`تم شراء بطاقة الهدية بنجاح! احتفظ بالكود:\n\n${newCodeStr}`);
 
     } catch(e) {
       handleFirestoreError(e, OperationType.WRITE, 'giftCodes');
@@ -831,6 +837,7 @@ export default function App() {
     }
     
     setIsProcessing(true);
+    const toastId = toast.loading('جاري إنشاء الطلب...');
     try {
       // Create Order
       const orderData = {
@@ -861,6 +868,19 @@ export default function App() {
           link: 'admin-orders',
           createdAt: serverTimestamp(),
         });
+        
+        // Notify via WhatsApp (Backend Twilio endpoint)
+        fetch('/api/notify-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: orderRef.id,
+            customerName: user.email || 'مستخدم',
+            totalAmount: cartTotal,
+            items: cart.length
+          })
+        }).catch(err => console.error('WhatsApp notification error:', err));
+        
       } catch (err) {
         console.error("Failed to notify admin", err);
       }
@@ -869,6 +889,8 @@ export default function App() {
       setIsCartOpen(false);
       setCurrentTab('orders');
       
+      toast.success('تم إنشاء الطلب بنجاح', { id: toastId });
+
       // Auto-open chat for the newly created order
       handleOpenChatWithCheck(() => setSelectedOrderChat({
         orderId: orderRef.id,
@@ -876,9 +898,9 @@ export default function App() {
         createdAt: { toDate: () => new Date() } // Best-effort mock for instant UI
       } as any));
 
-      // We don't alert anymore because the chat opens immediately
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'orders');
+      console.error(error);
+      toast.error('حدث خطأ أثناء إنشاء الطلب', { id: toastId });
     } finally {
       setIsProcessing(false);
     }
@@ -1002,30 +1024,7 @@ export default function App() {
         <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-fuchsia-600/10 dark:bg-fuchsia-600/20 blur-[120px] rounded-full opacity-50 dark:opacity-100" />
         <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', backgroundSize: '40px 40px' }} />
       </div>
-
-      {/* Toasts */}
-      <div className="fixed top-20 right-4 z-[9999] flex flex-col gap-3 pointer-events-none w-80 max-w-[calc(100vw-2rem)]">
-        <AnimatePresence>
-          {toasts.map(toast => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, x: 50, scale: 0.95 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-              className="bg-panel border border-fg/10 rounded-2xl p-4 shadow-2xl backdrop-blur-xl flex items-start gap-3 pointer-events-auto"
-            >
-              <div className="mt-0.5 bg-amber-500/20 text-amber-500 rounded-full p-1.5 shrink-0">
-                <Bell size={14} />
-              </div>
-              <div>
-                <h4 className="font-bold text-sm mb-1">{toast.title}</h4>
-                <p className="text-xs text-fg/60 leading-relaxed">{toast.message}</p>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
+      
       <Joyride
         steps={tourSteps}
         run={runTour}
@@ -1309,11 +1308,11 @@ export default function App() {
                                <button 
                                  onClick={async () => {
                                    if (!('Notification' in window)) {
-                                     alert('متصفحك لا يدعم الإشعارات');
+                                     toast.error('متصفحك لا يدعم الإشعارات');
                                      return;
                                    }
                                    if (window.self !== window.top) {
-                                     alert('يرجى فتح التطبيق في نافذة جديدة (Open in New Tab) لتفعيل الإشعارات، لأن المتصفح يمنعها داخل الإطار (iframe).');
+                                     toast.error('يرجى فتح التطبيق في نافذة جديدة (Open in New Tab) لتفعيل الإشعارات، لأن المتصفح يمنعها داخل الإطار (iframe).');
                                      return;
                                    }
                                    try {
@@ -1890,7 +1889,7 @@ export default function App() {
                 </div>
 
                 <div className="relative mb-8">
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-4">
+                  <div className="flex overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4 snap-x hide-scrollbar">
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -1899,7 +1898,7 @@ export default function App() {
                         setActiveSubL1(null);
                         setActiveSubL2(null);
                       }}
-                      className={`group relative p-3 rounded-2xl flex items-center gap-4 transition-all border overflow-hidden w-full ${
+                      className={`group relative p-3 rounded-2xl flex items-center gap-3 transition-all border overflow-hidden shrink-0 w-[240px] sm:w-full h-full snap-center sm:snap-align-none ${
                         activeCategory === 'الكل' 
                         ? 'bg-gradient-to-br from-violet-600/90 to-fuchsia-800 border-violet-400/50 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.5)] z-10' 
                         : 'bg-bg/60 backdrop-blur-md border-fg/5 text-fg/70 hover:bg-fg/5 hover:border-violet-500/30 hover:text-fg shadow-sm'
@@ -1909,9 +1908,9 @@ export default function App() {
                          <span className={`text-2xl drop-shadow-sm transition-transform duration-300 ${activeCategory === 'الكل' ? 'scale-110' : 'group-hover:scale-110'}`}>🌟</span>
                        </div>
                        
-                       <div className="flex flex-col items-start text-right flex-1 truncate">
-                         <span className={`text-sm font-bold tracking-wide w-full truncate ${activeCategory === 'الكل' ? 'text-white' : 'text-fg transition-colors group-hover:text-violet-500'}`}>الكل</span>
-                         <span className={`text-[10px] uppercase font-bold tracking-widest mt-0.5 ${activeCategory === 'الكل' ? 'text-white/70' : 'text-fg/40'}`}>جميع المنتجات</span>
+                       <div className="flex flex-col items-start text-right flex-1 min-w-0 pr-1">
+                         <span className={`text-sm font-bold tracking-wide leading-snug whitespace-normal break-words ${activeCategory === 'الكل' ? 'text-white' : 'text-fg transition-colors group-hover:text-violet-500'}`}>الكل</span>
+                         <span className={`text-[10px] uppercase font-bold tracking-widest mt-1 whitespace-nowrap ${activeCategory === 'الكل' ? 'text-white/70' : 'text-fg/40'}`}>جميع المنتجات</span>
                        </div>
                     </motion.button>
                     {dynamicCategories.filter(c => (c.level === 0 || c.level === undefined)).map((category, idx) => (
@@ -1927,7 +1926,7 @@ export default function App() {
                           setActiveSubL1(null);
                           setActiveSubL2(null);
                         }}
-                        className={`group relative p-3 rounded-2xl flex items-center gap-4 transition-all border overflow-hidden w-full ${
+                        className={`group relative p-3 rounded-2xl flex items-center gap-3 transition-all border overflow-hidden shrink-0 w-[240px] sm:w-full h-full snap-center sm:snap-align-none ${
                           activeCategory === category.name 
                           ? 'bg-gradient-to-br from-violet-600/90 to-fuchsia-800 border-violet-400/50 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.5)] z-10' 
                           : 'bg-bg/60 backdrop-blur-md border-fg/5 text-fg/70 hover:bg-fg/5 hover:border-violet-500/30 hover:text-fg shadow-sm'
@@ -1948,11 +1947,11 @@ export default function App() {
                           )}
                         </div>
                         
-                        <div className="flex flex-col items-start text-right flex-1 truncate">
-                          <span className={`text-sm font-bold tracking-wide w-full truncate ${activeCategory === category.name ? 'text-white' : 'text-fg transition-colors group-hover:text-violet-500'}`}>
+                        <div className="flex flex-col items-start text-right flex-1 min-w-0 pr-1">
+                          <span className={`text-sm font-bold tracking-wide leading-snug whitespace-normal break-words ${activeCategory === category.name ? 'text-white' : 'text-fg transition-colors group-hover:text-violet-500'}`}>
                             {category.name}
                           </span>
-                          <span className={`text-[10px] uppercase font-bold tracking-widest mt-0.5 ${activeCategory === category.name ? 'text-white/70' : 'text-fg/40'}`}>
+                          <span className={`text-[10px] uppercase font-bold tracking-widest mt-1 whitespace-nowrap ${activeCategory === category.name ? 'text-white/70' : 'text-fg/40'}`}>
                             {products.filter(p => p.category?.trim() === category.name?.trim()).length} منتجات
                           </span>
                         </div>
@@ -1963,12 +1962,12 @@ export default function App() {
 
                 {/* Sub-Category L1 Navigation */}
                 {activeCategory !== 'الكل' && (
-                   <div className="mb-10 flex flex-wrap gap-3 pb-4">
+                   <div className="mb-10 flex overflow-x-auto gap-3 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap hide-scrollbar">
                       <motion.button 
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => { setActiveSubL1(null); setActiveSubL2(null); }}
-                        className={`px-6 py-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                        className={`px-6 py-3 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all border ${
                           !activeSubL1 ? 'bg-violet-600/90 border-violet-500 shadow-md shadow-violet-500/20 text-white' : 'bg-bg/50 backdrop-blur-sm border-white/5 text-fg/50 hover:bg-white/5 hover:text-fg'
                         }`}
                       >
@@ -1982,7 +1981,7 @@ export default function App() {
                              whileHover={{ scale: 1.02 }}
                              whileTap={{ scale: 0.98 }}
                              onClick={() => { setActiveSubL1(sub.slug); setActiveSubL2(null); }}
-                             className={`px-6 py-3 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border flex items-center gap-2 ${
+                             className={`px-6 py-3 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all border flex items-center gap-2 ${
                                activeSubL1 === sub.slug ? 'bg-violet-600/90 border-violet-500 shadow-md shadow-violet-500/20 text-white' : 'bg-bg/50 backdrop-blur-sm border-white/5 text-fg/50 hover:bg-white/5 hover:text-fg'
                              }`}
                            >
@@ -2001,12 +2000,12 @@ export default function App() {
 
                 {/* Sub-Category L2 Navigation */}
                 {activeSubL1 && (
-                   <div className="mb-10 flex flex-wrap gap-3 pb-4">
+                   <div className="mb-10 flex overflow-x-auto gap-3 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap hide-scrollbar">
                       <motion.button 
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setActiveSubL2(null)}
-                        className={`px-5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                        className={`px-5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all border ${
                           !activeSubL2 ? 'bg-fg text-bg border-fg shadow-md' : 'bg-bg/50 backdrop-blur-sm border-white/5 text-fg/50 hover:bg-white/5 hover:text-fg'
                         }`}
                       >
@@ -2020,7 +2019,7 @@ export default function App() {
                              whileHover={{ scale: 1.02 }}
                              whileTap={{ scale: 0.98 }}
                              onClick={() => setActiveSubL2(sub.slug)}
-                             className={`px-5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border flex items-center gap-2 ${
+                             className={`px-5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all border flex items-center gap-2 ${
                                activeSubL2 === sub.slug ? 'bg-fg text-bg border-fg shadow-md' : 'bg-bg/50 backdrop-blur-sm border-white/5 text-fg/50 hover:bg-white/5 hover:text-fg'
                              }`}
                            >
@@ -2519,9 +2518,9 @@ export default function App() {
                         ];
                         for (const c of initialCats) { await setDoc(doc(db, 'categories', c.slug), c); }
                         for (const p of initialProducts) { await setDoc(doc(db, 'products', String(p.id)), p); }
-                        alert('تمت مزامنة البيانات بنجاح!');
+                        toast.success('تمت مزامنة البيانات بنجاح!');
                       } catch (err) {
-                        alert('خطأ في المزامنة');
+                        toast.error('خطأ في المزامنة');
                       }
                     }}
                     className="w-full mt-4 p-4 rounded-2xl flex items-center justify-center gap-3 bg-fuchsia-500/10 text-fuchsia-500 border border-fuchsia-500/20 hover:bg-fuchsia-500/20 transition-all font-bold text-sm"
@@ -2797,7 +2796,7 @@ export default function App() {
                                         onClick={async () => {
                                           if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
                                             try { await deleteDoc(doc(db, 'products', String(p.id))); } 
-                                            catch (e) { alert('حدث خطأ أثناء الحذف'); }
+                                            catch (e) { toast.error('حدث خطأ أثناء الحذف'); }
                                           }
                                         }}
                                         className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 hover:shadow-inner rounded-xl transition-all"
@@ -3233,7 +3232,7 @@ export default function App() {
                                                 if (!slide.id.startsWith('default-')) {
                                                   await deleteDoc(doc(db, 'heroSlides', slide.id));
                                                 } else {
-                                                  alert('للحذف، الرجاء إضافة لافتات جديدة وسوف تحذف اللافتات الافتراضية تلقائياً.');
+                                                  toast.error('للحذف، الرجاء إضافة لافتات جديدة وسوف تحذف اللافتات الافتراضية تلقائياً.');
                                                 }
                                              } catch (e) {
                                                handleFirestoreError(e, OperationType.DELETE, `heroSlides/${slide.id}`);
@@ -3263,6 +3262,7 @@ export default function App() {
                          {editingHeroSlide && (
                             <HeroAdminModal
                                slide={Object.keys(editingHeroSlide).length === 0 ? null : editingHeroSlide}
+                               categories={dynamicCategories}
                                onClose={() => setEditingHeroSlide(null)}
                                onSave={() => setEditingHeroSlide(null)}
                             />
@@ -4224,6 +4224,36 @@ export default function App() {
           onClose={() => setSelectedRequestChat(null)}
         />
       )}
+      <Toaster 
+        position="top-center" 
+        reverseOrder={false}
+        toastOptions={{ 
+          duration: 4000,
+          style: {
+            background: 'var(--color-panel)',
+            color: 'var(--color-fg)',
+            border: '1px solid color-mix(in srgb, var(--color-fg) 10%, transparent)',
+            borderRadius: '16px',
+            direction: 'rtl',
+            fontFamily: 'Tajawal, sans-serif',
+            fontWeight: '700',
+            padding: '16px 24px',
+            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)'
+          },
+          success: {
+            iconTheme: {
+              primary: '#10B981',
+              secondary: 'var(--color-panel)',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: 'var(--color-panel)',
+            },
+          },
+        }} 
+      />
     </div>
   );
 }

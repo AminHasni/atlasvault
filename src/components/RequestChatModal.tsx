@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, User as UserIcon, Shield, AlertCircle, CheckCircle2, Clock, Info, Paperclip, FileText, Download, Loader2 } from 'lucide-react';
 import { ServiceRequest, UserProfile, Message as MessageType } from '../types';
@@ -59,7 +60,7 @@ export function RequestChatModal({ request, currentUser, profile, onClose }: Req
     if (!file || !request.id) return;
 
     if (file.size > 800 * 1024) {
-      alert('حجم الملف كبير جداً (الأقصى 800KB لضمان التخزين المحلي)');
+      toast.error('حجم الملف كبير جداً (الأقصى 800KB لضمان التخزين المحلي)');
       return;
     }
 
@@ -97,7 +98,7 @@ export function RequestChatModal({ request, currentUser, profile, onClose }: Req
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err: any) {
       console.error("Upload error", err);
-      alert('خطأ غير متوقع: ' + err.message);
+      toast.error('خطأ غير متوقع: ' + err.message);
       setIsUploading(false);
       setUploadProgress(0);
     }
@@ -174,7 +175,7 @@ export function RequestChatModal({ request, currentUser, profile, onClose }: Req
       }
     } catch (err: any) {
       console.error("Error updating status", err);
-      alert('حدث خطأ أثناء تحديث حالة الطلب: ' + err.message);
+      toast.error('حدث خطأ أثناء تحديث حالة الطلب: ' + err.message);
     }
   };
 

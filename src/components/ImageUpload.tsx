@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useState, useRef } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
 
@@ -59,7 +60,7 @@ export function ImageUpload({ value, onChange, className = '', label = 'صورة
           }
         };
         img.onerror = () => {
-          alert('فشل قراءة الصورة');
+          toast.error('فشل قراءة الصورة');
           setUploading(false);
         };
         img.src = event.target?.result as string;
@@ -81,7 +82,7 @@ export function ImageUpload({ value, onChange, className = '', label = 'صورة
     } catch (error) {
       console.error(error);
       setUploading(false);
-      alert('حدث خطأ');
+      toast.error('حدث خطأ');
     }
   };
 

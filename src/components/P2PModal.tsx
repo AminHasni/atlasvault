@@ -1,3 +1,4 @@
+import { toast } from "react-hot-toast";
 import React, { useState } from 'react';
 import { X, ShieldCheck, AlertTriangle, Upload, CheckCircle2, User, Camera, FileText, Loader2 } from 'lucide-react';
 import { db, addDoc, collection, serverTimestamp } from '../lib/firebase';
@@ -24,7 +25,7 @@ export const P2PModal: React.FC<P2PModalProps> = ({ isOpen, onClose, user }) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAgreed) {
-      alert("الرجاء الموافقة على شروط البيع المُلزمة.");
+      toast.error("الرجاء الموافقة على شروط البيع المُلزمة.");
       return;
     }
     
@@ -34,7 +35,7 @@ export const P2PModal: React.FC<P2PModalProps> = ({ isOpen, onClose, user }) => 
     try {
       if (proofImage) {
         if (proofImage.size > 800 * 1024) {
-          alert('حجم الصورة كبير جداً (الأقصى 800KB لضمان التخزين المحلي)');
+          toast.error('حجم الصورة كبير جداً (الأقصى 800KB لضمان التخزين المحلي)');
           setIsUploading(false);
           return;
         }
@@ -65,7 +66,7 @@ export const P2PModal: React.FC<P2PModalProps> = ({ isOpen, onClose, user }) => 
       }, 3000);
     } catch (error: any) {
       console.error(error);
-      alert('حدث خطأ أثناء إرسال الطلب: ' + error.message);
+      toast.error('حدث خطأ أثناء إرسال الطلب: ' + error.message);
     } finally {
       setIsUploading(false);
     }
